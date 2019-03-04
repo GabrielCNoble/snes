@@ -1,6 +1,7 @@
 #include "cpu.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 
 unsigned char *cpu_ram = NULL;
@@ -434,6 +435,9 @@ void reset_cpu()
 char *opcode_str(struct op_code_t *op_code)
 {
     char *op_code_str;
+    char *addr_mode_str;
+
+    static char instruction_str[512];
 
     switch(op_code->opcode)
     {
@@ -811,7 +815,117 @@ char *opcode_str(struct op_code_t *op_code)
         break;
     }
 
-    return op_code_str;
+
+    switch(op_code->address_mode)
+    {
+        case ADDRESS_MODE_ABSOLUTE:
+            addr_mode_str = "absolute - a";
+        break;
+
+        case ADDRESS_MODE_ABSOLUTE_INDEXED_INDIRECT:
+            addr_mode_str = "absolute indexed indirect - (a,x)";
+        break;
+
+        case ADDRESS_MODE_ABSOLUTE_INDEXED_X:
+            addr_mode_str = "absolute indexed X - a,x";
+        break;
+
+        case ADDRESS_MODE_ABSOLUTE_INDEXED_Y:
+            addr_mode_str = "absolute indexed Y - a,y";
+        break;
+
+        case ADDRESS_MODE_ABSOLUTE_INDIRECT:
+            addr_mode_str = "absolute indirect - (a)";
+        break;
+
+        case ADDRESS_MODE_ABSOLUTE_LONG_INDEXED_X:
+            addr_mode_str = "absolute long indexed x - al,x";
+        break;
+
+        case ADDRESS_MODE_ABSOLUTE_LONG:
+            addr_mode_str = "absolute long - al";
+        break;
+
+        case ADDRESS_MODE_ACCUMULATOR:
+            addr_mode_str = "accumulator - A";
+        break;
+
+        case ADDRESS_MODE_BLOCK_MOVE:
+            addr_mode_str = "block move - xyz";
+        break;
+
+        case ADDRESS_MODE_DIRECT_INDEXED_INDIRECT:
+            addr_mode_str = "direct indexed indirect - (d,x)";
+        break;
+
+        case ADDRESS_MODE_DIRECT_INDEXED_X:
+            addr_mode_str = "direct indexed X - d,x";
+        break;
+
+        case ADDRESS_MODE_DIRECT_INDEXED_Y:
+            addr_mode_str = "direct indexed Y - d,y";
+        break;
+
+        case ADDRESS_MODE_DIRECT_INDIRECT_INDEXED:
+            addr_mode_str = "direct indirect indexed - (d),y";
+        break;
+
+        case ADDRESS_MODE_DIRECT_INDIRECT_LONG_INDEXED:
+            addr_mode_str = "direct indirect long indexed - [d],y";
+        break;
+
+        case ADDRESS_MODE_DIRECT_INDIRECT_LONG:
+            addr_mode_str = "direct indirect long - [d]";
+        break;
+
+        case ADDRESS_MODE_DIRECT_INDIRECT:
+            addr_mode_str = "direct indirect - (d)";
+        break;
+
+        case ADDRESS_MODE_DIRECT:
+            addr_mode_str = "direct - d";
+        break;
+
+        case ADDRESS_MODE_IMMEDIATE:
+            addr_mode_str = "immediate - #";
+        break;
+
+        case ADDRESS_MODE_IMPLIED:
+            addr_mode_str = "implied - i";
+        break;
+
+        case ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE_LONG:
+            addr_mode_str = "program counter relative long - rl";
+        break;
+
+        case ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE:
+            addr_mode_str = "program counter relative - r";
+        break;
+
+        case ADDRESS_MODE_STACK:
+            addr_mode_str = "stack - s";
+        break;
+
+        case ADDRESS_MODE_STACK_RELATIVE:
+            addr_mode_str = "stack relative - d,s";
+        break;
+
+        case ADDRESS_MODE_STACK_RELATIVE_INDIRECT_INDEXED:
+            addr_mode_str = "stack relative indirect indexed - (d,s),y";
+        break;
+
+        default:
+        case ADDRESS_MODE_UNKNOWN:
+            addr_mode_str = "unknown";
+        break;
+    }
+
+    strcpy(instruction_str, op_code_str);
+    strcat(instruction_str, " (");
+    strcat(instruction_str, addr_mode_str);
+    strcat(instruction_str, ")");
+
+    return instruction_str;
 }
 
 void disassemble(int start, int byte_count)
@@ -827,13 +941,13 @@ void disassemble(int start, int byte_count)
 
     if(start >= 0)
     {
-        reg_x = start & 0xffff;
-        reg_dbr = (start >> 16) & 0xff;
+        reg_pc = start & 0xffff;
+        reg_pbr = (start >> 16) & 0xff;
     }
 
     while(bytes_disassmd < byte_count)
     {
-        address = EFFECTIVE_ADDRESS(reg_dbr, reg_x);
+        address = EFFECTIVE_ADDRESS(reg_pbr, reg_pc);
         opcode = opcode_matrix[cpu_ram[address]];
         op_str = opcode_str(&opcode);
 
@@ -841,7 +955,7 @@ void disassemble(int start, int byte_count)
 
         printf("[0x%02x:0x%04x]: ", (address >> 16) & 0xff, address & 0xffff);
 
-        for(i = 0; i < 3; i++)
+        for(i = 0; i < 4; i++)
         {
             if(i < opcode_offset)
             {
@@ -859,13 +973,18 @@ void disassemble(int start, int byte_count)
 
         bytes_disassmd += opcode_offset;
 
-        if((unsigned short)(reg_x + (unsigned short)opcode_offset) < (unsigned short)reg_x)
+        if((unsigned short)(reg_pc + (unsigned short)opcode_offset) < (unsigned short)reg_pc)
         {
-            reg_dbr++;
+            reg_pbr++;
         }
 
-        reg_x += opcode_offset;
+        reg_pc += opcode_offset;
     }
+}
+
+void disassemble_rom_header()
+{
+
 }
 
 void disassemble_all()
@@ -873,6 +992,10 @@ void disassemble_all()
 
 }
 
+void step_cpu()
+{
+
+}
 
 
 

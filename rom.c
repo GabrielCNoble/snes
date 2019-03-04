@@ -241,6 +241,8 @@ void map_rom(struct rom_t *rom)
         rom_offset += byte_count;
         rom_size -= 0x8000;
     }
+
+    reset_cpu();
 }
 
 

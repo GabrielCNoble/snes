@@ -211,7 +211,11 @@ char *opcode_str(struct op_code_t *opcode);
 
 void disassemble(int start, int byte_count);
 
+void disassemble_rom_header();
+
 void disassemble_all();
+
+void step_cpu();
 
 
 
