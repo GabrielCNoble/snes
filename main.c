@@ -32,7 +32,7 @@ int main(int argc, char *argv[])
                 }
                 else
                 {
-                    if(!strcmp(param, "-r"))
+                    if(!strcmp(param, "-rom"))
                     {
                         if(rom.header)
                         {
@@ -44,11 +44,12 @@ int main(int argc, char *argv[])
                         if(rom.header)
                         {
                             map_rom(&rom);
+                            disassemble_current(1);
                         }
                     }
                     else
                     {
-                        if(!strcmp(param, "-d"))
+                        if(!strcmp(param, "-dump"))
                         {
                             scanf("%s", param);
 
@@ -60,8 +61,6 @@ int main(int argc, char *argv[])
                             {
                                 disasm_start = -1;
                             }
-
-
 
                             scanf("%s", param);
 
@@ -75,6 +74,25 @@ int main(int argc, char *argv[])
                             }
 
                             disassemble(disasm_start, disasm_count);
+                        }
+                        else if(!strcmp(param, "-step"))
+                        {
+                            step_cpu();
+                            disassemble_current(1);
+                        }
+                        else if(!strcmp(param, "-run"))
+                        {
+                            while(1)
+                            {
+                                step_cpu();
+                                //disassemble_current(1);
+                            }
+                        }
+                        else if(!strcmp(param, "-reset"))
+                        {
+                            reset_cpu();
+                            printf("the cpu has been reset...\n");
+                            disassemble_current(1);
                         }
                         else if(!strcmp(param, "-drv"))
                         {

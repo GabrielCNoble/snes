@@ -7,6 +7,7 @@
 unsigned char *cpu_ram = NULL;
 
 
+unsigned long step_count = 0;
 
 
 unsigned char reg_e;         /* emulation flag */
@@ -15,13 +16,52 @@ unsigned short reg_ir;      /* instruction register */
 unsigned short reg_tcu;     /* timing control unit */
 
 
-unsigned short reg_accum;   /* accumulator register */
+union
+{
+    unsigned short reg_accumC;
+
+    struct
+    {
+        unsigned char reg_accumA;
+        unsigned char reg_accumB;
+    };
+
+}reg_accum;
+
+
+
+union
+{
+    unsigned short reg_x;
+
+    struct
+    {
+        unsigned char reg_xL;
+        unsigned char reg_xH;
+    };
+
+}reg_x;
+
+
+union
+{
+    unsigned short reg_y;
+
+    struct
+    {
+        unsigned char reg_yL;
+        unsigned char reg_yH;
+    };
+
+}reg_y;
+
+//unsigned short reg_accum;   /* accumulator register */
 unsigned short reg_d;       /* direct register */
 unsigned short reg_s;       /* stack pointer register */
 unsigned short reg_pc;       /* program counter register */
 
-unsigned short reg_x;       /* indexing register x */
-unsigned short reg_y;       /* indexing register y */
+//unsigned short reg_x;       /* indexing register x */
+//unsigned short reg_y;       /* indexing register y */
 
 unsigned char reg_dbr;      /* data bank register */
 unsigned char reg_pbr;      /* program bank register */
@@ -423,21 +463,35 @@ void reset_cpu()
 
     reg_dbr = 0;
     reg_pbr = 0;
-    reg_x = 0;
+    reg_x.reg_xL = 0;
+    reg_y.reg_yL = 0;
     reg_d = 0;
     reg_e = 1;
+    reg_s = (reg_s & 0xff) | 0x0100;
+
+    reg_p = CPU_STATUS_FLAG_MEMORY | CPU_STATUS_FLAG_INDEX | CPU_STATUS_FLAG_IRQ_DISABLE | CPU_STATUS_FLAG_CARRY;
 
     /* on reset, pc gets loaded with the contents
     of the pointer 00fffc... */
     reg_pc = *(unsigned short *)(cpu_ram + 0xfffc);
 }
 
-char *opcode_str(struct op_code_t *op_code)
+char *opcode_str(struct op_code_t *op_code, int effective_address)
 {
     char *op_code_str;
     char *addr_mode_str;
+    char *addr_mode_end_str;
+
+    int opcode_offset;
 
     static char instruction_str[512];
+    static char byte_buffer[128];
+    static char bytes_buffer[256];
+
+    bytes_buffer[0] = 0;
+    instruction_str[0] = 0;
+
+    opcode_offset = address_mode_operand_size[op_code->address_mode] + 1;
 
     switch(op_code->opcode)
     {
@@ -819,39 +873,40 @@ char *opcode_str(struct op_code_t *op_code)
     switch(op_code->address_mode)
     {
         case ADDRESS_MODE_ABSOLUTE:
-            addr_mode_str = "absolute - a";
+            addr_mode_str = "(addr) ";
+            addr_mode_end_str = "";
         break;
 
         case ADDRESS_MODE_ABSOLUTE_INDEXED_INDIRECT:
-            addr_mode_str = "absolute indexed indirect - (a,x)";
+            addr_mode_str = "(pointer + X) ";
         break;
 
         case ADDRESS_MODE_ABSOLUTE_INDEXED_X:
-            addr_mode_str = "absolute indexed X - a,x";
+            addr_mode_str = "(addr + X) ";
         break;
 
         case ADDRESS_MODE_ABSOLUTE_INDEXED_Y:
-            addr_mode_str = "absolute indexed Y - a,y";
+            addr_mode_str = "(addr + Y) ";
         break;
 
         case ADDRESS_MODE_ABSOLUTE_INDIRECT:
-            addr_mode_str = "absolute indirect - (a)";
+            addr_mode_str = "(pointer) ";
         break;
 
         case ADDRESS_MODE_ABSOLUTE_LONG_INDEXED_X:
-            addr_mode_str = "absolute long indexed x - al,x";
+            addr_mode_str = "(long addr + X) ";
         break;
 
         case ADDRESS_MODE_ABSOLUTE_LONG:
-            addr_mode_str = "absolute long - al";
+            addr_mode_str = "(long addr) ";
         break;
 
         case ADDRESS_MODE_ACCUMULATOR:
-            addr_mode_str = "accumulator - A";
+            addr_mode_str = "(accumulator) ";
         break;
 
         case ADDRESS_MODE_BLOCK_MOVE:
-            addr_mode_str = "block move - xyz";
+            addr_mode_str = "(dst_bank src_bank) ";
         break;
 
         case ADDRESS_MODE_DIRECT_INDEXED_INDIRECT:
@@ -887,11 +942,15 @@ char *opcode_str(struct op_code_t *op_code)
         break;
 
         case ADDRESS_MODE_IMMEDIATE:
-            addr_mode_str = "immediate - #";
+            if(reg_p & CPU_STATUS_FLAG_MEMORY)
+            {
+                opcode_offset--;
+            }
+            addr_mode_str = "(value)";
         break;
 
         case ADDRESS_MODE_IMPLIED:
-            addr_mode_str = "implied - i";
+            addr_mode_str = "";
         break;
 
         case ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE_LONG:
@@ -920,24 +979,27 @@ char *opcode_str(struct op_code_t *op_code)
         break;
     }
 
+    for(; opcode_offset > 1; opcode_offset--)
+    {
+        sprintf(byte_buffer, "%02x", cpu_ram[effective_address + opcode_offset - 1]);
+        strcat(bytes_buffer, byte_buffer);
+    }
+
     strcpy(instruction_str, op_code_str);
-    strcat(instruction_str, " (");
+    strcat(instruction_str, " ");
     strcat(instruction_str, addr_mode_str);
-    strcat(instruction_str, ")");
+    strcat(instruction_str, bytes_buffer);
+
+//    strcat(instruction_str, addr_mode_str);
+//    strcat(instruction_str, ")");
 
     return instruction_str;
 }
 
 void disassemble(int start, int byte_count)
 {
-    char *op_str;
     int bytes_disassmd = 0;
-    struct op_code_t opcode;
     int opcode_offset;
-
-    int start_address;
-    int address;
-    int i;
 
     if(start >= 0)
     {
@@ -947,29 +1009,7 @@ void disassemble(int start, int byte_count)
 
     while(bytes_disassmd < byte_count)
     {
-        address = EFFECTIVE_ADDRESS(reg_pbr, reg_pc);
-        opcode = opcode_matrix[cpu_ram[address]];
-        op_str = opcode_str(&opcode);
-
-        opcode_offset = address_mode_operand_size[opcode.address_mode] + 1;
-
-        printf("[0x%02x:0x%04x]: ", (address >> 16) & 0xff, address & 0xffff);
-
-        for(i = 0; i < 4; i++)
-        {
-            if(i < opcode_offset)
-            {
-                printf("%02x ", cpu_ram[address + i]);
-            }
-            else
-            {
-                printf("   ");
-            }
-        }
-        printf("; ");
-
-        printf("%s\n", op_str);
-
+        opcode_offset = disassemble_current(0);
 
         bytes_disassmd += opcode_offset;
 
@@ -982,20 +1022,743 @@ void disassemble(int start, int byte_count)
     }
 }
 
-void disassemble_rom_header()
+int disassemble_current(int show_registers)
 {
+    int address;
+    int opcode_offset;
+    struct op_code_t opcode;
+    int i;
+    char *op_str;
 
+    address = EFFECTIVE_ADDRESS(reg_pbr, reg_pc);
+    opcode = opcode_matrix[cpu_ram[address]];
+    op_str = opcode_str(&opcode, address);
+
+    opcode_offset = address_mode_operand_size[opcode.address_mode] + 1;
+
+    if(show_registers)
+    {
+        printf("\n\n");
+        printf("=========== REGISTERS ===========\n");
+        printf("[A: %04x] | ", reg_accum.reg_accumC);
+        printf("[X: %04x] | ", reg_x.reg_x);
+        printf("[Y: %04x] | ", reg_y.reg_y);
+        printf("[S: %04x] | ", reg_s);
+        printf("[D: %04x]\n", reg_d);
+        printf("[DBR: %02x] | ", reg_dbr);
+        printf("[PBR: %02x] | ", reg_pbr);
+        printf("[P: N:%d V:%d M:%d X:%d D:%d Z:%d I:%d C:%d]\n", (reg_p & CPU_STATUS_FLAG_NEGATIVE) && 1,
+                                                                (reg_p & CPU_STATUS_FLAG_OVERFLOW) && 1,
+                                                                (reg_p & CPU_STATUS_FLAG_MEMORY) && 1,
+                                                                (reg_p & CPU_STATUS_FLAG_INDEX) && 1,
+                                                                (reg_p & CPU_STATUS_FLAG_DECIMAL) && 1,
+                                                                (reg_p & CPU_STATUS_FLAG_ZERO) && 1,
+                                                                (reg_p & CPU_STATUS_FLAG_IRQ_DISABLE) && 1,
+                                                                (reg_p & CPU_STATUS_FLAG_CARRY) && 1);
+        printf("[E: %02x]\n", reg_e);
+        printf("=========== REGISTERS ===========\n");
+    }
+
+    printf("[0x%02x:0x%04x]: ", (address >> 16) & 0xff, address & 0xffff);
+
+    if(opcode.address_mode == ADDRESS_MODE_IMMEDIATE)
+    {
+        if(reg_p & CPU_STATUS_FLAG_MEMORY)
+        {
+            opcode_offset--;
+        }
+    }
+
+    for(i = 0; i < 4; i++)
+    {
+        if(i < opcode_offset)
+        {
+            printf("%02x ", cpu_ram[address + i]);
+        }
+        else
+        {
+            printf("   ");
+        }
+    }
+    printf("; ");
+
+    printf("%s\n", op_str);
+
+    return opcode_offset;
 }
 
-void disassemble_all()
-{
-
-}
 
 void step_cpu()
 {
+    unsigned int src_value;
+    unsigned int dst_value;
+    struct op_code_t opcode;
+    unsigned int effective_address;
+    unsigned int instruction_offset;
+    int temp;
+    int temp2;
 
+    effective_address = EFFECTIVE_ADDRESS(reg_pbr, reg_pc);
+
+    opcode = opcode_matrix[cpu_ram[effective_address]];
+    instruction_offset = address_mode_operand_size[opcode.address_mode] + 1;
+    reg_pc += instruction_offset;
+
+    printf("cpu step: %d\n", step_count);
+    step_count++;
+
+    switch(opcode.address_mode)
+    {
+        case ADDRESS_MODE_ABSOLUTE:
+            src_value = *(unsigned short *)(cpu_ram + effective_address + 1);
+            src_value |= reg_dbr << 16;
+        break;
+
+        case ADDRESS_MODE_ABSOLUTE_INDEXED_INDIRECT:
+            src_value = *(unsigned short *)(cpu_ram + effective_address + 1);
+            src_value += reg_x.reg_x;
+            src_value &= 0x0000ffff;
+        break;
+
+        case ADDRESS_MODE_ABSOLUTE_INDEXED_X:
+            src_value = *(unsigned short *)(cpu_ram + effective_address + 1) + reg_x.reg_x;
+            src_value |= reg_dbr << 16;
+        break;
+
+        case ADDRESS_MODE_ABSOLUTE_INDEXED_Y:
+            src_value = *(unsigned short *)(cpu_ram + effective_address + 1) + reg_y.reg_y;
+            src_value |= reg_dbr << 16;
+        break;
+
+        case ADDRESS_MODE_ABSOLUTE_INDIRECT:
+            src_value = *(unsigned short *)(cpu_ram + effective_address + 1);
+        break;
+
+        case ADDRESS_MODE_ABSOLUTE_LONG_INDEXED_X:
+            src_value = *(unsigned int *)(cpu_ram + effective_address + 1) & 0x00ffffff;
+            src_value += reg_x.reg_x;
+        break;
+
+        case ADDRESS_MODE_ABSOLUTE_LONG:
+            src_value = *(unsigned int *)(cpu_ram + effective_address + 1) & 0x00ffffff;
+        break;
+
+        case ADDRESS_MODE_ACCUMULATOR:
+            src_value = reg_accum.reg_accumC;
+        break;
+
+        case ADDRESS_MODE_BLOCK_MOVE:
+            reg_dbr = cpu_ram[effective_address + 1];
+            dst_value = (((unsigned int)reg_dbr) << 16) & 0x00ffffff;
+            dst_value |= reg_y.reg_y;
+
+            src_value = (((unsigned int)cpu_ram[effective_address + 2]) << 16) & 0x00ffffff;
+            src_value |= reg_x.reg_x;
+        break;
+
+        case ADDRESS_MODE_DIRECT_INDEXED_INDIRECT:
+            src_value = cpu_ram[effective_address + 1];
+            src_value += reg_d + reg_x.reg_x;
+            reg_x.reg_x = *(unsigned short *)(cpu_ram + src_value);
+            src_value = ((unsigned int)reg_x.reg_x) | (((unsigned int)reg_dbr) << 16);
+        break;
+
+        case ADDRESS_MODE_DIRECT_INDEXED_X:
+            src_value = cpu_ram[effective_address + 1];
+            src_value += reg_d + reg_x.reg_x;
+        break;
+
+        case ADDRESS_MODE_DIRECT_INDEXED_Y:
+            src_value = cpu_ram[effective_address + 1];
+            src_value += reg_d + reg_y.reg_y;
+        break;
+
+        case ADDRESS_MODE_DIRECT_INDIRECT_INDEXED:
+            src_value = cpu_ram[effective_address + 1] + reg_d;
+            src_value |= (((unsigned int)reg_dbr) << 16) & 0x00ffffff;
+            src_value += reg_y.reg_y;
+        break;
+
+        case ADDRESS_MODE_DIRECT_INDIRECT_LONG_INDEXED:
+            src_value = cpu_ram[effective_address + 1] + reg_d;
+            src_value = *(unsigned int *)(cpu_ram + src_value) & 0x00ffffff;
+            src_value += reg_y.reg_y;
+        break;
+
+        case ADDRESS_MODE_DIRECT_INDIRECT_LONG:
+            src_value = cpu_ram[effective_address + 1] + reg_d;
+        break;
+
+        case ADDRESS_MODE_DIRECT_INDIRECT:
+            src_value = cpu_ram[effective_address + 1] + reg_d;
+            src_value |= (((unsigned int)reg_dbr) << 16) & 0x00ffffff;
+        break;
+
+        case ADDRESS_MODE_DIRECT:
+            src_value = cpu_ram[effective_address + 1] + reg_d;
+        break;
+
+        case ADDRESS_MODE_IMMEDIATE:
+            src_value = *(unsigned short *)(cpu_ram + effective_address + 1);
+
+            if((opcode.opcode == OP_CODE_LDA && (reg_p & CPU_STATUS_FLAG_MEMORY)) ||
+               ((opcode.opcode == OP_CODE_LDX || opcode.opcode == OP_CODE_LDY) && (reg_p & CPU_STATUS_FLAG_INDEX)) ||
+               (opcode.opcode == OP_CODE_REP || opcode.opcode == OP_CODE_SEP))
+            {
+                /* this is done here because reg_pc got advanced by two bytes
+                after the instruction byte, but when the memory flag is one,
+                immediate addressing takes a single byte from memory... */
+                reg_pc--;
+            }
+        break;
+
+        case ADDRESS_MODE_IMPLIED:
+
+        break;
+
+        case ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE_LONG:
+            src_value = *(unsigned short *)(cpu_ram + effective_address + 1);
+        break;
+
+        case ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE:
+            src_value = cpu_ram[effective_address + 1];
+        break;
+
+        case ADDRESS_MODE_STACK:
+
+        break;
+
+        case ADDRESS_MODE_STACK_RELATIVE:
+            src_value = reg_s + cpu_ram[effective_address + 1];
+        break;
+
+        case ADDRESS_MODE_STACK_RELATIVE_INDIRECT_INDEXED:
+            src_value = reg_s + cpu_ram[effective_address + 1];
+            src_value = *(unsigned int *)(cpu_ram + src_value);
+            src_value |= (((unsigned int)reg_dbr) << 16) & 0x00ffffff;
+            src_value += reg_y.reg_y;
+        break;
+
+        default:
+        case ADDRESS_MODE_UNKNOWN:
+//            addr_mode_str = "unknown";
+        break;
+    }
+
+
+
+    switch(opcode.opcode)
+    {
+        case OP_CODE_ADC:
+            temp2 = reg_accum.reg_accumC & 0x8000;
+            temp = reg_accum.reg_accumC + src_value + (reg_p & CPU_STATUS_FLAG_CARRY);
+            reg_accum.reg_accumC = temp;
+            reg_p = (temp2 != (reg_accum.reg_accumC & 0x8000)) ? reg_p | CPU_STATUS_FLAG_OVERFLOW : reg_p & (~CPU_STATUS_FLAG_OVERFLOW);
+            reg_p = (temp & 0xffff0000) ? reg_p | CPU_STATUS_FLAG_CARRY : reg_p & (~CPU_STATUS_FLAG_CARRY);
+            reg_p = (reg_accum.reg_accumC == 0) ? reg_p | CPU_STATUS_FLAG_ZERO : reg_p & (~CPU_STATUS_FLAG_ZERO);
+            reg_p = ((signed short)reg_accum.reg_accumC < 0) ? reg_p | CPU_STATUS_FLAG_NEGATIVE : reg_p & (~CPU_STATUS_FLAG_NEGATIVE);
+        break;
+
+        case OP_CODE_AND:
+            reg_accum.reg_accumC &= src_value;
+            reg_p = (reg_accum.reg_accumC == 0) ? reg_p | CPU_STATUS_FLAG_ZERO : reg_p & (~CPU_STATUS_FLAG_ZERO);
+            reg_p = ((signed short)reg_accum.reg_accumC < 0) ? reg_p | CPU_STATUS_FLAG_NEGATIVE : reg_p & (~CPU_STATUS_FLAG_NEGATIVE);
+        break;
+
+        case OP_CODE_ASL:
+            if(opcode.address_mode == ADDRESS_MODE_ACCUMULATOR)
+            {
+                temp = reg_accum.reg_accumC << 1;
+                reg_accum.reg_accumC = temp;
+            }
+            else
+            {
+                temp = (*(unsigned short *)(cpu_ram + src_value)) << 1;
+                (*(unsigned short *)(cpu_ram + src_value)) = temp;
+            }
+
+            reg_p = (temp & 0xffff0000) ? reg_p | CPU_STATUS_FLAG_CARRY : reg_p & (~CPU_STATUS_FLAG_CARRY);
+            reg_p = ((unsigned short)temp == 0) ? reg_p | CPU_STATUS_FLAG_ZERO : reg_p & (~CPU_STATUS_FLAG_ZERO);
+            reg_p = ((signed short)temp < 0) ? reg_p | CPU_STATUS_FLAG_NEGATIVE : reg_p & (~CPU_STATUS_FLAG_NEGATIVE);
+
+        break;
+
+        case OP_CODE_BCC:
+            if(!(reg_p & CPU_STATUS_FLAG_CARRY))
+            {
+                reg_pc += (signed char)src_value;
+            }
+        break;
+
+        case OP_CODE_BCS:
+            if(reg_p & CPU_STATUS_FLAG_CARRY)
+            {
+                reg_pc += (signed char)src_value;
+            }
+        break;
+
+        case OP_CODE_BEQ:
+            if(reg_p & CPU_STATUS_FLAG_ZERO)
+            {
+                reg_pc += (signed char)src_value;
+            }
+        break;
+
+        case OP_CODE_BMI:
+            if(reg_p & CPU_STATUS_FLAG_NEGATIVE)
+            {
+                reg_pc += (signed char)src_value;
+            }
+        break;
+
+        case OP_CODE_BNE:
+            if(!(reg_p & CPU_STATUS_FLAG_ZERO))
+            {
+                reg_pc += (signed char)src_value;
+            }
+        break;
+
+        case OP_CODE_BPL:
+            if(!(reg_p & CPU_STATUS_FLAG_NEGATIVE))
+            {
+                reg_pc += (signed char)src_value;
+            }
+        break;
+
+        case OP_CODE_BRA:
+            reg_pc += (signed char)src_value;
+        break;
+
+        case OP_CODE_BRK:
+            //op_code_str = "BRK";
+        break;
+
+        case OP_CODE_BRL:
+            reg_pc += src_value;
+        break;
+
+        case OP_CODE_BVC:
+            if(!(reg_p & CPU_STATUS_FLAG_OVERFLOW))
+            {
+                reg_pc += src_value;
+            }
+        break;
+
+        case OP_CODE_BVS:
+            if(reg_p & CPU_STATUS_FLAG_OVERFLOW)
+            {
+                reg_pc += src_value;
+            }
+        break;
+
+        case OP_CODE_BIT:
+//            op_code_str = "BIT";
+        break;
+
+        case OP_CODE_CLC:
+            reg_p &= ~CPU_STATUS_FLAG_CARRY;
+        break;
+
+        case OP_CODE_CLD:
+            reg_p &= ~CPU_STATUS_FLAG_DECIMAL;
+        break;
+
+        case OP_CODE_CLV:
+            reg_p &= ~CPU_STATUS_FLAG_OVERFLOW;
+        break;
+
+        case OP_CODE_CLI:
+            reg_p &= ~CPU_STATUS_FLAG_IRQ_DISABLE;
+        break;
+
+        case OP_CODE_CMP:
+            temp = (signed short)src_value - (signed short)reg_accum.reg_accumA;
+            reg_p = (temp & 0xffff0000) ? reg_p | CPU_STATUS_FLAG_CARRY : reg_p & (~CPU_STATUS_FLAG_CARRY);
+            reg_p = (temp == 0) ? reg_p | CPU_STATUS_FLAG_ZERO : reg_p & (~CPU_STATUS_FLAG_ZERO);
+            reg_p = ((signed short)temp < 0) ? reg_p | CPU_STATUS_FLAG_NEGATIVE : reg_p & (~CPU_STATUS_FLAG_NEGATIVE);
+        break;
+
+        case OP_CODE_CPX:
+            temp = (signed short)src_value - (signed short)reg_x.reg_x;
+            reg_p = (temp & 0xffff0000) ? reg_p | CPU_STATUS_FLAG_CARRY : reg_p & (~CPU_STATUS_FLAG_CARRY);
+            reg_p = (temp == 0) ? reg_p | CPU_STATUS_FLAG_ZERO : reg_p & (~CPU_STATUS_FLAG_ZERO);
+            reg_p = ((signed short)temp < 0) ? reg_p | CPU_STATUS_FLAG_NEGATIVE : reg_p & (~CPU_STATUS_FLAG_NEGATIVE);
+        break;
+
+        case OP_CODE_CPY:
+            temp = (signed short)src_value - (signed short)reg_y.reg_y;
+            reg_p = (temp & 0xffff0000) ? reg_p | CPU_STATUS_FLAG_CARRY : reg_p & (~CPU_STATUS_FLAG_CARRY);
+            reg_p = (temp == 0) ? reg_p | CPU_STATUS_FLAG_ZERO : reg_p & (~CPU_STATUS_FLAG_ZERO);
+            reg_p = ((signed short)temp < 0) ? reg_p | CPU_STATUS_FLAG_NEGATIVE : reg_p & (~CPU_STATUS_FLAG_NEGATIVE);
+        break;
+
+        case OP_CODE_DEC:
+//            op_code_str = "DEC";
+        break;
+
+        case OP_CODE_INC:
+//            op_code_str = "INC";
+        break;
+
+        case OP_CODE_DEX:
+            reg_x.reg_x--;
+        break;
+
+        case OP_CODE_INX:
+            reg_x.reg_x++;
+        break;
+
+        case OP_CODE_DEY:
+            reg_y.reg_y--;
+        break;
+
+        case OP_CODE_INY:
+            reg_y.reg_y++;
+        break;
+
+        case OP_CODE_JMP:
+            reg_pc = src_value;
+
+            if(opcode.address_mode == ADDRESS_MODE_ABSOLUTE_LONG)
+            {
+                reg_pbr = (src_value >> 16) & 0xff;
+            }
+        break;
+
+        case OP_CODE_JML:
+//            op_code_str = "JML";
+        break;
+
+        case OP_CODE_JSL:
+//            op_code_str = "JSL";
+        break;
+
+        case OP_CODE_JSR:
+//            op_code_str = "JSR";
+        break;
+
+        case OP_CODE_LDA:
+            if(reg_p & CPU_STATUS_FLAG_MEMORY)
+            {
+                reg_accum.reg_accumA = src_value;
+            }
+            else
+            {
+                reg_accum.reg_accumC = src_value;
+            }
+            reg_p = (reg_accum.reg_accumC == 0) ? reg_p | CPU_STATUS_FLAG_ZERO : reg_p & (~CPU_STATUS_FLAG_ZERO);
+            reg_p = ((signed short)reg_accum.reg_accumC < 0) ? reg_p | CPU_STATUS_FLAG_NEGATIVE : reg_p & (~CPU_STATUS_FLAG_NEGATIVE);
+        break;
+
+        case OP_CODE_STA:
+            if(reg_p & CPU_STATUS_FLAG_MEMORY)
+            {
+                cpu_ram[src_value] = reg_accum.reg_accumA;
+            }
+            else
+            {
+                *((unsigned short *)cpu_ram + src_value) = reg_accum.reg_accumC;
+            }
+        break;
+
+        case OP_CODE_LDX:
+            if(reg_p & CPU_STATUS_FLAG_INDEX)
+            {
+                reg_x.reg_xL = src_value;
+            }
+            else
+            {
+                reg_x.reg_x = src_value;
+            }
+
+            reg_p = (reg_x.reg_x == 0) ? reg_p | CPU_STATUS_FLAG_ZERO : reg_p & (~CPU_STATUS_FLAG_ZERO);
+            reg_p = ((signed short)reg_x.reg_x < 0) ? reg_p | CPU_STATUS_FLAG_NEGATIVE : reg_p & (~CPU_STATUS_FLAG_NEGATIVE);
+        break;
+
+        case OP_CODE_STX:
+            if(reg_p & CPU_STATUS_FLAG_INDEX)
+            {
+                cpu_ram[src_value] = reg_x.reg_xL;
+            }
+            else
+            {
+                *((unsigned short *)cpu_ram + src_value) = reg_x.reg_x;
+            }
+        break;
+
+        case OP_CODE_LDY:
+            if(reg_p & CPU_STATUS_FLAG_INDEX)
+            {
+                reg_y.reg_yL = src_value;
+            }
+            else
+            {
+                reg_y.reg_y = src_value;
+            }
+
+            reg_p = (reg_y.reg_y == 0) ? reg_p | CPU_STATUS_FLAG_ZERO : reg_p & (~CPU_STATUS_FLAG_ZERO);
+            reg_p = ((signed short)reg_y.reg_y < 0) ? reg_p | CPU_STATUS_FLAG_NEGATIVE : reg_p & (~CPU_STATUS_FLAG_NEGATIVE);
+        break;
+
+        case OP_CODE_STY:
+            if(reg_p & CPU_STATUS_FLAG_INDEX)
+            {
+                cpu_ram[src_value] = reg_y.reg_yL;
+            }
+            else
+            {
+                *((unsigned short *)cpu_ram + src_value) = reg_y.reg_y;
+            }
+        break;
+
+        case OP_CODE_STZ:
+            *((unsigned short *)cpu_ram + src_value) = 0;
+        break;
+
+        case OP_CODE_LSR:
+//            op_code_str = "LSR";
+        break;
+
+        case OP_CODE_MVN:
+//            op_code_str = "MVN";
+        break;
+
+        case OP_CODE_MVP:
+//            op_code_str = "MVP";
+        break;
+
+        case OP_CODE_NOP:
+//            op_code_str = "NOP";
+        break;
+
+        case OP_CODE_PEA:
+            reg_s -= 2;
+            *(unsigned short *)(cpu_ram + reg_s) = src_value;
+        break;
+
+        case OP_CODE_PEI:
+            reg_s -= 2;
+            *(unsigned short *)(cpu_ram + reg_s) = src_value;
+        break;
+
+        case OP_CODE_PER:
+//            op_code_str = "PER";
+        break;
+
+        case OP_CODE_PHA:
+            reg_s -= 2;
+            *(unsigned short *)(cpu_ram + reg_s) = reg_accum.reg_accumC;
+        break;
+
+        case OP_CODE_PHB:
+            reg_s -= 2;
+            cpu_ram[reg_s] = reg_dbr;
+        break;
+
+        case OP_CODE_PHD:
+            reg_s -= 2;
+            *(unsigned short *)(cpu_ram + reg_s) = reg_d;
+        break;
+
+        case OP_CODE_PHK:
+            reg_s -= 2;
+            cpu_ram[reg_s] = reg_pbr;
+        break;
+
+        case OP_CODE_PHP:
+            reg_s -= 2;
+            cpu_ram[reg_s] = reg_p;
+        break;
+
+        case OP_CODE_PHX:
+            reg_s -= 2;
+            *(unsigned short *)(cpu_ram + reg_s) = reg_x.reg_x;
+        break;
+
+        case OP_CODE_PHY:
+            reg_s -= 2;
+            *(unsigned short *)(cpu_ram + reg_s) = reg_y.reg_y;
+        break;
+
+        case OP_CODE_PLA:
+            reg_accum.reg_accumC = *(unsigned short *)(cpu_ram + reg_s);
+            reg_s += 2;
+        break;
+
+        case OP_CODE_PLB:
+            reg_dbr = cpu_ram[reg_s];
+            reg_s += 2;
+        break;
+
+        case OP_CODE_PLD:
+            reg_d = *(unsigned short *)(cpu_ram + reg_s);
+            reg_s += 2;
+        break;
+
+        case OP_CODE_PLP:
+            reg_p = cpu_ram[reg_s];
+            reg_s += 2;
+        break;
+
+        case OP_CODE_PLX:
+            reg_x.reg_x = *(unsigned short *)(cpu_ram + reg_s);
+            reg_s += 2;
+        break;
+
+        case OP_CODE_PLY:
+            reg_y.reg_y = *(unsigned short *)(cpu_ram + reg_s);
+            reg_s += 2;
+        break;
+
+        case OP_CODE_REP:
+            reg_p &= ~((unsigned char)src_value);
+        break;
+
+        case OP_CODE_ROL:
+//            op_code_str = "ROL";
+        break;
+
+        case OP_CODE_ROR:
+//            op_code_str = "ROR";
+        break;
+
+        case OP_CODE_RTI:
+//            op_code_str = "RTI";
+        break;
+
+        case OP_CODE_RTL:
+//            op_code_str = "RTL";
+        break;
+
+        case OP_CODE_RTS:
+//            op_code_str = "RTS";
+        break;
+
+        case OP_CODE_SBC:
+//            op_code_str = "SBC";
+        break;
+
+        case OP_CODE_SEP:
+            reg_p |= src_value;
+        break;
+
+        case OP_CODE_SEC:
+            reg_p |= CPU_STATUS_FLAG_CARRY;
+        break;
+
+        case OP_CODE_SED:
+            reg_p |= CPU_STATUS_FLAG_DECIMAL;
+        break;
+
+        case OP_CODE_SEI:
+            reg_p |= CPU_STATUS_FLAG_IRQ_DISABLE;
+        break;
+
+        case OP_CODE_TAX:
+            reg_x.reg_x = reg_accum.reg_accumC;
+        break;
+
+        case OP_CODE_TAY:
+            reg_y.reg_y = reg_accum.reg_accumC;
+        break;
+
+        case OP_CODE_TCD:
+            reg_d = reg_accum.reg_accumC;
+        break;
+
+        case OP_CODE_TCS:
+            reg_s = reg_accum.reg_accumC;
+        break;
+
+        case OP_CODE_TDC:
+            reg_accum.reg_accumC = reg_d;
+        break;
+
+        case OP_CODE_TSC:
+            reg_accum.reg_accumC = reg_s;
+        break;
+
+        case OP_CODE_TSX:
+            reg_x.reg_x = reg_s;
+        break;
+
+        case OP_CODE_TXA:
+            reg_accum.reg_accumC = reg_x.reg_x;
+        break;
+
+        case OP_CODE_TXS:
+            reg_s = reg_x.reg_x;
+        break;
+
+        case OP_CODE_TXY:
+            reg_y.reg_y = reg_x.reg_x;
+        break;
+
+        case OP_CODE_TYA:
+            reg_accum.reg_accumC = reg_y.reg_y;
+        break;
+
+        case OP_CODE_TYX:
+            reg_x.reg_x = reg_y.reg_y;
+        break;
+
+        case OP_CODE_WAI:
+//            op_code_str = "WAI";
+        break;
+
+        case OP_CODE_WDM:
+//            op_code_str = "WDM";
+        break;
+
+        case OP_CODE_XBA:
+            reg_accum.reg_accumC = ((reg_accum.reg_accumC >> 8) & 0xff) | ((reg_accum.reg_accumC << 8) & 0xff00);
+        break;
+
+        case OP_CODE_TRB:
+//            op_code_str = "TRB";
+        break;
+
+        case OP_CODE_TSB:
+//            op_code_str = "TSB";
+        break;
+
+        case OP_CODE_STP:
+//            op_code_str = "STP";
+        break;
+
+        case OP_CODE_COP:
+//            op_code_str = "COP";
+        break;
+
+        case OP_CODE_EOR:
+//            op_code_str = "EOR";
+        break;
+
+        case OP_CODE_ORA:
+//            op_code_str = "ORA";
+        break;
+
+        case OP_CODE_XCE:
+            temp = reg_p & CPU_STATUS_FLAG_CARRY;
+            reg_p = (reg_p & (~CPU_STATUS_FLAG_CARRY)) | reg_e;
+            reg_e = temp;
+        break;
+
+        default:
+        case OP_CODE_UNKNOWN:
+//            op_code_str = "UNKNOWN";
+        break;
+    }
 }
+
+
+
+
+
+
+
+
+
 
 
 

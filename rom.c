@@ -230,16 +230,17 @@ void map_rom(struct rom_t *rom)
     unsigned int rom_offset = 0;
     unsigned int byte_count;
 
-    //int rom_size = 0x400 << rom->header->data.rom_size;
-    int rom_size = rom->rom_size;
+    int rom_size = 0x400 << rom->header->data.rom_size;
+    //int rom_size = rom->rom_size;
 
-    for(i = 0; i < 0x7d && rom_size > 0; i++)
+    for(i = 0; i < 0xff && rom_size > 0; i++)
     {
         address = EFFECTIVE_ADDRESS(i, 0x8000);
         byte_count = rom_size > 0x8000 ? 0x8000 : rom_size;
         memcpy(cpu_ram + address, rom->rom_buffer + rom_offset, byte_count);
         rom_offset += byte_count;
-        rom_size -= 0x8000;
+        rom_offset &= 0x007f7fff;
+        //rom_size -= 0x8000;
     }
 
     reset_cpu();

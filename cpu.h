@@ -207,13 +207,11 @@ struct op_code_t
 
 void reset_cpu();
 
-char *opcode_str(struct op_code_t *opcode);
+char *opcode_str(struct op_code_t *opcode, int effective_address);
 
 void disassemble(int start, int byte_count);
 
-void disassemble_rom_header();
-
-void disassemble_all();
+int disassemble_current(int show_registers);
 
 void step_cpu();
 
