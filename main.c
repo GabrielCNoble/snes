@@ -10,7 +10,7 @@ int main(int argc, char *argv[])
     struct rom_t rom;
     char param[512];
 
-    reset_cpu();
+    //reset_cpu();
 
     rom.header = NULL;
 
@@ -40,12 +40,13 @@ int main(int argc, char *argv[])
                         }
 
                         scanf("%s", param);
-                        rom = load_rom_file(param);
-                        if(rom.header)
-                        {
-                            map_rom(&rom);
-                            disassemble_current(1);
-                        }
+                        load_rom_file(param);
+                        reset_cpu();
+//                        if(rom.header)
+//                        {
+//                            map_rom(&rom);
+//                            disassemble_current(1);
+//                        }
                     }
                     else
                     {
@@ -53,32 +54,45 @@ int main(int argc, char *argv[])
                         {
                             scanf("%s", param);
 
-                            if(!strcmp(param, "-start"))
+                            if(!strcmp(param, "-header"))
                             {
-                                scanf("%x", &disasm_start);
+                                dump_rom(&rom);
                             }
                             else
                             {
-                                disasm_start = -1;
+                                if(!strcmp(param, "-start"))
+                                {
+                                    scanf("%x", &disasm_start);
+                                }
+                                else
+                                {
+                                    disasm_start = -1;
+                                }
+
+                                scanf("%s", param);
+
+                                if(!strcmp(param, "-count"))
+                                {
+                                    scanf("%x", &disasm_count);
+                                }
+                                else
+                                {
+                                    disasm_count = 1024;
+                                }
+
+                                disassemble(disasm_start, disasm_count);
                             }
 
-                            scanf("%s", param);
 
-                            if(!strcmp(param, "-count"))
-                            {
-                                scanf("%x", &disasm_count);
-                            }
-                            else
-                            {
-                                disasm_count = 1024;
-                            }
-
-                            disassemble(disasm_start, disasm_count);
                         }
                         else if(!strcmp(param, "-step"))
                         {
                             step_cpu();
                             disassemble_current(1);
+                        }
+                        else if(!strcmp(param, "-hardware_regs"))
+                        {
+                            view_hardware_registers();
                         }
                         else if(!strcmp(param, "-run"))
                         {

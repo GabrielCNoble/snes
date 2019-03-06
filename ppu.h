@@ -3,4 +3,6 @@
 
 
 
+__fastcall void *ppu_pointer(unsigned int effective_address);
+
 #endif // PPU_H

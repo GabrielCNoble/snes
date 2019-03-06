@@ -1,12 +1,19 @@
 #ifndef CPU_H
 #define CPU_H
 
+#include "addr_common.h"
 
-
-#define CPU_BANKS 0xff
-#define CPU_BANK_SIZE 0xffff
-#define CPU_RAM_SIZE 0x0fffffff
-#define EFFECTIVE_ADDRESS(bank, offset) ((offset&0xffff)|(bank<<16))
+enum OP_CODE_CATEGORIES
+{
+    OP_CODE_CATEGORY_LOAD = 0,
+    OP_CODE_CATEGORY_STORE,
+    OP_CODE_CATEGORY_BRANCH,
+    OP_CODE_CATEGORY_STACK,
+    OP_CODE_CATEGORY_ARITHMETIC,
+    OP_CODE_CATEGORY_COMPARISON,
+    OP_CODE_CATEGORY_TRANSFER,
+    OP_CODE_CATEGORY_STANDALONE,
+};
 
 
 enum OP_CODES
@@ -199,10 +206,25 @@ enum CPU_STATUS_FLAGS
 struct op_code_t
 {
     unsigned short opcode;
-    unsigned short address_mode;
+    unsigned char address_mode;
+    unsigned char opcode_category;
 };
 
-#define OPCODE(opcode, address_mode) (struct op_code_t){opcode, address_mode}
+#define OPCODE(opcode, category, address_mode) (struct op_code_t){opcode, address_mode, category}
+
+
+
+enum CPU_ACCESSS
+{
+    CPU_ACCESS_PPU = 0,
+    CPU_ACCESS_APU,
+    CPU_ACCESS_WRAM1,
+    CPU_ACCESS_WRAM2,
+    CPU_ACCESS_REGS,
+    CPU_ACCESS_ROM,
+    CPU_ACCESS_CONTROLLER,
+    CPU_ACCESS_DMA,
+};
 
 
 void reset_cpu();
@@ -212,6 +234,12 @@ char *opcode_str(struct op_code_t *opcode, int effective_address);
 void disassemble(int start, int byte_count);
 
 int disassemble_current(int show_registers);
+
+int view_hardware_registers();
+
+__fastcall int cpu_access_location(unsigned int effective_address);
+
+__fastcall void *memory_pointer(unsigned int effective_address);
 
 void step_cpu();
 
