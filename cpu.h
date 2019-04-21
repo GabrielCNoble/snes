@@ -229,17 +229,21 @@ enum CPU_ACCESSS
 
 void reset_cpu();
 
-char *opcode_str(struct op_code_t *opcode, int effective_address);
+char *opcode_str(unsigned int effective_address);
 
 void disassemble(int start, int byte_count);
 
 int disassemble_current(int show_registers);
+
+void poke(int effective_address, int value);
 
 int view_hardware_registers();
 
 __fastcall int cpu_access_location(unsigned int effective_address);
 
 __fastcall void *memory_pointer(unsigned int effective_address);
+
+__fastcall void exec_interrupt();
 
 void step_cpu();
 

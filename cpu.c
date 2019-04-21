@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 
 //unsigned char *cpu_ram = NULL;
@@ -141,7 +142,8 @@ unsigned char reg_dbr;      /* data bank register */
 unsigned char reg_pbr;      /* program bank register */
 unsigned char reg_p;        /* status register */
 
-
+unsigned char in_irqb = 1;
+unsigned char s_wai = 0;
 
 
 
@@ -559,29 +561,387 @@ void reset_cpu()
 }
 
 
-char *opcode_str(struct op_code_t *op_code, int effective_address)
+char *memory_str(unsigned int effective_address)
+{
+    switch(effective_address)
+    {
+        case 0x2100:
+            return "INIDISP";
+        break;
+
+        case 0x2101:
+            return "OBJSEL";
+        break;
+
+        case 0x2102:
+            return "OAMADD";
+        break;
+
+        case 0x2104:
+            return "OAM DATA";
+        break;
+
+        case 0x2105:
+            return "BG MODE";
+        break;
+
+        case 0x2106:
+            return "MOSAIC";
+        break;
+
+        case 0x2107:
+            return "BG1SC";
+        break;
+
+        case 0x2108:
+            return "BG2SC";
+        break;
+
+        case 0x2109:
+            return "BG3SC";
+        break;
+
+        case 0x210a:
+            return "BG4SC";
+        break;
+
+        case 0x210b:
+            return "BG12NBA";
+        break;
+
+        case 0x210c:
+            return "BG34NBA";
+        break;
+
+
+
+        case 0x210d:
+            return "BG1H0FS";
+        break;
+
+        case 0x210e:
+            return "BG1V0FS";
+        break;
+
+        case 0x210f:
+            return "BG2H0FS";
+        break;
+
+        case 0x2110:
+            return "BG2V0FS";
+        break;
+
+        case 0x2111:
+            return "BG3H0FS";
+        break;
+
+        case 0x2112:
+            return "BG3V0FS";
+        break;
+
+        case 0x2113:
+            return "BG4H0FS";
+        break;
+
+        case 0x2114:
+            return "BG4V0FS";
+        break;
+
+
+
+        case 0x4200:
+            return "NMITIMEN";
+        break;
+
+        case 0x4201:
+            return "WRIO";
+        break;
+
+        case 0x4202:
+            return "WRMPYA";
+        break;
+
+        case 0x4203:
+            return "WRMPYB";
+        break;
+
+        case 0x420d:
+            return "MEMSEL";
+        break;
+
+        case 0x4212:
+            return "HVBJOY";
+        break;
+
+        default:
+            return NULL;
+        break;
+    }
+}
+
+
+char op_code_str_buffer[512];
+
+char *opcode_str(unsigned int effective_address)
 {
     char *op_code_str;
-    char *addr_mode_str;
-//    char *addr_mode_end_str;
+    char *mem_str;
+    unsigned char *op_code_address;
+    //char *addr_mode_str
+    char addr_mode_str[128];
+    char temp_str[64];
+    int op_code_width;
+    int i;
+    struct op_code_t op_code;
 
-    unsigned char *opcode_address;
+    op_code_address = memory_pointer(effective_address);
+    op_code = opcode_matrix[op_code_address[0]];
+    op_code_width = 1 + address_mode_operand_size[op_code.address_mode];
 
-    int opcode_offset;
+    addr_mode_str[0] = 0;
 
-//    unsigned char value;
+    effective_address = 0;
 
-    static char instruction_str[512];
-    static char byte_buffer[128];
-    static char bytes_buffer[256];
+    for(i = op_code_width - 1; i > 0; i--)
+    {
+        effective_address |= op_code_address[i];
+        effective_address <<= 8;
+    }
 
-    bytes_buffer[0] = 0;
-    instruction_str[0] = 0;
+    effective_address >>= 8;
 
-    opcode_offset = address_mode_operand_size[op_code->address_mode] + 1;
-    opcode_address = memory_pointer(effective_address);
+    switch(op_code.address_mode)
+    {
+        case ADDRESS_MODE_ABSOLUTE:
+            strcpy(addr_mode_str, "absolute addr(");
+            for(i = op_code_width - 1; i > 0; i--)
+            {
+                sprintf(temp_str, "%02x", op_code_address[i]);
+                strcat(addr_mode_str, temp_str);
+            }
 
-    switch(op_code->opcode)
+            mem_str = memory_str(effective_address);
+
+            if(mem_str)
+            {
+                sprintf(temp_str, " (%s)", mem_str);
+                strcat(addr_mode_str, temp_str);
+            }
+
+            strcat(addr_mode_str, ")");
+        break;
+
+        case ADDRESS_MODE_ABSOLUTE_INDEXED_INDIRECT:
+            strcpy(addr_mode_str, "absolute pointer(");
+            for(i = op_code_width - 1; i > 0; i--)
+            {
+                sprintf(temp_str, "%02x", op_code_address[i]);
+                strcat(addr_mode_str, temp_str);
+            }
+
+            mem_str = memory_str(effective_address);
+
+            if(mem_str)
+            {
+                sprintf(temp_str, " (%s)", mem_str);
+                strcat(addr_mode_str, temp_str);
+            }
+
+            strcat(addr_mode_str, ") + ");
+            sprintf(temp_str, "X(%04x)", reg_x.reg_x);
+            strcat(addr_mode_str, temp_str);
+        break;
+
+        case ADDRESS_MODE_ABSOLUTE_INDEXED_X:
+            strcpy(addr_mode_str, "absolute addr(");
+            for(i = op_code_width - 1; i > 0; i--)
+            {
+                sprintf(temp_str, "%02x", op_code_address[i]);
+                strcat(addr_mode_str, temp_str);
+            }
+
+            mem_str = memory_str(effective_address);
+
+            if(mem_str)
+            {
+                sprintf(temp_str, " (%s)", mem_str);
+                strcat(addr_mode_str, temp_str);
+            }
+
+            strcat(addr_mode_str, ") + ");
+            sprintf(temp_str, "X(%04x)", reg_x.reg_x);
+            strcat(addr_mode_str, temp_str);
+        break;
+
+        case ADDRESS_MODE_ABSOLUTE_INDEXED_Y:
+            strcpy(addr_mode_str, "absolute addr(");
+            for(i = op_code_width - 1; i > 0; i--)
+            {
+                sprintf(temp_str, "%02x", op_code_address[i]);
+                strcat(addr_mode_str, temp_str);
+            }
+
+            mem_str = memory_str(effective_address);
+
+            if(mem_str)
+            {
+                sprintf(temp_str, " (%s)", mem_str);
+                strcat(addr_mode_str, temp_str);
+            }
+
+            strcat(addr_mode_str, ") + ");
+            sprintf(temp_str, "X(%04x)", reg_x.reg_x);
+            strcat(addr_mode_str, temp_str);
+        break;
+
+        case ADDRESS_MODE_ABSOLUTE_INDIRECT:
+            strcpy(addr_mode_str, "absolute pointer(");
+            for(i = op_code_width - 1; i > 0; i--)
+            {
+                sprintf(temp_str, "%02x", op_code_address[i]);
+                strcat(addr_mode_str, temp_str);
+            }
+
+            mem_str = memory_str(effective_address);
+
+            if(mem_str)
+            {
+                sprintf(temp_str, " (%s)", mem_str);
+                strcat(addr_mode_str, temp_str);
+            }
+
+            strcat(addr_mode_str, ")");
+        break;
+
+        case ADDRESS_MODE_ABSOLUTE_LONG_INDEXED_X:
+            strcpy(addr_mode_str, "absolute long addr(");
+            for(i = op_code_width - 1; i > 0; i--)
+            {
+                sprintf(temp_str, "%02x", op_code_address[i]);
+                strcat(addr_mode_str, temp_str);
+            }
+
+            mem_str = memory_str(effective_address);
+
+            if(mem_str)
+            {
+                sprintf(temp_str, " (%s)", mem_str);
+                strcat(addr_mode_str, temp_str);
+            }
+
+            strcat(addr_mode_str, ") + ");
+            sprintf(temp_str, "X(%04x)", reg_x.reg_x);
+            strcat(addr_mode_str, temp_str);
+        break;
+
+        case ADDRESS_MODE_ABSOLUTE_LONG:
+            strcpy(addr_mode_str, "absolute long addr(");
+            for(i = op_code_width - 1; i > 0; i--)
+            {
+                sprintf(temp_str, "%02x", op_code_address[i]);
+                strcat(addr_mode_str, temp_str);
+            }
+
+            mem_str = memory_str(effective_address);
+
+            if(mem_str)
+            {
+                sprintf(temp_str, " (%s)", mem_str);
+                strcat(addr_mode_str, temp_str);
+            }
+
+            strcat(addr_mode_str, ")");
+        break;
+
+        case ADDRESS_MODE_ACCUMULATOR:
+            sprintf(addr_mode_str, "accumulator(%04x)", reg_accum.reg_accumC);
+        break;
+
+        case ADDRESS_MODE_BLOCK_MOVE:
+            sprintf(addr_mode_str, "dst addr(%02x:%04x), src addr(%02x:%04x)", op_code_address[1], reg_y.reg_y,
+                                                                               op_code_address[2], reg_x.reg_x);
+        break;
+
+        case ADDRESS_MODE_DIRECT_INDEXED_INDIRECT:
+            strcpy(addr_mode_str, "direct indexed indirect - (d,x)");
+        break;
+
+        case ADDRESS_MODE_DIRECT_INDEXED_X:
+            strcpy(addr_mode_str, "direct indexed X - d,x");
+        break;
+
+        case ADDRESS_MODE_DIRECT_INDEXED_Y:
+            strcpy(addr_mode_str, "direct indexed Y - d,y");
+        break;
+
+        case ADDRESS_MODE_DIRECT_INDIRECT_INDEXED:
+            strcpy(addr_mode_str, "direct indirect indexed - (d),y");
+        break;
+
+        case ADDRESS_MODE_DIRECT_INDIRECT_LONG_INDEXED:
+            strcpy(addr_mode_str, "direct indirect long indexed - [d],y");
+        break;
+
+        case ADDRESS_MODE_DIRECT_INDIRECT_LONG:
+            strcpy(addr_mode_str, "direct indirect long - [d]");
+        break;
+
+        case ADDRESS_MODE_DIRECT_INDIRECT:
+            strcpy(addr_mode_str, "direct indirect - (d)");
+        break;
+
+        case ADDRESS_MODE_DIRECT:
+            strcpy(addr_mode_str, "direct - d");
+        break;
+
+        case ADDRESS_MODE_IMMEDIATE:
+            if(reg_p & CPU_STATUS_FLAG_MEMORY)
+            {
+                op_code_width--;
+            }
+            strcpy(addr_mode_str, "value(");
+
+            for(i = op_code_width - 1; i > 0; i--)
+            {
+                sprintf(temp_str, "%02x", op_code_address[i]);
+                strcat(addr_mode_str, temp_str);
+            }
+            strcat(addr_mode_str, ")");
+        break;
+
+        case ADDRESS_MODE_IMPLIED:
+            strcpy(addr_mode_str, "");
+        break;
+
+        case ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE_LONG:
+            strcpy(addr_mode_str, "program counter relative long - rl");
+        break;
+
+        case ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE:
+            sprintf(addr_mode_str, "pc(%04x) + offset(%02x)", reg_pc, op_code_address[1]);
+        break;
+
+        case ADDRESS_MODE_STACK:
+            strcpy(addr_mode_str, "stack - s");
+        break;
+
+        case ADDRESS_MODE_STACK_RELATIVE:
+            strcpy(addr_mode_str, "stack relative - d,s");
+        break;
+
+        case ADDRESS_MODE_STACK_RELATIVE_INDIRECT_INDEXED:
+            strcpy(addr_mode_str, "stack relative indirect indexed - (d,s),y");
+        break;
+
+        default:
+        case ADDRESS_MODE_UNKNOWN:
+            strcpy(addr_mode_str, "unknown");
+        break;
+    }
+
+
+
+    switch(op_code.opcode)
     {
         case OP_CODE_ADC:
             op_code_str = "ADC";
@@ -849,6 +1209,7 @@ char *opcode_str(struct op_code_t *op_code, int effective_address)
 
         case OP_CODE_SEP:
             op_code_str = "SEP";
+            op_code_width = 2;
         break;
 
         case OP_CODE_SEC:
@@ -949,6 +1310,7 @@ char *opcode_str(struct op_code_t *op_code, int effective_address)
 
         case OP_CODE_XCE:
             op_code_str = "XCE";
+            addr_mode_str[0] = 0;
         break;
 
         default:
@@ -957,132 +1319,24 @@ char *opcode_str(struct op_code_t *op_code, int effective_address)
         break;
     }
 
+    sprintf(op_code_str_buffer, "[%02x:%04x]: ", (effective_address >> 16) & 0xff, effective_address & 0xffff);
 
-    switch(op_code->address_mode)
+    for(i = 0; i < op_code_width; i++)
     {
-        case ADDRESS_MODE_ABSOLUTE:
-            addr_mode_str = "(addr) ";
- //           addr_mode_end_str = "";
-        break;
-
-        case ADDRESS_MODE_ABSOLUTE_INDEXED_INDIRECT:
-            addr_mode_str = "(pointer + X) ";
-        break;
-
-        case ADDRESS_MODE_ABSOLUTE_INDEXED_X:
-            addr_mode_str = "(addr + X) ";
-        break;
-
-        case ADDRESS_MODE_ABSOLUTE_INDEXED_Y:
-            addr_mode_str = "(addr + Y) ";
-        break;
-
-        case ADDRESS_MODE_ABSOLUTE_INDIRECT:
-            addr_mode_str = "(pointer) ";
-        break;
-
-        case ADDRESS_MODE_ABSOLUTE_LONG_INDEXED_X:
-            addr_mode_str = "(long addr + X) ";
-        break;
-
-        case ADDRESS_MODE_ABSOLUTE_LONG:
-            addr_mode_str = "(long addr) ";
-        break;
-
-        case ADDRESS_MODE_ACCUMULATOR:
-            addr_mode_str = "(accumulator) ";
-        break;
-
-        case ADDRESS_MODE_BLOCK_MOVE:
-            addr_mode_str = "(dst_bank src_bank) ";
-        break;
-
-        case ADDRESS_MODE_DIRECT_INDEXED_INDIRECT:
-            addr_mode_str = "direct indexed indirect - (d,x)";
-        break;
-
-        case ADDRESS_MODE_DIRECT_INDEXED_X:
-            addr_mode_str = "direct indexed X - d,x";
-        break;
-
-        case ADDRESS_MODE_DIRECT_INDEXED_Y:
-            addr_mode_str = "direct indexed Y - d,y";
-        break;
-
-        case ADDRESS_MODE_DIRECT_INDIRECT_INDEXED:
-            addr_mode_str = "direct indirect indexed - (d),y";
-        break;
-
-        case ADDRESS_MODE_DIRECT_INDIRECT_LONG_INDEXED:
-            addr_mode_str = "direct indirect long indexed - [d],y";
-        break;
-
-        case ADDRESS_MODE_DIRECT_INDIRECT_LONG:
-            addr_mode_str = "direct indirect long - [d]";
-        break;
-
-        case ADDRESS_MODE_DIRECT_INDIRECT:
-            addr_mode_str = "direct indirect - (d)";
-        break;
-
-        case ADDRESS_MODE_DIRECT:
-            addr_mode_str = "direct - d";
-        break;
-
-        case ADDRESS_MODE_IMMEDIATE:
-            if(reg_p & CPU_STATUS_FLAG_MEMORY)
-            {
-                opcode_offset--;
-            }
-            addr_mode_str = "(value)";
-        break;
-
-        case ADDRESS_MODE_IMPLIED:
-            addr_mode_str = "";
-        break;
-
-        case ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE_LONG:
-            addr_mode_str = "program counter relative long - rl";
-        break;
-
-        case ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE:
-            addr_mode_str = "program counter relative - r";
-        break;
-
-        case ADDRESS_MODE_STACK:
-            addr_mode_str = "stack - s";
-        break;
-
-        case ADDRESS_MODE_STACK_RELATIVE:
-            addr_mode_str = "stack relative - d,s";
-        break;
-
-        case ADDRESS_MODE_STACK_RELATIVE_INDIRECT_INDEXED:
-            addr_mode_str = "stack relative indirect indexed - (d,s),y";
-        break;
-
-        default:
-        case ADDRESS_MODE_UNKNOWN:
-            addr_mode_str = "unknown";
-        break;
+        sprintf(temp_str, "%02x ", op_code_address[i]);
+        strcat(op_code_str_buffer, temp_str);
     }
 
-    for(; opcode_offset > 1; opcode_offset--)
+    strcat(op_code_str_buffer, "; ");
+    strcat(op_code_str_buffer, op_code_str);
+
+    if(addr_mode_str[0])
     {
-        //access_memory(effective_address + opcode_offset - 1, 0, &value, 1);
-        sprintf(byte_buffer, "%02x", opcode_address[opcode_offset - 1]);
-        strcat(bytes_buffer, byte_buffer);
+        strcat(op_code_str_buffer, " ");
+        strcat(op_code_str_buffer, addr_mode_str);
     }
 
-    strcpy(instruction_str, op_code_str);
-    strcat(instruction_str, " ");
-    strcat(instruction_str, addr_mode_str);
-    strcat(instruction_str, bytes_buffer);
-
-//    strcat(instruction_str, addr_mode_str);
-//    strcat(instruction_str, ")");
-
-    return instruction_str;
+    return op_code_str_buffer;
 }
 
 void disassemble(int start, int byte_count)
@@ -1121,23 +1375,11 @@ int disassemble_current(int show_registers)
     char *op_str;
     unsigned char *opcode_address;
 
-
-    //opcode = opcode_matrix[cpu_ram[address]];
-    //opcode_offset = address_mode_operand_size[opcode.address_mode] + 1;
-
-//    address = EFFECTIVE_ADDRESS(reg_pbr, reg_pc);
-//    access_memory(address, 0, &opcode_byte, 1);
-//    opcode = opcode_matrix[opcode_byte];
-//    op_str = opcode_str(&opcode, address);
-//    opcode_offset = address_mode_operand_size[opcode.address_mode];
-
     address = EFFECTIVE_ADDRESS(reg_pbr, reg_pc);
     opcode_address = memory_pointer(address);
     opcode = opcode_matrix[opcode_address[0]];
-    op_str = opcode_str(&opcode, address);
+    op_str = opcode_str(address);
     opcode_offset = address_mode_operand_size[opcode.address_mode];
-
-
 
     if(show_registers)
     {
@@ -1158,38 +1400,46 @@ int disassemble_current(int show_registers)
                                                                 (reg_p & CPU_STATUS_FLAG_ZERO) && 1,
                                                                 (reg_p & CPU_STATUS_FLAG_IRQ_DISABLE) && 1,
                                                                 (reg_p & CPU_STATUS_FLAG_CARRY) && 1);
-        printf("[E: %02x]\n", reg_e);
+        printf("[E: %02x] | [PC: %04x] | [ : %04x]\n", reg_e, reg_pc, hardware_regs.hardware_regs[0x4212 - CPU_REGS_START_ADDRESS]);
         printf("=========== REGISTERS ===========\n");
     }
-
-    printf("[0x%02x:0x%04x]: ", (address >> 16) & 0xff, address & 0xffff);
-
-    if(opcode.address_mode == ADDRESS_MODE_IMMEDIATE)
-    {
-        if(reg_p & CPU_STATUS_FLAG_MEMORY)
-        {
-            opcode_offset--;
-        }
-    }
-
-    for(i = 0; i < 4; i++)
-    {
-        if(i < opcode_offset)
-        {
-            //access_memory(address + opcode_offset + 1, 0, &opcode_byte, 1);
-            //printf("%02x ", opcode_byte);
-            printf("%02x ", opcode_address[i + 1]);
-        }
-        else
-        {
-            printf("   ");
-        }
-    }
-    printf("; ");
 
     printf("%s\n", op_str);
 
     return opcode_offset;
+}
+
+void poke(int effective_address, int value)
+{
+    unsigned char *memory;
+
+    memory = memory_pointer(effective_address);
+
+    if(memory)
+    {
+        printf("[%02x:%04x] %02x %02x %02x %02x ", (effective_address >> 16) & 0xff, effective_address & 0xffff,
+                                                        memory[0], memory[1], memory[2], memory[3]);
+
+        if(value >= 0)
+        {
+            if(value & 0x00ff0000)
+            {
+                memcpy(memory, &value, 3);
+            }
+            else if(value & 0x0000ff00)
+            {
+                memcpy(memory, &value, 2);
+            }
+            else
+            {
+                memcpy(memory, &value, 1);
+            }
+
+            printf("-> %02x %02x %02x %02x ", memory[0], memory[1], memory[2], memory[3]);
+        }
+
+        printf("\n");
+    }
 }
 
 int view_hardware_registers()
@@ -1274,6 +1524,21 @@ __fastcall void *memory_pointer(unsigned int effective_address)
     return pointer;
 }
 
+__fastcall void exec_interrupt()
+{
+    /* the stack resides in the first block, which is also
+    where wram1 starts... */
+    char *stack_address = wram1;
+
+    stack_address[reg_s] = reg_pbr;
+    *((unsigned short *)(stack_address + reg_s + 1)) = reg_pc;
+    stack_address[reg_s + 3] = reg_p;
+
+    reg_s += 4;
+
+
+}
+
 void step_cpu()
 {
     unsigned int src_value;
@@ -1285,61 +1550,135 @@ void step_cpu()
     int temp2;
     int temp3;
     int byte_write;
+    int dereference_src;
 //    unsigned char opcode_byte;
     unsigned char *opcode_address;
     unsigned char *src_address;
     unsigned char *dst_address;
 
 
-    effective_address = EFFECTIVE_ADDRESS(reg_pbr, reg_pc);
-    opcode_address = memory_pointer(effective_address);
-    opcode = opcode_matrix[opcode_address[0]];
-    reg_pc += address_mode_operand_size[opcode.address_mode] + 1;
+    if(s_wai)
+    {
+        /* we're waiting on an maskable interrupt... */
+        return;
+    }
+
+
+    if(!in_irqb)
+    {
+        /* maskable interrupt requested... */
+        opcode.opcode = OP_CODE_JSR;
+        opcode.opcode_category = OP_CODE_CATEGORY_BRANCH;
+    }
+    else
+    {
+        effective_address = EFFECTIVE_ADDRESS(reg_pbr, reg_pc);
+        opcode_address = memory_pointer(effective_address);
+        opcode = opcode_matrix[opcode_address[0]];
+        reg_pc += address_mode_operand_size[opcode.address_mode] + 1;
+    }
 
     printf("cpu step: %lu\n", step_count);
     step_count++;
 
+    dereference_src = 0;
+
     switch(opcode.address_mode)
     {
         case ADDRESS_MODE_ABSOLUTE:
+
+            /* the second and third bytes of the instruction form the low-order 16 bits of the
+            effective address. The Data Bank Register contains the high-order 8 bits of the
+            operand address... */
+
             src_value = *(unsigned short *)(opcode_address + 1);
             src_value |= reg_dbr << 16;
+            dereference_src = 1;
         break;
 
         case ADDRESS_MODE_ABSOLUTE_INDEXED_INDIRECT:
-            src_value = *(unsigned short *)(opcode_address + 1);
+
+            /* the second and third bytes of the instruction are added to the X Index Register
+            to form a 16-bit pointer in Bank 0.  The contents of this pointer are loaded in the
+            Program Counter for the JMP instruction... */
+
+            /* only used by JMP, JSR and EOR... */
+
+            src_value = *(unsigned short *)(opcode_address + 1) + reg_x.reg_x;
             src_value &= 0x0000ffff;
+            dereference_src = 1;
         break;
 
         case ADDRESS_MODE_ABSOLUTE_INDEXED_X:
+
+            /* the second and third bytes of the instruction are added to the X Index Register to
+            form the low-order 16-bits of the effective address.  The Data Bank Register contains
+            the high-order 8 bits of the effective address... */
+
             src_value = *(unsigned short *)(opcode_address + 1) + reg_x.reg_x;
             src_value |= reg_dbr << 16;
+            dereference_src = 1;
         break;
 
         case ADDRESS_MODE_ABSOLUTE_INDEXED_Y:
+
+            /* the second and third bytes of the instruction are added to the Y Index Register to
+            form the low-order 16-bits of the effective address.  The Data Bank Register contains
+            the high-order 8 bits of the effective address... */
+
             src_value = *(unsigned short *)(opcode_address + 1) + reg_y.reg_y;
             src_value |= reg_dbr << 16;
+            dereference_src = 1;
         break;
 
         case ADDRESS_MODE_ABSOLUTE_INDIRECT:
-            src_value = *(unsigned short *)(opcode_address + 1);
+
+            /* the second and third bytes of the instruction form an address to a pointer in Bank 0.
+            The Program Counter is loaded with the first and second bytes at this pointer.
+            With the Jump Long (JML) instruction, the Program Bank Register is loaded with the
+            third byte of the pointer...  */
+
+            /* this is quite likely to be a unaligned access... */
+            src_value = (*(unsigned int *)(opcode_address + 1)) & 0x00ffffff;
+            dereference_src = 1;
         break;
 
         case ADDRESS_MODE_ABSOLUTE_LONG_INDEXED_X:
+
+            /* the second, third and fourth bytes of the instruction form a 24-bit base address.
+            The effective address is the sum of this 24-bit address and the X Index Register... */
+
             src_value = *(unsigned int *)(opcode_address + 1) & 0x00ffffff;
             src_value += reg_x.reg_x;
+            dereference_src = 1;
         break;
 
         case ADDRESS_MODE_ABSOLUTE_LONG:
+
+            /* the second, third and fourth byte of the instruction form the 24-bit effective address... */
+
             src_value = *(unsigned int *)(opcode_address + 1) & 0x00ffffff;
             src_value &= 0x00ffffff;
+            dereference_src = 1;
         break;
 
         case ADDRESS_MODE_ACCUMULATOR:
+
+            /* the operand is the Accumulator... */
+
             src_value = reg_accum.reg_accumC;
         break;
 
         case ADDRESS_MODE_BLOCK_MOVE:
+
+            /* the second byte of the instruction contains the high-order 8 bits of the
+            destination address and the Y Index Register contains the low-order 16 bits of
+            the destination address.  The third byte of the instruction contains the
+            high-order 8 bits of the source address and the X Index Register contains
+            the low-order bits of the source address.  The C Accumulator contains one less
+            than the number of bytes to move.  The second byte of the block move instructions
+            is also loaded into the Data Bank Register... */
+
             reg_dbr = opcode_address[1];
             dst_value = (((unsigned int)reg_dbr) << 16) & 0x00ffffff;
             dst_value |= reg_y.reg_y;
@@ -1349,50 +1688,104 @@ void step_cpu()
         break;
 
         case ADDRESS_MODE_DIRECT_INDEXED_INDIRECT:
+
+            /* the second byte of the instruction is added to the sum of the
+            Direct Register and the X Index Register. The result points to the
+            X low-order 16 bits of the effective address. The Data Bank Register
+            contains the high-order 8 bits of the effective address...  */
+
             src_value = opcode_address[1];
             src_value += reg_d + reg_x.reg_x;
-            opcode_address = memory_pointer(src_value);
-            reg_x.reg_x = *(unsigned short *)(opcode_address);
+            reg_x.reg_x = *(unsigned short *)memory_pointer(src_value);
             src_value = ((unsigned int)reg_x.reg_x) | (((unsigned int)reg_dbr) << 16);
+            dereference_src = 1;
         break;
 
         case ADDRESS_MODE_DIRECT_INDEXED_X:
+
+            /* the second byte of the instruction is added to the sum of the
+            Direct Register and the X Index Register to form the 16-bit effective address.
+            The operand is always in Bank 0...  */
+
             src_value = opcode_address[1];
             src_value += reg_d + reg_x.reg_x;
+            dereference_src = 1;
         break;
 
         case ADDRESS_MODE_DIRECT_INDEXED_Y:
+
+            /* the second byte of the instruction is added to the sum of the
+            Direct Register and the Y Index Register to form the 16-bit effective address.
+            The operand is always in Bank 0...  */
+
             src_value = opcode_address[1];
             src_value += reg_d + reg_y.reg_y;
+            dereference_src = 1;
         break;
 
         case ADDRESS_MODE_DIRECT_INDIRECT_INDEXED:
-            src_value = opcode_address[1] + reg_d;
+
+            /* the second byte of the instruction is added to the Direct Register (D).
+            The 16-bit content of this memory location is then combined with the
+            Data Bank register to form a 24-bit base address.  The Y Index Register
+            is added to the base address to form the effective address... */
+
+            reg_d += opcode_address[1];
+            src_value = *(unsigned short *)memory_pointer((unsigned int )reg_d);
             src_value |= (((unsigned int)reg_dbr) << 16) & 0x00ffffff;
             src_value += reg_y.reg_y;
+            dereference_src = 1;
         break;
 
         case ADDRESS_MODE_DIRECT_INDIRECT_LONG_INDEXED:
+
+            /* the 24-bit base address is pointed to by the sum of the second byte of
+            the instruction and the Direct Register.  The effective address is this
+            24-bit base address plus the Y Index Register... */
+
             src_value = opcode_address[1] + reg_d;
-            opcode_address = memory_pointer(src_value);
-            src_value = *(unsigned int *)(opcode_address) & 0x00ffffff;
+            src_value = *(unsigned int *)memory_pointer(src_value) & 0x00ffffff;
             src_value += reg_y.reg_y;
+            dereference_src = 1;
         break;
 
         case ADDRESS_MODE_DIRECT_INDIRECT_LONG:
+
+            /* the second byte of the instruction is added to the Direct Register
+            to form a pointer to the 24-bit effective address... */
+
             src_value = opcode_address[1] + reg_d;
+            src_value = *(unsigned int *)memory_pointer(src_value) & 0x00ffffff;
+            dereference_src = 1;
         break;
 
         case ADDRESS_MODE_DIRECT_INDIRECT:
+
+            /* the second byte of the instruction is added to the Direct Register to
+            form a pointer to the low-order 16 bits of the effective address.
+            The Data Bank Register contains the high-order 8 bits of the effective address... */
+
             src_value = opcode_address[1] + reg_d;
+            src_value = *(unsigned short *)memory_pointer(src_value);
             src_value |= (((unsigned int)reg_dbr) << 16) & 0x00ffffff;
+            dereference_src = 1;
         break;
 
         case ADDRESS_MODE_DIRECT:
-            src_value = opcode_address[1] + reg_d;
+
+            /* the second byte of the instruction is added to the Direct Register (D)
+            to form the effective address. An additional cycle is required when the
+            Direct Register is not page aligned (DL not equal 0). The Bank register is always 0...*/
+
+            src_value = (unsigned int)(opcode_address[1] + reg_d);
+            dereference_src = 1;
         break;
 
         case ADDRESS_MODE_IMMEDIATE:
+
+            /* the operand is the second byte (second and third bytes when in the 16-bit mode)
+            of the instruction... */
+
             src_value = *(unsigned short *)(opcode_address + 1);
 
             if((opcode.opcode == OP_CODE_LDA && (reg_p & CPU_STATUS_FLAG_MEMORY)) ||
@@ -1411,27 +1804,59 @@ void step_cpu()
         break;
 
         case ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE_LONG:
+
+            assert(!"oh shit...");
+
+            /* the second and third bytes of the instruction are added to the Program Counter,
+            which has been updated to point to the OpCode of the next instruction.
+            With the branch instruction, the Program Counter is loaded with the result.
+            With the Push Effective Relative instruction, the result is stored on the stack.
+            The offset is a signed 16-bit quantity in the range from -32768 to 32767.
+            The Program Bank Register is not affected...  */
+
             src_value = *(unsigned short *)(opcode_address + 1);
         break;
 
         case ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE:
+
+            /* used only with the branch instructions. If the condition being tested is met,
+            the second byte of the instruction is added to the Program Counter, which
+            has been updated to point to the OpCode of the next instruction. The offset
+            is a signed 8-bit quantity in the range from -128 to 127.  The Program Bank
+            Register is not affected... */
+
             src_value = opcode_address[1];
         break;
 
         case ADDRESS_MODE_STACK:
-
+            /* :) */
         break;
 
         case ADDRESS_MODE_STACK_RELATIVE:
+
+            /* the low-order 16 bits of the effective address is formed from the
+            sum of the second byte of the instruction and the stack pointer.
+            The high-order 8 bits of the effective address are always zero.
+            The relative offset is an unsigned 8-bit quantity in the range of 0 to 255. */
+
             src_value = reg_s + opcode_address[1];
+            dereference_src = 1;
         break;
 
         case ADDRESS_MODE_STACK_RELATIVE_INDIRECT_INDEXED:
+
+            /* the second byte of the instruction is added to the Stack Pointer to
+            form a pointer to the low-order 16-bit base address in Bank 0.
+            The Data Bank Register contains the high-order 8 bits of the base address.
+            The effective address is the sum of the 24-bit base address and the Y
+            Index Register... */
+
+            //reg_s += opcode_address[1];
             src_value = reg_s + opcode_address[1];
-            opcode_address = memory_pointer(src_value);
-            src_value = *(unsigned int *)(opcode_address);
+            src_value = *(unsigned int *)memory_pointer(src_value);
             src_value |= (((unsigned int)reg_dbr) << 16) & 0x00ffffff;
             src_value += reg_y.reg_y;
+            dereference_src = 1;
         break;
 
         default:
@@ -1442,11 +1867,10 @@ void step_cpu()
 
 
 
-
-
-
-
-
+//    if(dereference_src)
+//    {
+//        src_value = *(unsigned int *)memory_pointer(src_value);
+//    }
 
     switch(opcode.opcode_category)
     {
@@ -1782,15 +2206,43 @@ void step_cpu()
                 break;
 
                 case OP_CODE_JSL:
-        //            op_code_str = "JSL";
+
                 break;
 
                 case OP_CODE_JSR:
-        //            op_code_str = "JSR";
+                   if(in_irqb)
+                    {
+                        /* we're handling a interrupt here... */
+                        opcode_address = memory_pointer(reg_s);
+                        reg_s += 4;
+
+                        opcode_address[0] = reg_pbr;
+                        *(unsigned short *)(opcode_address + 1) = reg_pc;
+                        opcode_address[3] = reg_p;
+
+                        opcode_address = memory_pointer(EFFECTIVE_ADDRESS(0, 0xffee));
+                        reg_pc = *(unsigned short *)opcode_address;
+                    }
+                    else
+                    {
+                        /* normal subroutine... */
+                        opcode_address = memory_pointer(reg_s);
+                        reg_s += 2;
+
+                        *(unsigned short *)opcode_address = reg_pc;
+                        opcode_address = memory_pointer(src_value);
+                        reg_pc = *(unsigned short *)opcode_address;
+                    }
                 break;
 
                 case OP_CODE_RTI:
-        //            op_code_str = "RTI";
+                    /* returning from an interrupt... */
+                    reg_s -= 4;
+                    opcode_address = memory_pointer(reg_s);
+                    reg_pbr = opcode_address[0];
+                    reg_pc = *(unsigned short *)(opcode_address + 1);
+                    reg_p = opcode_address[3];
+                    src_value = 0;
                 break;
 
                 case OP_CODE_RTL:
@@ -1798,7 +2250,11 @@ void step_cpu()
                 break;
 
                 case OP_CODE_RTS:
-        //            op_code_str = "RTS";
+                    /* returning from subroutine... */
+                    reg_s -= 2;
+                    opcode_address = memory_pointer(reg_s);
+                    reg_pc = *(unsigned short *)opcode_address;
+                    src_value = 0;
                 break;
             }
 
@@ -1818,14 +2274,12 @@ void step_cpu()
 
 
         case OP_CODE_CATEGORY_LOAD:
-        //case OP_CODE_CATEGORY_STORE:
 
             byte_write = 0;
 
-            if(opcode.address_mode == ADDRESS_MODE_ABSOLUTE)
+            if(opcode.address_mode != ADDRESS_MODE_IMMEDIATE)
             {
-                opcode_address = memory_pointer(src_value);
-                src_value = *(unsigned short *)opcode_address;
+                src_value = *(unsigned short *)memory_pointer(src_value);
             }
 
             switch(opcode.opcode)
@@ -1860,11 +2314,11 @@ void step_cpu()
                 temp = (signed short)src_value == 0;
             }
 
-            if(opcode.opcode_category == OP_CODE_CATEGORY_LOAD)
-            {
-                reg_p = temp ? reg_p | CPU_STATUS_FLAG_ZERO : reg_p & (~CPU_STATUS_FLAG_ZERO);
-                reg_p = temp2 ? reg_p | CPU_STATUS_FLAG_NEGATIVE : reg_p & (~CPU_STATUS_FLAG_NEGATIVE);
-            }
+            //if(opcode.opcode_category == OP_CODE_CATEGORY_LOAD)
+            //{
+            reg_p = temp ? reg_p | CPU_STATUS_FLAG_ZERO : reg_p & (~CPU_STATUS_FLAG_ZERO);
+            reg_p = temp2 ? reg_p | CPU_STATUS_FLAG_NEGATIVE : reg_p & (~CPU_STATUS_FLAG_NEGATIVE);
+            //}
         break;
 
 
@@ -2068,7 +2522,7 @@ void step_cpu()
                 break;
 
                 case OP_CODE_WAI:
-        //            op_code_str = "WAI";
+                    s_wai = 1;
                 break;
 
                 case OP_CODE_WDM:

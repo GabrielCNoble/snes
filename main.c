@@ -10,6 +10,9 @@ int main(int argc, char *argv[])
     struct rom_t rom;
     char param[512];
 
+    unsigned int poke_addr;
+    unsigned int poke_value;
+
     //reset_cpu();
 
     rom.header = NULL;
@@ -42,6 +45,7 @@ int main(int argc, char *argv[])
                         scanf("%s", param);
                         load_rom_file(param);
                         reset_cpu();
+                        disassemble_current(1);
 //                        if(rom.header)
 //                        {
 //                            map_rom(&rom);
@@ -90,7 +94,18 @@ int main(int argc, char *argv[])
                             step_cpu();
                             disassemble_current(1);
                         }
-                        else if(!strcmp(param, "-hardware_regs"))
+                        else if(!strcmp(param, "-poke"))
+                        {
+                            scanf("%x", &poke_addr);
+                            poke(poke_addr, -1);
+                        }
+                        else if(!strcmp(param, "-pokev"))
+                        {
+                            scanf("%x", &poke_addr);
+                            scanf("%x", &poke_value);
+                            poke(poke_addr, poke_value);
+                        }
+                        else if(!strcmp(param, "-h_regs"))
                         {
                             view_hardware_registers();
                         }
