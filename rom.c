@@ -224,6 +224,7 @@ void dump_rom(struct rom_t *rom)
 __fastcall void *rom_pointer(unsigned int effective_address)
 {
     unsigned int rom_address = 0;
+    void *rom_ptr = NULL;
 
     if(current_rom.header)
     {
@@ -231,10 +232,10 @@ __fastcall void *rom_pointer(unsigned int effective_address)
         {
             case ROM_TYPE_LoROM:
             case ROM_TYPE_LoROM | ROM_TYPE_FastROM:
-                if(effective_address & 0x8000)
+                //if(effective_address & 0x8000)
                 {
                     rom_address = (effective_address & 0x7fff) | ((effective_address & 0x007f0000) >> 1);
-                    return (void *)(current_rom.rom_buffer + rom_address);
+                    rom_ptr = current_rom.rom_buffer + rom_address;
                 }
             break;
 
@@ -245,142 +246,15 @@ __fastcall void *rom_pointer(unsigned int effective_address)
         }
     }
 
-    return rom_address;
+    if(!rom_ptr)
+    {
+
+
+        printf("null rom pointer!\n");
+    }
+
+    return rom_ptr;
 }
-
-//__fastcall void access_rom(unsigned int effective_address, int write, void *data, int width)
-//{
-//    unsigned int rom_address;
-//
-//    rom_address = map_to_rom_address(effective_address);
-//
-//    if(write)
-//    {
-//        memcpy(current_rom.rom_buffer + rom_address, data, width);
-//    }
-//    else
-//    {
-//        memcpy(data, current_rom.rom_buffer + rom_address, width);
-//    }
-//}
-
-//void map_rom(struct rom_t *rom)
-//{
-//    int i;
-//
-//    unsigned int address = 0;
-//    unsigned int rom_offset = 0;
-//    int rom_byte_count;
-//    int rom_byte_copy;
-//
-//
-//    int rom_size = 0x400 << rom->header->data.rom_size;
-//
-//
-//    switch(rom->header->data.rom_makeup)
-//    {
-//        case ROM_TYPE_LoROM:
-//        case ROM_TYPE_LoROM | ROM_TYPE_FastROM:
-//        case ROM_TYPE_SA1ROM:
-//
-//            rom_byte_count = rom_size;
-//
-//            for(i = 0; i < 0x7e && rom_byte_count > 0; i++)
-//            {
-//                address = EFFECTIVE_ADDRESS(i, 0x8000);
-//                rom_byte_copy = rom_byte_count > 0x8000 ? 0x8000 : rom_byte_count;
-//                memcpy(cpu_ram + address, rom->rom_buffer + rom_offset, rom_byte_copy);
-//                rom_offset += rom_byte_copy;
-//                rom_byte_count -= 0x8000;
-//            }
-//
-//            rom_byte_count = rom_size;
-//
-//            for(i = 0x80; i < 0xff && rom_byte_count > 0; i++)
-//            {
-//                address = EFFECTIVE_ADDRESS(i, 0x8000);
-//                rom_byte_copy = rom_byte_count > 0x8000 ? 0x8000 : rom_byte_count;
-//                memcpy(cpu_ram + address, rom->rom_buffer + rom_offset, rom_byte_copy);
-//                rom_offset += rom_byte_copy;
-//                rom_byte_count -= 0x8000;
-//            }
-//
-//
-////            rom_byte_count = rom_size;
-////
-////            for(i = 0; i < 0x60 && rom_byte_count > 0; i++)
-////            {
-////                address = EFFECTIVE_ADDRESS(i, 0x8000);
-////                rom_byte_copy = rom_byte_count > 0x8000 ? 0x8000 : rom_byte_count;
-////                memcpy(cpu_ram + address, rom->rom_buffer + rom_offset, rom_byte_copy);
-////                rom_offset += rom_byte_copy;
-////                rom_byte_count -= 0x8000;
-////            }
-////
-////            rom_offset = 0;
-////            rom_byte_count = rom_size;
-////            for(i = 0x80; i < 0xe0 && rom_byte_count > 0; i++)
-////            {
-////                address = EFFECTIVE_ADDRESS(i, 0x8000);
-////                rom_byte_copy = rom_byte_count > 0x8000 ? 0x8000 : rom_byte_count;
-////                memcpy(cpu_ram + address, rom->rom_buffer + rom_offset, rom_byte_copy);
-////                rom_offset += rom_byte_copy;
-////                rom_byte_count -= 0x8000;
-////            }
-//        break;
-//
-//        case ROM_TYPE_HiROM:
-//
-//            rom_byte_count = rom_size;
-//
-//            for(i = 0; i < 0x40 && rom_byte_count > 0; i++)
-//            {
-//                address = EFFECTIVE_ADDRESS(i, 0x8000);
-//                rom_byte_copy = rom_byte_count > 0x8000 ? 0x8000 : rom_byte_count;
-//                memcpy(cpu_ram + address, rom->rom_buffer + rom_offset, rom_byte_copy);
-//                rom_offset += rom_byte_copy;
-//                rom_byte_count -= 0x8000;
-//            }
-//
-//            for(i = 0x40; i < 0x60 && rom_byte_count > 0; i++)
-//            {
-//                address = EFFECTIVE_ADDRESS(i, 0);
-//                rom_byte_copy = rom_byte_count > 0x10000 ? 0x10000 : rom_byte_count;
-//                memcpy(cpu_ram + address, rom->rom_buffer + rom_offset, rom_byte_copy);
-//                rom_offset += rom_byte_copy;
-//                rom_byte_count -= 0x10000;
-//            }
-//
-//
-//
-//            rom_offset = 0;
-//            rom_byte_count = rom_size;
-//
-//            for(i = 0x80; i < 0xc0 && rom_byte_count > 0; i++)
-//            {
-//                address = EFFECTIVE_ADDRESS(i, 0x8000);
-//                rom_byte_copy = rom_byte_count > 0x8000 ? 0x8000 : rom_byte_count;
-//                memcpy(cpu_ram + address, rom->rom_buffer + rom_offset, rom_byte_copy);
-//                rom_offset += rom_byte_copy;
-//                rom_byte_count -= 0x8000;
-//            }
-//
-//            for(i = 0xc0; i < 0xff  && rom_byte_count > 0; i++)
-//            {
-//                address = EFFECTIVE_ADDRESS(i, 0);
-//                rom_byte_copy = rom_byte_count > 0x10000 ? 0x10000 : rom_byte_count;
-//                memcpy(cpu_ram + address, rom->rom_buffer + rom_offset, rom_byte_copy);
-//                rom_offset += rom_byte_copy;
-//                rom_byte_count -= 0x10000;
-//            }
-//        break;
-//    }
-//
-//
-//
-//    reset_cpu();
-//}
-
 
 
 

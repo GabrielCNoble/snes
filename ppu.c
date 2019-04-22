@@ -91,4 +91,8 @@ __fastcall void *ppu_pointer(unsigned int effective_address)
     return (void *)(ppu_regs.ppu_regs + ppu_address);
 }
 
+void step_ppu()
+{
+
+}
 
