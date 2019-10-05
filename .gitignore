@@ -1,0 +1,12 @@
+*.o
+*.smc
+*.sfc
+*.cbp
+*.depend
+*.layout
+*.exe
+oc.c
+oc.exe
+test.c
+test.exe
+*.txt

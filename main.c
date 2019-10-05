@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 
 
 int main(int argc, char *argv[])
@@ -19,6 +20,24 @@ int main(int argc, char *argv[])
 
     int disasm_start;
     int disasm_count;
+
+    // int32_t operand0 = 0;
+    // int32_t operand1 = 0;
+ 
+    // printf("%d\n", alu_op(0, 0, ALU_OP_ADD, 1));
+    // printf("%d\n", alu_op(1, 1, ALU_OP_ADD, 1));
+    // printf("%d\n", alu_op(1, -1, ALU_OP_ADD, 1));
+    // printf("%d\n", (int8_t)alu_op(127, -128, ALU_OP_ADD, 1));
+    // printf("%d\n", (int8_t)alu_op(127, 128, ALU_OP_SUB, 1));
+    // printf("%d\n", (int8_t)alu_op(127, 1, ALU_OP_ADD, 1));
+    // printf("%d\n", (int8_t)alu_op(-1, 1, ALU_OP_DEC, 1));
+    // printf("%d\n", (int8_t)alu_op(127, 1, ALU_OP_INC, 1));
+    // printf("%d\n", (int8_t)alu_op(-1, 1, ALU_OP_INC, 1));
+    printf("%d\n", (int8_t)alu_op(1, 2, ALU_OP_CMP, 1));
+    // printf("%d\n", alu_op(128, 1, ALU_OP_SUB, 1));
+    
+
+    return 0;
 
     if(argc > 1)
     {

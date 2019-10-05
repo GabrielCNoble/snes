@@ -2,6 +2,7 @@
 #define CPU_H
 
 #include "addr_common.h"
+#include <stdint.h>
 
 enum OP_CODE_CATEGORIES
 {
@@ -15,6 +16,21 @@ enum OP_CODE_CATEGORIES
     OP_CODE_CATEGORY_STANDALONE,
 };
 
+enum ALU_OP
+{
+    ALU_OP_ADD = 0,
+    ALU_OP_SUB,
+    ALU_OP_AND,
+    ALU_OP_OR,
+    ALU_OP_EOR,
+    ALU_OP_CMP,
+    ALU_OP_INC,
+    ALU_OP_DEC,
+    ALU_OP_SHR,
+    ALU_OP_SHL,
+    ALU_OP_ROR,
+    ALU_OP_ROL,
+};
 
 enum OP_CODES
 {
@@ -162,7 +178,7 @@ enum OP_CODES
 
 enum ADDRESS_MODES
 {
-    ADDRESS_MODE_ABSOLUTE = 0,                      /* (a) */
+    ADDRESS_MODE_ABSOLUTE = 0,                      /* a */
     ADDRESS_MODE_ABSOLUTE_INDEXED_INDIRECT,         /* (a,x) */
     ADDRESS_MODE_ABSOLUTE_INDEXED_X,                /* a,x */
     ADDRESS_MODE_ABSOLUTE_INDEXED_Y,                /* a,y */
@@ -205,9 +221,12 @@ enum CPU_STATUS_FLAGS
 
 struct op_code_t
 {
-    unsigned short opcode;
-    unsigned char address_mode;
-    unsigned char opcode_category;
+    unsigned char opcode;
+    unsigned address_mode : 5;
+    unsigned opcode_category : 3;
+    // unsigned short opcode;
+    // unsigned char address_mode;
+    // unsigned char opcode_category;
 };
 
 #define OPCODE(opcode, category, address_mode) (struct op_code_t){opcode, address_mode, category}
@@ -239,11 +258,16 @@ void poke(int effective_address, int value);
 
 int view_hardware_registers();
 
-__fastcall int cpu_access_location(unsigned int effective_address);
+/*__fastcall */ int cpu_access_location(unsigned int effective_address);
 
-__fastcall void *memory_pointer(unsigned int effective_address);
+/*__fastcall */ void *memory_pointer(unsigned int effective_address);
 
-__fastcall void exec_interrupt();
+/*__fastcall */ void exec_interrupt();
+
+
+void update_reg_p(uint32_t operand0, uint32_t operand1, uint32_t result, uint32_t flags);
+
+uint32_t alu_op(uint32_t operand0, uint32_t operand1, uint32_t op, uint32_t width);
 
 void step_cpu();
 
