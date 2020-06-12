@@ -533,6 +533,7 @@ void reset_cpu()
 
     /* on reset, pc gets loaded with the contents
     of the pointer 00fffc... */
+
     reset_vector = memory_pointer(EFFECTIVE_ADDRESS(0x00, 0xfffc));
 
     if(reset_vector)
@@ -1738,12 +1739,7 @@ uint32_t alu(uint32_t operand0, uint32_t operand1, uint32_t op, uint32_t width)
         (((~(operand0 ^ operand1)) & (operand1 ^ result)) & sign_mask) ? 
             (reg_p |= CPU_STATUS_FLAG_OVERFLOW) : (reg_p &= ~CPU_STATUS_FLAG_OVERFLOW);
     }
-
-    printf("N: %d | C: %d | Z: %d | V : %d\n", (reg_p & CPU_STATUS_FLAG_NEGATIVE) && 1,
-                                               (reg_p & CPU_STATUS_FLAG_CARRY) && 1,
-                                               (reg_p & CPU_STATUS_FLAG_ZERO) && 1,
-                                               (reg_p & CPU_STATUS_FLAG_OVERFLOW) && 1);
-
+    
     return result & zero_mask;
 }
 
@@ -1762,13 +1758,13 @@ void step_cpu()
 //    int dereference_src;
 //    unsigned char opcode_byte;
     unsigned char *opcode_address;
-    unsigned char *src_address;
-    unsigned char *dst_address;
+//    unsigned char *src_address;
+//    unsigned char *dst_address;
     // void *operands[2];
     void *operand0;
     void *operand1;
-    void *destination;
-    uint32_t branch_offset;
+//    void *destination;
+//    uint32_t branch_offset;
 
 
     if(s_wai)
@@ -1796,15 +1792,19 @@ void step_cpu()
     
     /* instruction processing happens in two phases here: 
     
-        First, the operand phase: in this phase the operand is handled (if there's any). This phase will output a 
-        pointer to the memory where the operand lives. If an instruction uses absolute indexed indirect addressing, 
-        for example, this phase will take the two bytes after the opcode, add register X to it, then return a real 
-        pointer to the memory. 
+        First, the operand phase: in this phase the operand is handled (if there's any). This phase will output the 
+        effective address to the. If an instruction uses absolute indexed indirect addressing, for example, the 
+        effective address will point to the next byte after the current instruction.
         
-        Then, the opcode phase: in this phase the operand returned by phase one will be used. If the instrunction
-        is a load instruction, then the pointer will be simply dereferenced. If it's a store instrunction, then the
-        pointer will be used to write the value back to ram. For read-modify-write instructions, like INC, it's goes
-        both ways. First dereference, increment the value in the register, then write it back through the same pointer.
+        Then, the opcode phase: in this phase the effective address returned by phase one will be used. If the 
+        instruction is a load instruction, then a real pointer is acquired from the effective address. 
+        If it's a store instruction, a real pointer will also be acquired from the effective address, and will be 
+        used to write the value back to ram. For branch instructions, the effective address will be used directly.
+        For jumps using absolute long addressing, the effective address contains the value of PC on the lower
+        16 bits, and the value of PBR on the upper 8 bits. In the case of conditional jumps, where the only
+        addressing mode is an offset relative to the current PC, the effective address will reference the
+        byte right after the current instruction. A real pointer to the value will be acquired if the branch
+        is taken, and the value will be added to PC.
     */
 
     switch(opcode.address_mode)
@@ -1895,9 +1895,7 @@ void step_cpu()
         break;
 
         case ADDRESS_MODE_ACCUMULATOR:
-
-            /* the operand is the Accumulator... */
-            operand1 = &reg_accum.reg_accumC;
+            /* nothing to really do here. */
         break;
 
         case ADDRESS_MODE_BLOCK_MOVE:
@@ -2052,9 +2050,9 @@ void step_cpu()
             The offset is a signed 16-bit quantity in the range from -32768 to 32767.
             The Program Bank Register is not affected...  */
 
-            branch_offset = *(int16_t *)(opcode_address + 1);
+            effective_address = *(int16_t *)(opcode_address + 1);
             reg_pc += 2;
-            effective_address = EFFECTIVE_ADDRESS(reg_pbr, reg_pc + (int32_t)branch_offset);
+            effective_address = EFFECTIVE_ADDRESS(reg_pbr, reg_pc + (int32_t)effective_address);
         break;
 
         case ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE:
@@ -2065,9 +2063,9 @@ void step_cpu()
             is a signed 8-bit quantity in the range from -128 to 127.  The Program Bank
             Register is not affected... */
 
-            branch_offset = opcode_address[1];
+            effective_address = opcode_address[1];
             reg_pc++;
-            effective_address = EFFECTIVE_ADDRESS(reg_pbr, reg_pc + (int8_t)branch_offset);
+            effective_address = EFFECTIVE_ADDRESS(reg_pbr, reg_pc + (int8_t)effective_address);
         break;
 
         case ADDRESS_MODE_STACK:
@@ -2111,7 +2109,6 @@ void step_cpu()
             uint32_t alu_op = 0;
             uint32_t alu_width = 0;
             operand1 = memory_pointer(effective_address);
-
             switch(opcode.opcode)
             {
                 case OPCODE_ADC:
@@ -2247,6 +2244,8 @@ void step_cpu()
         break;
 
         case OPCODE_CLASS_BRANCH:
+        {
+            uint8_t *stack_address;
             switch(opcode.opcode)
             {
                 case OPCODE_JML:
@@ -2271,10 +2270,10 @@ void step_cpu()
 
                 case OPCODE_JSL:
                     reg_s -= 3;
-                    opcode_address = memory_pointer(reg_s);
+                    stack_address = memory_pointer(reg_s);
 
-                    opcode_address[0] = reg_pbr;
-                    *(uint16_t *)(opcode_address + 1) = reg_pc;
+                    *stack_address = reg_pbr;
+                    *(uint16_t *)(stack_address + 1) = reg_pc;
 
                     reg_pc = (uint16_t )effective_address;
                     reg_pbr = (uint8_t )(effective_address >> 16);
@@ -2305,8 +2304,8 @@ void step_cpu()
                         /* normal subroutine... */
                         
                         reg_s -= 2;
-                        uint16_t *stack_address = memory_pointer(reg_s);
-                        *stack_address  = reg_pc;
+                        stack_address = memory_pointer(reg_s);
+                        *(uint16_t *)stack_address  = reg_pc;
                         reg_pc = (uint16_t )effective_address;
                     }
                 break;
@@ -2323,23 +2322,27 @@ void step_cpu()
 
                 case OPCODE_RTL:
                     /* long return from subroutine */
-                    opcode_address = memory_pointer(reg_s);
+                    stack_address = memory_pointer(reg_s);
                     reg_s += 3;
-                    reg_pbr = opcode_address[0];
-                    reg_pc = *(uint16_t *)(opcode_address + 1);
+                    reg_pbr = *stack_address;
+                    reg_pc = *(uint16_t *)(stack_address + 1);
                 break;
 
                 case OPCODE_RTS:
-                {
                     /* RTS has only a single addressing mode, stack, since the
                     only thing it does is pop the return address from the stack
                     and load it into PC. */
-                    uint16_t *stack_address = memory_pointer(reg_s);
+                    stack_address = memory_pointer(reg_s);
                     reg_s += 2;
-                    reg_pc = *stack_address;
-                }
+                    reg_pc = *(uint16_t *)stack_address;
                 break;
-
+                
+                case OPCODE_BRL:
+                    reg_pbr = (uint8_t)(effective_address >> 16);
+                case OPCODE_BRA:
+                    reg_pc = (uint16_t)effective_address;
+                break;
+                
                 default:
                 {
                     /* All conditional branch instructions use the program counter relative addressing
@@ -2368,12 +2371,8 @@ void step_cpu()
                 }
                 break;
             }
+        }
         break;
-
-
-
-
-
 
         case OPCODE_CLASS_LOAD:
 
@@ -2416,13 +2415,7 @@ void step_cpu()
             reg_p = temp2 ? reg_p | CPU_STATUS_FLAG_NEGATIVE : reg_p & (~CPU_STATUS_FLAG_NEGATIVE);
         break;
 
-
-
-
-
-
         case OPCODE_CLASS_STORE:
-//            opcode_address = memory_pointer(src_value);
             byte_write = 0;
             operand1 = memory_pointer(effective_address);
             switch(opcode.opcode)
@@ -2565,11 +2558,6 @@ void step_cpu()
             }
         break;
 
-
-
-
-
-
         case OPCODE_CLASS_STANDALONE:
             switch(opcode.opcode)
             {
@@ -2647,14 +2635,6 @@ void step_cpu()
         //            op_code_str = "MVP";
                 break;
 
-                case OPCODE_TRB:
-        //            op_code_str = "TRB";
-                break;
-
-                case OPCODE_TSB:
-        //            op_code_str = "TSB";
-                break;
-
                 case OPCODE_STP:
         //            op_code_str = "STP";
                 break;
@@ -2669,94 +2649,88 @@ void step_cpu()
             }
         break;
 
-
-
-
-
-
         case OPCODE_CLASS_TRANSFER:
             byte_write = 0;
 
             switch(opcode.opcode)
             {
                 case OPCODE_TAX:
-                    src_address = (unsigned char *)&reg_accum.reg_accumC;
-                    dst_address = (unsigned char *)&reg_x.reg_x;
+                    operand1 = &reg_accum.reg_accumC;
+                    operand0 = &reg_x.reg_x;
                     byte_write = reg_p & CPU_STATUS_FLAG_INDEX;
                 break;
 
                 case OPCODE_TAY:
-                    src_address = (unsigned char *)&reg_accum.reg_accumC;
-                    dst_address = (unsigned char *)&reg_y.reg_y;
+                    operand1 = &reg_accum.reg_accumC;
+                    operand0 = &reg_y.reg_y;
                     byte_write = reg_p & CPU_STATUS_FLAG_INDEX;
                 break;
 
                 case OPCODE_TCD:
-                    src_address = (unsigned char *)&reg_accum.reg_accumC;
-                    dst_address = (unsigned char *)&reg_d;
+                    operand1 = &reg_accum.reg_accumC;
+                    operand0 = &reg_d;
                 break;
 
                 case OPCODE_TCS:
-                    src_address = (unsigned char *)&reg_accum.reg_accumC;
-                    dst_address = (unsigned char *)&reg_s;
+                    operand1 = &reg_accum.reg_accumC;
+                    operand0 = &reg_s;
                 break;
 
                 case OPCODE_TDC:
-                    dst_address = (unsigned char *)&reg_accum.reg_accumC;
-                    src_address = (unsigned char *)&reg_d;
+                    operand1 = &reg_accum.reg_accumC;
+                    operand0 = &reg_d;
                     byte_write = reg_p & CPU_STATUS_FLAG_MEMORY;
                 break;
 
                 case OPCODE_TSC:
-                    dst_address = (unsigned char *)&reg_accum.reg_accumC;
-                    src_address = (unsigned char *)&reg_s;
+                    operand1 = &reg_accum.reg_accumC;
+                    operand0 = &reg_s;
                     byte_write = reg_p & CPU_STATUS_FLAG_MEMORY;
                 break;
 
                 case OPCODE_TSX:
-                    src_address = (unsigned char *)&reg_s;
-                    dst_address = (unsigned char *)&reg_x.reg_x;
+                    operand1 = &reg_s;
+                    operand0 = &reg_x.reg_x;
                 break;
 
                 case OPCODE_TXA:
-                    src_address = (unsigned char *)&reg_x.reg_x;
-                    dst_address = (unsigned char *)&reg_accum.reg_accumC;
+                    operand1 = &reg_x.reg_x;
+                    operand0 = &reg_accum.reg_accumC;
                     byte_write = reg_p & CPU_STATUS_FLAG_MEMORY;
                 break;
 
                 case OPCODE_TXS:
-                    src_address = (unsigned char *)&reg_x.reg_x;
-                    dst_address = (unsigned char *)&reg_s;
+                    operand1 = &reg_x.reg_x;
+                    operand0 = &reg_s;
                 break;
 
                 case OPCODE_TXY:
-                    src_address = (unsigned char *)&reg_x.reg_x;
-                    dst_address = (unsigned char *)&reg_y.reg_y;
+                    operand1 = &reg_x.reg_x;
+                    operand0 = &reg_y.reg_y;
                     byte_write = reg_p & CPU_STATUS_FLAG_INDEX;
                 break;
 
                 case OPCODE_TYA:
-                    src_address = (unsigned char *)&reg_y.reg_y;
-                    dst_address = (unsigned char *)&reg_accum.reg_accumC;
+                    operand1 = &reg_y.reg_y;
+                    operand0 = &reg_accum.reg_accumC;
                     byte_write = reg_p & CPU_STATUS_FLAG_MEMORY;
                 break;
 
                 case OPCODE_TYX:
-                    src_address = (unsigned char *)&reg_y.reg_y;
-                    dst_address = (unsigned char *)&reg_x.reg_x;
+                    operand1 = &reg_y.reg_y;
+                    operand0 = &reg_x.reg_x;
                     byte_write = reg_p & CPU_STATUS_FLAG_INDEX;
                 break;
             }
 
             if(byte_write)
             {
-                *dst_address = *src_address;
+                *(uint8_t *)operand0 = *(uint8_t *)operand1;
             }
             else
             {
-                *(uint16_t *)dst_address = *(uint16_t *)src_address;
+                *(uint16_t *)operand0 = *(uint16_t *)operand1;
             }
-
         break;
     }
 }
