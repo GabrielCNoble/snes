@@ -8,7 +8,7 @@
 
 int main(int argc, char *argv[])
 {
-    struct rom_t rom;
+//    struct rom_t rom;
     char param[512];
 
     unsigned int poke_addr;
@@ -16,7 +16,7 @@ int main(int argc, char *argv[])
 
     //reset_cpu();
 
-    rom.header = NULL;
+//    rom.header = NULL;
 
     int disasm_start;
     int disasm_count;
@@ -33,11 +33,19 @@ int main(int argc, char *argv[])
     // printf("%d\n", (int8_t)alu_op(-1, 1, ALU_OP_DEC, 1));
     // printf("%d\n", (int8_t)alu_op(127, 1, ALU_OP_INC, 1));
     // printf("%d\n", (int8_t)alu_op(-1, 1, ALU_OP_INC, 1));
-    printf("%d\n", (int8_t)alu_op(1, 2, ALU_OP_CMP, 1));
+    // printf("%d\n", (int8_t)alu_op(0x80, 2, ALU_OP_SHL, 1));
+    // printf("%d\n", (int8_t)alu_op(0x0, 2, ALU_OP_ROR, 1));
     // printf("%d\n", alu_op(128, 1, ALU_OP_SUB, 1));
-    
-
-    return 0;
+    reset_cpu();
+//    uint32_t value = 1;
+//    for(uint32_t i = 0; i < 128; i++)
+//    {
+//        value = alu(value, 1, ALU_OP_XOR, 1);
+//        printf("%d\n", (int8_t)value);
+//    }
+//    
+//
+//    return 0;
 
     if(argc > 1)
     {
@@ -56,20 +64,15 @@ int main(int argc, char *argv[])
                 {
                     if(!strcmp(param, "-rom"))
                     {
-                        if(rom.header)
-                        {
-                            free(rom.base);
-                        }
+//                        if(rom.header)
+//                        {
+//                            free(rom.base);
+//                        }
 
                         scanf("%s", param);
                         load_rom_file(param);
                         reset_cpu();
                         disassemble_current(1);
-//                        if(rom.header)
-//                        {
-//                            map_rom(&rom);
-//                            disassemble_current(1);
-//                        }
                     }
                     else
                     {
@@ -79,7 +82,7 @@ int main(int argc, char *argv[])
 
                             if(!strcmp(param, "-header"))
                             {
-                                dump_rom(&rom);
+//                                dump_rom(&rom);
                             }
                             else
                             {
