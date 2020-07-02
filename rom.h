@@ -90,6 +90,8 @@ void *mode21_rom_pointer(uint32_t effective_address);
 
 void *rom_pointer(unsigned int effective_address);
 
+uint32_t rom_read(uint32_t effective_address);
+
 //__fastcall void access_rom(unsigned int effective_address, int write, void *data, int width);
 
 //void map_rom(struct rom_t *rom);

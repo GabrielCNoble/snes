@@ -4,49 +4,23 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#define SDL_MAIN_HANDLED
+#include "SDL/include/SDL2/SDL.h"
 
 
 int main(int argc, char *argv[])
 {
-//    struct rom_t rom;
     char param[512];
-
     unsigned int poke_addr;
     unsigned int poke_value;
-
-    //reset_cpu();
-
-//    rom.header = NULL;
-
     int disasm_start;
     int disasm_count;
-
-    // int32_t operand0 = 0;
-    // int32_t operand1 = 0;
- 
-    // printf("%d\n", alu_op(0, 0, ALU_OP_ADD, 1));
-    // printf("%d\n", alu_op(1, 1, ALU_OP_ADD, 1));
-    // printf("%d\n", alu_op(1, -1, ALU_OP_ADD, 1));
-    // printf("%d\n", (int8_t)alu_op(127, -128, ALU_OP_ADD, 1));
-    // printf("%d\n", (int8_t)alu_op(127, 128, ALU_OP_SUB, 1));
-    // printf("%d\n", (int8_t)alu_op(127, 1, ALU_OP_ADD, 1));
-    // printf("%d\n", (int8_t)alu_op(-1, 1, ALU_OP_DEC, 1));
-    // printf("%d\n", (int8_t)alu_op(127, 1, ALU_OP_INC, 1));
-    // printf("%d\n", (int8_t)alu_op(-1, 1, ALU_OP_INC, 1));
-    // printf("%d\n", (int8_t)alu_op(0x80, 2, ALU_OP_SHL, 1));
-    // printf("%d\n", (int8_t)alu_op(0x0, 2, ALU_OP_ROR, 1));
-    // printf("%d\n", alu_op(128, 1, ALU_OP_SUB, 1));
-    reset_cpu();
-//    uint32_t value = 1;
-//    for(uint32_t i = 0; i < 128; i++)
-//    {
-//        value = alu(value, 1, ALU_OP_XOR, 1);
-//        printf("%d\n", (int8_t)value);
-//    }
-//    
-//
-//    return 0;
-
+    uint32_t step_count;
+    
+//    SDL_Init(SDL_INIT_TIMER);
+//    printf("%d\n", SDL_GetPerformanceFrequency());
+    
+    reset_emu();
     if(argc > 1)
     {
         if(!strcmp(argv[1], "-i"))
@@ -64,14 +38,10 @@ int main(int argc, char *argv[])
                 {
                     if(!strcmp(param, "-rom"))
                     {
-//                        if(rom.header)
-//                        {
-//                            free(rom.base);
-//                        }
-
                         scanf("%s", param);
                         load_rom_file(param);
-                        reset_cpu();
+//                        reset_cpu();
+                        reset_emu();
                         disassemble_current(1);
                     }
                     else
@@ -80,52 +50,54 @@ int main(int argc, char *argv[])
                         {
                             scanf("%s", param);
 
-                            if(!strcmp(param, "-header"))
+                            if(!strcmp(param, "-start"))
                             {
-//                                dump_rom(&rom);
+                                scanf("%x", &disasm_start);
                             }
                             else
                             {
-                                if(!strcmp(param, "-start"))
-                                {
-                                    scanf("%x", &disasm_start);
-                                }
-                                else
-                                {
-                                    disasm_start = -1;
-                                }
-
-                                scanf("%s", param);
-
-                                if(!strcmp(param, "-count"))
-                                {
-                                    scanf("%x", &disasm_count);
-                                }
-                                else
-                                {
-                                    disasm_count = 1024;
-                                }
-
-                                disassemble(disasm_start, disasm_count);
+                                disasm_start = -1;
                             }
 
+                            scanf("%s", param);
 
+                            if(!strcmp(param, "-count"))
+                            {
+                                scanf("%x", &disasm_count);
+                            }
+                            else
+                            {
+                                disasm_count = 1024;
+                            }
+
+                            disassemble(disasm_start, disasm_count);
+                            
                         }
                         else if(!strcmp(param, "-step"))
                         {
-                            step_cpu();
+                            step_emu();
+                            disassemble_current(1);
+                        }
+                        else if(!strcmp(param, "-stepc"))
+                        {
+                            scanf("%d", &step_count);
+                            while(step_count)
+                            {
+                                step_emu();
+                                step_count--;
+                            }
                             disassemble_current(1);
                         }
                         else if(!strcmp(param, "-poke"))
                         {
                             scanf("%x", &poke_addr);
-                            poke(poke_addr, -1);
+                            poke(poke_addr, NULL);
                         }
                         else if(!strcmp(param, "-pokev"))
                         {
                             scanf("%x", &poke_addr);
                             scanf("%x", &poke_value);
-                            poke(poke_addr, poke_value);
+                            poke(poke_addr, &poke_value);
                         }
                         else if(!strcmp(param, "-h_regs"))
                         {
@@ -135,14 +107,13 @@ int main(int argc, char *argv[])
                         {
                             while(1)
                             {
-                                step_cpu();
+                                step_emu();
                                 //disassemble_current(1);
                             }
                         }
                         else if(!strcmp(param, "-reset"))
                         {
-                            reset_cpu();
-                            printf("the cpu has been reset...\n");
+                            reset_emu();
                             disassemble_current(1);
                         }
                         else if(!strcmp(param, "-drv"))

@@ -281,6 +281,11 @@ void *rom_pointer(unsigned int effective_address)
     return NULL;
 }
 
+uint32_t rom_read(uint32_t effective_address)
+{
+    return *(uint32_t *)rom_pointer(effective_address);
+}
+
 
 
 

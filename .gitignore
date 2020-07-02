@@ -1,3 +1,4 @@
+SDL
 *.o
 *.smc
 *.sfc
@@ -9,4 +10,5 @@ oc.c
 oc.exe
 test.c
 test.exe
+*.dll
 *.txt

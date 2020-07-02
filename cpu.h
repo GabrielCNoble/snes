@@ -1,7 +1,7 @@
 #ifndef CPU_H
 #define CPU_H
 
-#include "addr_common.h"
+#include "addr.h"
 #include <stdint.h>
 
 enum OPCODE_CLASS
@@ -246,9 +246,6 @@ struct opcode_t
     unsigned char opcode;
     unsigned address_mode : 5;
     unsigned opcode_class : 3;
-    // unsigned short opcode;
-    // unsigned char address_mode;
-    // unsigned char opcode_category;
 };
 
 struct branch_cond_t
@@ -256,21 +253,8 @@ struct branch_cond_t
     uint8_t condition;
 };
 
-#define OPCODE(op, cat, addr_mod) {.opcode = op, .address_mode = addr_mod, .opcode_class = cat}
 
 
-
-enum CPU_ACCESSS
-{
-    CPU_ACCESS_PPU = 0,
-    CPU_ACCESS_APU,
-    CPU_ACCESS_WRAM1,
-    CPU_ACCESS_WRAM2,
-    CPU_ACCESS_REGS,
-    CPU_ACCESS_ROM,
-    CPU_ACCESS_CONTROLLER,
-    CPU_ACCESS_DMA,
-};
 
 
 void reset_cpu();
@@ -281,22 +265,21 @@ void disassemble(int start, int byte_count);
 
 int disassemble_current(int show_registers);
 
-void poke(int effective_address, int value);
+void poke(uint32_t effective_address, uint32_t *value);
 
 int view_hardware_registers();
 
-/*__fastcall */ int cpu_access_location(unsigned int effective_address);
+void exec_interrupt();
 
-/*__fastcall */ void *memory_pointer(unsigned int effective_address);
+void *cpu_pointer(uint32_t effective_address, uint32_t access_location);
 
-/*__fastcall */ void exec_interrupt();
+void cpu_write(uint32_t effective_address, uint32_t data, uint32_t access_location, uint32_t byte_write);
 
+uint32_t cpu_read(uint32_t effective_address, uint32_t access_location);
 
-void update_reg_p(uint32_t operand0, uint32_t operand1, uint32_t result, uint32_t flags);
+uint16_t alu(uint32_t operand0, uint32_t operand1, uint32_t op, uint32_t width);
 
-uint32_t alu(uint32_t operand0, uint32_t operand1, uint32_t op, uint32_t width);
-
-void step_cpu();
+uint32_t step_cpu();
 
 
 
