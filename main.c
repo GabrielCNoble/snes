@@ -7,7 +7,6 @@
 #define SDL_MAIN_HANDLED
 #include "SDL/include/SDL2/SDL.h"
 
-
 int main(int argc, char *argv[])
 {
     char param[512];
@@ -17,10 +16,9 @@ int main(int argc, char *argv[])
     int disasm_count;
     uint32_t step_count;
     
-//    SDL_Init(SDL_INIT_TIMER);
-//    printf("%d\n", SDL_GetPerformanceFrequency());
+    uint32_t breakpoint_count = 0;
+    uint32_t breakpoints[32];
     
-    reset_emu();
     if(argc > 1)
     {
         if(!strcmp(argv[1], "-i"))
@@ -40,53 +38,16 @@ int main(int argc, char *argv[])
                     {
                         scanf("%s", param);
                         load_rom_file(param);
-//                        reset_cpu();
                         reset_emu();
-                        disassemble_current(1);
+                        dump_cpu(1);
                     }
                     else
                     {
-                        if(!strcmp(param, "-dump"))
-                        {
-                            scanf("%s", param);
-
-                            if(!strcmp(param, "-start"))
-                            {
-                                scanf("%x", &disasm_start);
-                            }
-                            else
-                            {
-                                disasm_start = -1;
-                            }
-
-                            scanf("%s", param);
-
-                            if(!strcmp(param, "-count"))
-                            {
-                                scanf("%x", &disasm_count);
-                            }
-                            else
-                            {
-                                disasm_count = 1024;
-                            }
-
-                            disassemble(disasm_start, disasm_count);
-                            
-                        }
-                        else if(!strcmp(param, "-step"))
+                        if(!strcmp(param, "-step"))
                         {
                             step_emu();
-                            disassemble_current(1);
-                        }
-                        else if(!strcmp(param, "-stepc"))
-                        {
-                            scanf("%d", &step_count);
-                            while(step_count)
-                            {
-                                step_emu();
-                                step_count--;
-                            }
-                            disassemble_current(1);
+                            dump_cpu(1);
+                            dump_ppu();
                         }
                         else if(!strcmp(param, "-poke"))
                         {
@@ -105,16 +66,13 @@ int main(int argc, char *argv[])
                         }
                         else if(!strcmp(param, "-run"))
                         {
-                            while(1)
-                            {
-                                step_emu();
-                                //disassemble_current(1);
-                            }
+                            while(step_emu());
+                            dump_cpu(1);
                         }
                         else if(!strcmp(param, "-reset"))
                         {
                             reset_emu();
-                            disassemble_current(1);
+                            dump_cpu(1);
                         }
                         else if(!strcmp(param, "-drv"))
                         {
@@ -123,6 +81,12 @@ int main(int argc, char *argv[])
                         else if(!strcmp(param, "-h"))
                         {
 
+                        }
+                        else if(!strcmp(param, "-breakpoint"))
+                        {
+                            uint32_t breakpoint;
+                            scanf("%x", &breakpoint);
+                            set_breakpoint(breakpoint);
                         }
                     }
                 }

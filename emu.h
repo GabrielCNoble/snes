@@ -1,7 +1,7 @@
 #ifndef EMU_H
 #define EMU_H
 
-#include "dmov.h"
+#include "mem.h"
 #include "cpu.h"
 #include "ppu.h"
 
@@ -27,9 +27,11 @@
     emulation by scanline instead.
 */
 
+void set_breakpoint(uint32_t effective_address);
+
 void reset_emu();
 
-void step_emu();
+uint32_t step_emu();
 
 
 

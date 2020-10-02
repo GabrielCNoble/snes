@@ -7,7 +7,7 @@
 #define CPU_BANKS 0xff
 #define CPU_BANK_SIZE 0xffff
 #define CPU_RAM_SIZE 0x0fffffff
-#define EFFECTIVE_ADDRESS(bank, offset) (((offset)&0xffff)|(((bank)<<16)&0x00ff0000))
+#define EFFECTIVE_ADDRESS(bank, offset) (((uint16_t)(offset))|((((uint32_t)(bank))<<16)&0x00ff0000))
 
 #define RAM1_START_BANK 0x00
 #define RAM1_END_BANK 0x3f

@@ -23,4 +23,6 @@ uint32_t ppu_read(uint32_t effective_address);
 
 void step_ppu(uint32_t cycle_count);
 
+void dump_ppu();
+
 #endif // PPU_H

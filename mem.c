@@ -1,4 +1,4 @@
-#include "dmov.h"
+#include "mem.h"
 #include "addr.h"
 #include "cpu.h"
 #include "ppu.h"
@@ -79,9 +79,15 @@ void write_data(uint32_t effective_address, uint32_t data, uint32_t byte_write)
     switch(access_location)
     {
         case ACCESS_LOCATION_REGS:
+            cpu_regs_write(effective_address, data, byte_write);
+        break;
+        
         case ACCESS_LOCATION_WRAM1:
+            cpu_wram1_write(effective_address, data, byte_write);
+        break;
+        
         case ACCESS_LOCATION_WRAM2:
-            cpu_write(effective_address, data, access_location, byte_write);
+            cpu_wram2_write(effective_address, data, byte_write);
         break;
         
         case ACCESS_LOCATION_PPU:
@@ -102,9 +108,15 @@ uint32_t read_data(uint32_t effective_address)
     switch(access_location)
     {
         case ACCESS_LOCATION_REGS:
+            data = cpu_regs_read(effective_address);
+        break;
+        
         case ACCESS_LOCATION_WRAM1:
+            data = cpu_wram1_read(effective_address);
+        break;
+        
         case ACCESS_LOCATION_WRAM2:
-            data = cpu_read(effective_address, access_location);
+            data = cpu_wram2_read(effective_address);
         break;
         
         case ACCESS_LOCATION_PPU:

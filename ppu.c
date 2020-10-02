@@ -3,7 +3,7 @@
 #include "ppu.h"
 #include "addr.h"
 #include "cpu.h"
-#include "dmov.h"
+#include "mem.h"
 
 
 
@@ -32,7 +32,11 @@
 #define HVBJOY_ADDRESS 0x4212
 
 #define SCANLINE_DOT_LENGTH 340
-#define H_BLANK_DOT 274
+#define SCANLINE_COUNT 262
+#define H_BLANK_END_DOT 1
+#define H_BLANK_START_DOT 274
+
+#define V_BLANK_END_LINE 0 
 
 /* https://www.raphnet.net/divers/retro_challenge_2019_03/qsnesdoc.html */
 
@@ -159,6 +163,12 @@ union
         uint8_t cgswsel;
         uint8_t cgadsub;
         uint8_t coldata;
+        
+        /*
+            SETINI (0x2133) Initial screen setting
+                0 - interlacing (0) or non-interlacing (1) scan modes
+                2 - whether to use 224 (0) or 239 (1) lines. Changes where V-blank starts.
+        */
         uint8_t setini;
         uint8_t mpyl;
         uint8_t mpym;
@@ -315,21 +325,20 @@ void step_ppu(uint32_t cycle_count)
     cycle_count >>= 2;
     uint8_t value;
     
-    /* those values are mostly mocked up */
     for(uint32_t cycle = 0; cycle < cycle_count; cycle++)
     {
         counters[H_COUNTER].counter++;
-        if(counters[H_COUNTER].counter == 1)
+        if(counters[H_COUNTER].counter == H_BLANK_END_DOT)
         {
-            value = (uint8_t)cpu_read(HVBJOY_ADDRESS, ACCESS_LOCATION_REGS);
+            value = (uint8_t)cpu_regs_read(HVBJOY_ADDRESS);
             value &= ~H_BLANK_FLAG;
-            cpu_write(HVBJOY_ADDRESS, value, ACCESS_LOCATION_REGS, 1);
+            cpu_regs_write(HVBJOY_ADDRESS, value, 1);
         }
-        else if(counters[H_COUNTER].counter == H_BLANK_DOT)
+        else if(counters[H_COUNTER].counter == H_BLANK_START_DOT)
         {
-            value = (uint8_t)cpu_read(HVBJOY_ADDRESS, ACCESS_LOCATION_REGS);
+            value = (uint8_t)cpu_regs_read(HVBJOY_ADDRESS);
             value |= H_BLANK_FLAG;
-            cpu_write(HVBJOY_ADDRESS, value, ACCESS_LOCATION_REGS, 1);
+            cpu_regs_write(HVBJOY_ADDRESS, value, 1);
         }
         if(counters[H_COUNTER].counter == SCANLINE_DOT_LENGTH)
         {
@@ -338,24 +347,48 @@ void step_ppu(uint32_t cycle_count)
         
         counters[H_COUNTER].counter %= SCANLINE_DOT_LENGTH;
         
-        
-        if(counters[V_COUNTER].counter == 0)
+         
+        if(counters[V_COUNTER].counter == V_BLANK_END_LINE)
         {
-            value = (uint8_t)cpu_read(HVBJOY_ADDRESS, ACCESS_LOCATION_REGS);
+            value = (uint8_t)cpu_regs_read(HVBJOY_ADDRESS);
             value &= ~V_BLANK_FLAG;
-            cpu_write(HVBJOY_ADDRESS, value, ACCESS_LOCATION_REGS, 1);
+            cpu_regs_write(HVBJOY_ADDRESS, value, 1);
         }
-        else if(counters[V_COUNTER].counter == 225)
+        else
         {
-            value = (uint8_t)cpu_read(HVBJOY_ADDRESS, ACCESS_LOCATION_REGS);
-            value |= V_BLANK_FLAG;
-            cpu_write(HVBJOY_ADDRESS, value, ACCESS_LOCATION_REGS, 1);
+            uint32_t last_scanline;
+            
+            if(ppu_regs.setini)
+            {
+                last_scanline = 240;
+            }
+            else
+            {
+                last_scanline = 225;
+            }
+            
+            if(counters[V_COUNTER].counter == last_scanline)
+            {
+                value = (uint8_t)cpu_regs_read(HVBJOY_ADDRESS);
+                value |= V_BLANK_FLAG;
+                cpu_regs_write(HVBJOY_ADDRESS, value, 1);
+            }
         }
         
-        counters[V_COUNTER].counter %= 261;
+        counters[V_COUNTER].counter %= SCANLINE_COUNT;
     }
 }
 
+void dump_ppu()
+{
+//    uint32_t hvbjoy = cpu_regs_read(HVBJOY_ADDRESS);
+//    printf("==================================================\n");
+//    printf("======================PPU=========================\n");
+//    printf("current dot: (%d, %d)\n", counters[H_COUNTER].counter, counters[V_COUNTER].counter);
+//    printf("v-blank: %d -- h-blank: %d\n", hvbjoy & V_BLANK_FLAG, hvbjoy & H_BLANK_FLAG);
+//    printf("==================================================\n");
+//    printf("==================================================\n");
+}
 
 
 
