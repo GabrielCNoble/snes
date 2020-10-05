@@ -15,11 +15,13 @@ struct obj_attr_t
 };
 #pragma pack(pop)
 
-void *ppu_pointer(uint32_t effective_address);
+void *ppu_regs_pointer(uint32_t effective_address);
 
-void ppu_write(uint32_t effective_address, uint32_t data, uint32_t byte_write);
+void ppu_regs_write(uint32_t effective_address, uint8_t data);
 
-uint32_t ppu_read(uint32_t effective_address);
+uint8_t ppu_regs_read(uint32_t effective_address);
+
+void reset_ppu();
 
 void step_ppu(uint32_t cycle_count);
 

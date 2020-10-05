@@ -54,7 +54,7 @@ struct rom_header_t *get_rom_header(void *rom)
 
 
 
-void load_rom_file(char *file_name)
+uint32_t load_rom_file(char *file_name)
 {
     FILE *rom_file;
     void *file_buffer;
@@ -83,7 +83,7 @@ void load_rom_file(char *file_name)
     if(!rom_file)
     {
         printf("couldn't open file %s\n", file_name);
-//        return rom;
+        return 0;
     }
 
 
@@ -189,6 +189,8 @@ void load_rom_file(char *file_name)
     printf("rom size: %s\n", rom_size_str);
     printf("ram size: %s\n", ram_size_str);
     printf("game name: %s\n", game_name);
+    
+    return 1;
     
 }
 

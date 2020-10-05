@@ -5,7 +5,7 @@
 #include <string.h>
 #include <stdint.h>
 #define SDL_MAIN_HANDLED
-#include "SDL/include/SDL2/SDL.h"
+#include "SDL2/SDL.h"
 
 int main(int argc, char *argv[])
 {
@@ -18,6 +18,14 @@ int main(int argc, char *argv[])
     
     uint32_t breakpoint_count = 0;
     uint32_t breakpoints[32];
+    
+    if(SDL_Init(SDL_INIT_EVERYTHING) < 0)
+    {
+        printf("error: %s\n", SDL_GetError());
+        return -1;
+    }
+    
+//    reset_emu();
     
     if(argc > 1)
     {
@@ -37,9 +45,11 @@ int main(int argc, char *argv[])
                     if(!strcmp(param, "-rom"))
                     {
                         scanf("%s", param);
-                        load_rom_file(param);
-                        reset_emu();
-                        dump_cpu(1);
+                        if(load_rom_file(param))
+                        {
+                            reset_emu();
+                            dump_cpu(1);
+                        }
                     }
                     else
                     {
@@ -82,11 +92,49 @@ int main(int argc, char *argv[])
                         {
 
                         }
+                        else if(!strcmp(param, "-animate"))
+                        {
+                            while(step_emu())
+                            {
+//                                SDL_Delay(1);
+                                dump_cpu(1);
+                            }
+                        }
                         else if(!strcmp(param, "-breakpoint"))
                         {
-                            uint32_t breakpoint;
-                            scanf("%x", &breakpoint);
-                            set_breakpoint(breakpoint);
+                            scanf("%s", param);
+                            
+                            if(!strcmp(param, "e"))
+                            {
+                                uint32_t address;
+                                scanf("%x", &address);
+                                set_execution_breakpoint(address);
+                            }
+                            else if(!strcmp(param, "r"))
+                            {
+                                uint32_t value;
+                                scanf("%s", param);
+                                scanf("%x", &value);
+                                if(!strcmp(param, "Y"))
+                                {
+                                    set_register_breakpoint(BREAKPOINT_REGISTER_Y, value);
+                                }
+                                if(!strcmp(param, "X"))
+                                {
+                                    set_register_breakpoint(BREAKPOINT_REGISTER_X, value);
+                                }
+                            }
+                            else if(!strcmp(param, "c"))
+                            {
+                                clear_breakpoints();
+                            }
+                            else
+                            {
+                                printf("unknown type of breakpoint\n");
+                            }
+//                            uint32_t breakpoint;
+//                            scanf("%x", &breakpoint);
+//                            set_breakpoint(breakpoint);
                         }
                     }
                 }
@@ -105,4 +153,6 @@ int main(int argc, char *argv[])
     }
 
     //load_rom("final_fantasy_v.smc");
+    
+    return 0;
 }

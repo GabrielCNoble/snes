@@ -21,6 +21,12 @@
 #define OBJ_ATTR_NAME(obj_attr) _Generic(obj_attr, struct obj_attr_t: OBJ_ATTR_NAME_P(&obj_attr), default: OBJ_ATTR_NAME_P(obj_attr))
 
 
+#define INIDISP_ADDRESS 0x2100
+#define OBJSEL_ADDRESS 0x2101
+#define OAMADDRL_ADDRESS 0x2102
+#define OAMADDRH_ADDRESS 0x2103
+#define OAMDATA_ADDRESS 0x2104
+
 #define SLHV_ADDRESS 0x2137
 #define STAT78_ADDRESS 0x213f
 #define OPHCT_ADDRESS 0x213c
@@ -49,7 +55,7 @@
     WOULD BE IMPORTANT, RIGHT? IT'S NOT LIKE ANY MORON EMULATOR WRITTER WILL
     FIRST ASSUME VRAM RESIDES IN THE 120K WRAM AREA. NO, NOT AT ALL.
 */
-uint8_t vram[0xffff];
+uint16_t vram[0x7fff];
 
 #define H_COUNTER 0
 #define V_COUNTER 1
@@ -58,14 +64,34 @@ uint8_t vram[0xffff];
 
 struct 
 {
-    uint16_t counter: 9;
-    uint16_t latched: 9;
-    uint16_t select: 1;
+    uint16_t counter;
+    
+    union
+    {
+        struct { uint8_t bytes[2]; };
+        uint16_t word;
+    }latched;
+    
+    uint16_t byte_select;
 }counters[2];
 
 //uint16_t h_counter_select;
 //uint16_t v_counter;
 //uint16_t v_counter_select;
+
+
+
+#define PPU_REG_OFFSET(reg) (reg-PPU_REGS_START_ADDRESS)
+
+char *ppu_reg_names[PPU_REGS_END_ADDRESS - PPU_REGS_START_ADDRESS] = {
+    [PPU_REG_OFFSET(INIDISP_ADDRESS)] = "INIDSP",
+    [PPU_REG_OFFSET(OBJSEL_ADDRESS)] = "OBJSEL",
+    [PPU_REG_OFFSET(OAMADDRL_ADDRESS)] = "OAMADDRL",
+    [PPU_REG_OFFSET(OAMADDRH_ADDRESS)] = "OAMADDRH",
+    [PPU_REG_OFFSET(OAMDATA_ADDRESS)] = "OAMDATA",
+};
+
+#define VERBOSE
 
 union
 {
@@ -73,11 +99,34 @@ union
 
     struct
     {
-        uint8_t inidps;
+        /* INIDISP (0x2100)
+            
+            D0-D3   -> screen brightness. 0xf is the brightest, 0x0 is the darkest.
+            D7      -> force blanking. Does not reset any counters. 
+        */
+        uint8_t inidisp;
+        
+        
         uint8_t objsel;
-        uint8_t oamddl;
-        uint8_t oamddh;
-        uint8_t oamdata_write;
+        
+        /* OAMADDR (0x2102, 0x2103) - WORD address that will be used to write OAM data. Note, again, it's the 
+        WORD address, meaning that incrementing it will advance TWO bytes, NOT ONE.  */
+        union
+        {
+            struct 
+            {
+                uint8_t oamaddrl;
+                uint8_t oamaddrh;
+            };
+            
+            uint16_t oamaddr;
+        };
+        
+        /* OAMDATAW (0x2104) - data to be written into the OAM data. Two reads are necessary to trigger the transfer,
+        and they must be done low byte first, high byte second. The first write will be latched into a buffer, and the
+        second one will trigger the whole transfer. After the write, the value in the OAMADDR will be incremented by one,
+        pointing at the next word to be written. */
+        uint8_t oamdataw;
         uint8_t bgmode;
         uint8_t mosaic;
         uint8_t bg1sc;
@@ -205,7 +254,8 @@ union
                 - 1st read  Lower 8bit
                 - 2nd read  Upper 1bit (other 7bit PPU2 open bus; last value read from PPU2)
 
-            There are two separate 1st/2nd-read flipflops (one for OPHCT, one for OPVCT), both flipflops can be reset by reading from Port 213Fh (STAT78), the flipflops aren't automatically reset when latching occurs.
+            There are two separate 1st/2nd-read flipflops (one for OPHCT, one for OPVCT), both flipflops can be reset by reading from Port 213Fh (STAT78), 
+            the flipflops aren't automatically reset when latching occurs.
 
                 H Counter values range from 0 to 339, with 22-277 being visible on the
                 screen. V Counter values range from 0 to 261 in NTSC mode (262 is
@@ -233,10 +283,20 @@ union
     };
 }ppu_regs;
 
-void *ppu_pointer(uint32_t effective_address)
+uint32_t oamdata_byte_index = 0;
+
+union
 {
-    uint32_t ppu_address = (effective_address & 0xffff) - PPU_START_ADDRESS;
-    return (ppu_regs.ppu_regs + ppu_address);
+    struct { uint8_t bytes[2]; };
+    uint16_t word;
+}oamdata_buffer;
+
+//uint8_t oamdata_buffer[2] = {};
+
+void *ppu_regs_pointer(uint32_t effective_address)
+{
+//    uint32_t ppu_address = (effective_address & 0xffff) - PPU_START_ADDRESS;
+//    return (ppu_regs.ppu_regs + ppu_address);
 }
 
 void ppu_write_byte(uint32_t effective_address, uint8_t data)
@@ -244,80 +304,108 @@ void ppu_write_byte(uint32_t effective_address, uint8_t data)
     
 }
 
-void ppu_write(uint32_t effective_address, uint32_t data, uint32_t byte_write)
-{
-    void *pointer = ppu_pointer(effective_address);
+void ppu_regs_write(uint32_t effective_address, uint8_t data)
+{    
+    effective_address &= 0x7fff;
     
-    switch(effective_address & 0x7fff)
+//    #ifdef VERBOSE
+//    
+//    printf("write %x to [%s]\n", data, ppu_reg_names[PPU_REG_OFFSET(effective_address)]);
+//    
+//    #endif // VERBOSE
+    
+    switch(effective_address)
     {
-        case VMDATALW_ADDRESS:
-            ppu_regs.vmdatal_write = data;
-            pointer = vram + ppu_regs.vmadd * 2;
-            if(!(ppu_regs.vmainc & 0x80))
+        case OAMADDRL_ADDRESS:
+            ppu_regs.oamaddrl = data;
+            oamdata_byte_index = 0;
+        break;
+        
+        case OAMADDRH_ADDRESS:
+            ppu_regs.oamaddrh = data;
+            oamdata_byte_index = 0;
+        break;
+        
+        case OAMDATA_ADDRESS:
+            oamdata_buffer.bytes[oamdata_byte_index] = data;
+            oamdata_byte_index++;
+            
+            if(oamdata_byte_index > 1)
             {
-                ppu_regs.vmadd++;
+                vram[ppu_regs.oamaddr] = oamdata_buffer.word;
+                printf("word written to vram at %x\n", ppu_regs.oamaddr);
+                ppu_regs.oamaddr++;
+                oamdata_byte_index = 0;
             }
         break;
         
-        case VMDATAHW_ADDRESS:
-            ppu_regs.vmdatah_write = data;
-            pointer = vram + ppu_regs.vmadd * 2 + 1;
-            if(ppu_regs.vmainc & 0x80)
-            {
-                ppu_regs.vmadd++;
-            }
+        default:
+            ppu_regs.ppu_regs[effective_address - PPU_REGS_START_ADDRESS] = data;
         break;
+        
+//        case VMDATALW_ADDRESS:
+//            ppu_regs.vmdatal_write = data;
+//            pointer = vram + ppu_regs.vmadd * 2;
+//            if(!(ppu_regs.vmainc & 0x80))
+//            {
+//                ppu_regs.vmadd++;
+//            }
+//        break;
+//        
+//        case VMDATAHW_ADDRESS:
+//            ppu_regs.vmdatah_write = data;
+//            pointer = vram + ppu_regs.vmadd * 2 + 1;
+//            if(ppu_regs.vmainc & 0x80)
+//            {
+//                ppu_regs.vmadd++;
+//            }
+//        break;
     }
     
-    if(byte_write)
-    {
-        *(uint16_t *)pointer = (uint16_t)data;
-    }
-    else
-    {
-        *(uint8_t *)pointer = (uint8_t)data;
-    }
+    
 }
 
-uint32_t ppu_read(uint32_t effective_address)
+uint8_t ppu_regs_read(uint32_t effective_address)
 {
-    void *pointer = ppu_pointer(effective_address);
+    effective_address &= 0x7fff;
     
-    switch(effective_address & 0x7fff)
+    switch(effective_address)
     {
         case SLHV_ADDRESS:
-            counters[H_COUNTER].latched = counters[H_COUNTER].counter;
-            counters[V_COUNTER].latched = counters[V_COUNTER].counter;
+            counters[H_COUNTER].latched.word = counters[H_COUNTER].counter;
+            counters[V_COUNTER].latched.word = counters[V_COUNTER].counter;
         break;
         
         case STAT78_ADDRESS:
-            counters[H_COUNTER].select = 0;
-            counters[V_COUNTER].select = 0;
+            counters[H_COUNTER].byte_select = 0;
+            counters[V_COUNTER].byte_select = 0;
         break;
         
         case OPHCT_ADDRESS:
-            ppu_regs.ophct = (counters[H_COUNTER].counter >> (counters[H_COUNTER].select << 4)) & 0xff;
-            counters[H_COUNTER].select = 1;
+            ppu_regs.ophct = counters[H_COUNTER].latched.bytes[counters[H_COUNTER].byte_select];
+            counters[H_COUNTER].byte_select = 1;
         break;
         
         case OPVCT_ADDRESS:
-            ppu_regs.opvct = (counters[V_COUNTER].counter >> (counters[V_COUNTER].select << 4)) & 0xff;
-            counters[V_COUNTER].select = 1;
+            ppu_regs.ophct = counters[V_COUNTER].latched.bytes[counters[V_COUNTER].byte_select];
+            counters[V_COUNTER].byte_select = 1;
         break;
     }
     
-    return *(uint32_t *)pointer;
+    return ppu_regs.ppu_regs[effective_address - PPU_REGS_START_ADDRESS];
 }
 
 void reset_ppu()
 {
     counters[H_COUNTER].counter = 0;
-    counters[H_COUNTER].latched = 0;
-    counters[H_COUNTER].select = 0;
+    counters[H_COUNTER].latched.word = 0;
+    counters[H_COUNTER].byte_select = 0;
     
     counters[V_COUNTER].counter = 0;
-    counters[V_COUNTER].latched = 0;
-    counters[V_COUNTER].select = 0;
+    counters[V_COUNTER].latched.word = 0;
+    counters[V_COUNTER].byte_select = 0;
+    
+    ppu_regs.inidisp = 0;
 }
 
 void step_ppu(uint32_t cycle_count)

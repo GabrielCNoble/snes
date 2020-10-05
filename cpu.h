@@ -32,6 +32,8 @@ enum ALU_OP
     ALU_OP_ROL,
     ALU_OP_TSB,
     ALU_OP_TRB,
+    ALU_OP_BIT,
+    ALU_OP_LAST
 };
 
 enum OPCODES
@@ -288,7 +290,6 @@ struct transfer_params_t
     void *dst_reg;
     uint8_t flag;
 };
-
 
 struct cpu_state_t
 {

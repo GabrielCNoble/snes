@@ -11,7 +11,7 @@ uint32_t data_access_location(uint32_t effective_address)
 
     temp_address = effective_address & 0xffff;
 
-    if(temp_address >= PPU_START_ADDRESS && temp_address <= PPU_END_ADDRESS)
+    if(temp_address >= PPU_REGS_START_ADDRESS && temp_address <= PPU_REGS_END_ADDRESS)
     {
         /* ppu registers... */
         return ACCESS_LOCATION_PPU;
@@ -52,7 +52,7 @@ uint32_t data_access_location(uint32_t effective_address)
 void *memory_pointer(uint32_t effective_address)
 {
     uint32_t access_location = data_access_location(effective_address);
-    void *pointer;
+    void *pointer = NULL;
     switch(access_location)
     {
         case ACCESS_LOCATION_REGS:
@@ -62,7 +62,7 @@ void *memory_pointer(uint32_t effective_address)
         break;
         
         case ACCESS_LOCATION_PPU:
-            pointer = ppu_pointer(effective_address);
+//            pointer = ppu_pointer(effective_address);
         break;
         
         case ACCESS_LOCATION_ROM:
@@ -91,7 +91,7 @@ void write_data(uint32_t effective_address, uint32_t data, uint32_t byte_write)
         break;
         
         case ACCESS_LOCATION_PPU:
-            ppu_write(effective_address, data, byte_write);
+            ppu_regs_write(effective_address, data);
         break;
         
         case ACCESS_LOCATION_ROM:
@@ -120,7 +120,7 @@ uint32_t read_data(uint32_t effective_address)
         break;
         
         case ACCESS_LOCATION_PPU:
-            data = ppu_read(effective_address);
+            data = ppu_regs_read(effective_address);
         break;
         
         case ACCESS_LOCATION_ROM:

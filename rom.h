@@ -80,7 +80,7 @@ struct rom_header_t
 
 struct rom_header_t *get_rom_header(void *rom);
 
-void load_rom_file(char *file_name);
+uint32_t load_rom_file(char *file_name);
 
 void dump_rom(struct rom_t *rom);
 

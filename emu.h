@@ -27,7 +27,37 @@
     emulation by scanline instead.
 */
 
-void set_breakpoint(uint32_t effective_address);
+enum BREAKPOINT_REGISTER
+{
+    BREAKPOINT_REGISTER_X,
+    BREAKPOINT_REGISTER_YL,
+    BREAKPOINT_REGISTER_YH,
+    BREAKPOINT_REGISTER_Y,
+    BREAKPOINT_REGISTER_A,
+    BREAKPOINT_REGISTER_D,
+    BREAKPOINT_REGISTER_PC,
+    BREAKPOINT_REGISTER_S
+};
+
+enum BREAKPOINT_TYPE
+{
+    BREAKPOINT_TYPE_EXECUTION = 0,
+    BREAKPOINT_TYPE_REGISTER,
+};
+
+struct breakpoint_t
+{
+    uint32_t type;
+    uint32_t reg;
+    uint32_t address;    
+    uint32_t value;
+};
+
+void set_execution_breakpoint(uint32_t effective_address);
+
+void set_register_breakpoint(uint32_t reg, uint32_t value);
+
+void clear_breakpoints();
 
 void reset_emu();
 
