@@ -277,7 +277,7 @@ enum CPU_REGS
     CPU_REG_STDCTRL4H                   = 0x421f,
 
     CPU_REG_DMA0_PARAM                  = 0x4300,
-    CPU_REG_DAM0_BBUS_ADDR              = 0x4301,
+    CPU_REG_DMA0_BBUS_ADDR              = 0x4301,
     CPU_REG_DMA0_ATAB_ADDRL             = 0x4302,
     CPU_REG_DMA0_ATAB_ADDRH             = 0x4303,
     CPU_REG_DMA0_ATAB_BANK              = 0x4304,

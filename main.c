@@ -7,6 +7,8 @@
 #define SDL_MAIN_HANDLED
 #include "SDL2/SDL.h"
 
+extern uint32_t interactive_mode;
+
 int main(int argc, char *argv[])
 {
     char param[512];
@@ -29,6 +31,11 @@ int main(int argc, char *argv[])
     {
         init_emu();
         if(!strcmp(argv[1], "-i"))
+        {
+            interactive_mode = 1;
+        }
+
+        if(interactive_mode)
         {
             do
             {
@@ -55,8 +62,7 @@ int main(int argc, char *argv[])
                         if(!strcmp(param, "-step"))
                         {
                             step_emu();
-                            dump_cpu(1);
-                            dump_ppu();
+                            dump_emu();
                         }
                         else if(!strcmp(param, "-poke"))
                         {

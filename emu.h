@@ -68,6 +68,8 @@ void reset_emu();
 
 uint32_t step_emu();
 
+void dump_emu();
+
 
 
 #endif // EMU_H

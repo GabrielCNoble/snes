@@ -10,6 +10,7 @@ SDL_Renderer *renderer = NULL;
 
 uint32_t window_width = 800;
 uint32_t window_height = 600;
+uint32_t interactive_mode = 0;
 
 char *breakpoint_register_names[] = 
 {
@@ -131,4 +132,10 @@ uint32_t step_emu()
     }
     
     return 1;
+}
+
+void dump_emu()
+{
+    dump_cpu(1);
+    dump_ppu();
 }

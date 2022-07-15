@@ -6,10 +6,6 @@ SDL
 *.depend
 *.layout
 *.exe
-oc.c
-oc.exe
-test.c
-test.exe
 *.dll
 *.txt
 .vscode
