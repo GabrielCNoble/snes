@@ -16,6 +16,7 @@
 // };
 uint8_t *               ram1_regs;
 uint8_t *               ram2;
+uint8_t *               vram;
 struct mem_write_t *    reg_writes;
 struct mem_read_t *     reg_reads;
 
@@ -25,18 +26,27 @@ void mem_init()
     ram1_regs = calloc(RAM1_REGS_END - RAM1_REGS_START, 1);
     /* 120K of wram2 */
     ram2 = calloc(0x1e000, 1);
+    /* 64K of vram */
+    vram = calloc(0xffff, 1);
     /* write behavior for all mem mapped registers */
     reg_writes = calloc(RAM1_REGS_END - RAM1_REGS_START, sizeof(struct mem_write_t));
     reg_reads = calloc(RAM1_REGS_END - RAM1_REGS_START, sizeof(struct mem_read_t));
 
     reg_writes[CPU_REG_MDMAEN].notify = mdmaen_write;
     reg_writes[CPU_REG_HDMAEN].notify = hdmaen_write;
+
+    reg_writes[PPU_REG_VMADDL].notify = vmadd_write;
+    reg_writes[PPU_REG_VMADDH].notify = vmadd_write;
+    reg_writes[PPU_REG_VMDATAL].notify = vmdata_write;
+    reg_writes[PPU_REG_VMDATAH].notify = vmdata_write;
+
 }
 
 void mem_shutdonwn()
 {
     free(ram1_regs);
     free(ram2);
+    free(vram);
     free(reg_writes);
     free(reg_reads);
 }

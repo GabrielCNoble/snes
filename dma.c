@@ -41,6 +41,8 @@ void step_dma(uint32_t cycle_count)
                 effective_address += addr_increment;
             }
         }
+
+        // printf("done\n");
     }
 
     active_channels = 0;
@@ -76,31 +78,31 @@ void mdmaen_write(uint32_t effective_address)
             {
                 case DMA_WRITE_MODE_BYTE_ONCE:
                 case DMA_WRITE_MODE_BYTE_TWICE:
-                    channel->regs[0] = reg;
-                    channel->regs[1] = reg;
-                    channel->regs[2] = reg;
-                    channel->regs[3] = reg;
+                    channel->regs[0] = ppu_reg;
+                    channel->regs[1] = ppu_reg;
+                    channel->regs[2] = ppu_reg;
+                    channel->regs[3] = ppu_reg;
                 break;
 
                 case DMA_WRITE_MODE_WORDLH_ONCE:
-                    channel->regs[0] = reg;
-                    channel->regs[1] = reg + 1;
-                    channel->regs[2] = reg;
-                    channel->regs[3] = reg + 1;
+                    channel->regs[0] = ppu_reg;
+                    channel->regs[1] = ppu_reg + 1;
+                    channel->regs[2] = ppu_reg;
+                    channel->regs[3] = ppu_reg + 1;
                 break;
 
                 case DMA_WRITE_MODE_WORDLH_TWICE:
-                    channel->regs[0] = reg;
-                    channel->regs[1] = reg;
-                    channel->regs[2] = reg + 1;
-                    channel->regs[3] = reg + 1;
+                    channel->regs[0] = ppu_reg;
+                    channel->regs[1] = ppu_reg;
+                    channel->regs[2] = ppu_reg + 1;
+                    channel->regs[3] = ppu_reg + 1;
                 break;
 
                 case DMA_WRITE_MODE_DWORDLHLH_ONCE:
-                    channel->regs[0] = reg;
-                    channel->regs[1] = reg + 1;
-                    channel->regs[2] = reg + 2;
-                    channel->regs[3] = reg + 3;
+                    channel->regs[0] = ppu_reg;
+                    channel->regs[1] = ppu_reg + 1;
+                    channel->regs[2] = ppu_reg + 2;
+                    channel->regs[3] = ppu_reg + 3;
                 break;
             }
 
@@ -137,7 +139,7 @@ void mdmaen_write(uint32_t effective_address)
             // }
             // printf("\n");
             // printf("write mode: ");
-            // switch(channel->write_mode)
+            // switch(write_mode)
             // {
             //     case DMA_WRITE_MODE_BYTE_ONCE:
             //         printf("byte, once\n");
@@ -161,7 +163,7 @@ void mdmaen_write(uint32_t effective_address)
             // }
             // printf("\n");
             // printf("addr: %x\n", channel->addr);
-            // printf("register: %x\n", channel->reg);
+            // printf("register: %x\n", ppu_reg);
             // printf("size: %d bytes\n", channel->count);
         }
 

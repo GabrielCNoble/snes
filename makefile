@@ -7,3 +7,6 @@ OBJ := $(SRC:.c=.o)
 
 all: $(OBJ) $(INC)
 	gcc $(OBJ) -L"SDL/lib" -lSDL2main -lSDL2 -o snes.exe
+
+clean:
+	del $(OBJ)

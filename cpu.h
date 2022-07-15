@@ -146,6 +146,7 @@ enum OPCODES
     OPCODE_PHP,                            /* Push processor status on stack */
     OPCODE_PHX,                            /* Push index X on stack */
     OPCODE_PHY,                            /* Push index Y on stack */
+
     OPCODE_PLA,                            /* Pull accumulator from stack */
     OPCODE_PLB,                            /* Pull data bank register from stack */
     OPCODE_PLD,                            /* Pull direct register from stack */
@@ -288,14 +289,15 @@ enum CPU_REGS
 
 enum CPU_STATUS_FLAGS
 {
-    CPU_STATUS_FLAG_CARRY = 1,              /* (C) */
-    CPU_STATUS_FLAG_IRQ_DISABLE = 1 << 1,   /* (I) */
-    CPU_STATUS_FLAG_ZERO = 1 << 2,          /* (Z) */
-    CPU_STATUS_FLAG_DECIMAL = 1 << 3,       /* (D) */
-    CPU_STATUS_FLAG_INDEX = 1 << 4,         /* (X) */
-    CPU_STATUS_FLAG_MEMORY = 1 << 5,        /* (M) */
-    CPU_STATUS_FLAG_OVERFLOW = 1 << 6,      /* (V) */
-    CPU_STATUS_FLAG_NEGATIVE = 1 << 7,      /* (N) */
+    CPU_STATUS_FLAG_CARRY           = 1,           /* (C) */
+    CPU_STATUS_FLAG_IRQ_DISABLE     = 1 << 1,      /* (I) */
+    CPU_STATUS_FLAG_ZERO            = 1 << 2,      /* (Z) */
+    CPU_STATUS_FLAG_DECIMAL         = 1 << 3,      /* (D) */
+    CPU_STATUS_FLAG_INDEX           = 1 << 4,      /* (X) */
+    CPU_STATUS_FLAG_BREAK           = 1 << 5,      /* (B) */
+    CPU_STATUS_FLAG_MEMORY          = 1 << 5,      /* (M) */
+    CPU_STATUS_FLAG_OVERFLOW        = 1 << 6,      /* (V) */
+    CPU_STATUS_FLAG_NEGATIVE        = 1 << 7,      /* (N) */
 };
 
 enum CPU_STORE_RESULT
@@ -328,28 +330,40 @@ struct branch_cond_t
 #define TPARM_INDEX(opcode) (opcode - OPCODE_TAX)
 struct transfer_params_t
 {
-    void *src_reg;
-    void *dst_reg;
-    uint8_t flag;
+    void *      src_reg;
+    void *      dst_reg;
+    uint8_t     flag;
 };
 
 struct transfer_t
 {
-    void *src_reg;
-    void *dst_reg;
-    uint8_t flag;
+    void *      src_reg;
+    void *      dst_reg;
+    uint8_t     flag;
 };
 
 struct load_t
 {
-    void *dst_reg;
-    uint8_t flag;  
+    void *      dst_reg;
+    uint8_t     flag;  
 };
 
 struct store_t
 {
-    void *src_reg;
-    uint8_t flag;
+    void *      src_reg;
+    uint8_t     flag;
+};
+
+struct push_t
+{
+    void *      src_reg;
+    uint16_t    flag;
+};
+
+struct pop_t
+{
+    void *      dst_reg;
+    uint16_t     flag;
 };
 
 struct cpu_state_t
@@ -402,7 +416,7 @@ struct cpu_state_t
     uint16_t reg_pc;                                    /* program counter register */
     struct {uint8_t reg_dbr; uint8_t unused;} reg_dbrw; /* data bank register */
     struct {uint8_t reg_pbr; uint8_t unused;} reg_pbrw; /* program bank register */     
-    uint8_t reg_p;                                      /* status register */
+    uint8_t reg_p[2];                                   /* status register, one for emulation, one for native mode */
     uint8_t in_irqb;
     uint8_t in_rdy;
     uint8_t in_resb;
