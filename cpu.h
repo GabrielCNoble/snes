@@ -120,6 +120,8 @@ enum OPCODES
     OPCODE_JSR,                            /* Jump and save return */
 
 
+    /* ====================================== */
+    /* DO NOT CHANGE THE ORDER OF THOSE ENUMS */
     OPCODE_LDA,                            /* Load accumulator with memory */
     OPCODE_LDX,                            /* Load index X with memory */
     OPCODE_LDY,                            /* Load index Y with memory */
@@ -128,6 +130,8 @@ enum OPCODES
     OPCODE_STX,                            /* Store index X in memory */
     OPCODE_STY,                            /* Store index Y in memory */
     OPCODE_STZ,                            /* Store zero in memory */
+    /* ====================================== */
+    /* ====================================== */
 
 
 
@@ -136,6 +140,8 @@ enum OPCODES
     OPCODE_NOP,                            /* No operation */
 
 
+    /* ====================================== */
+    /* DO NOT CHANGE THE ORDER OF THOSE ENUMS */
     OPCODE_PEA,                            /* Push effective absolute address on stack (or push immediate data on stack) */
     OPCODE_PEI,                            /* Push effective absolute address on stack (or push direct data on stack) */
     OPCODE_PER,                            /* Push effective program counter relative address on stack */
@@ -153,6 +159,8 @@ enum OPCODES
     OPCODE_PLP,                            /* Pull processor status from stack */
     OPCODE_PLX,                            /* Pull index X from stack */
     OPCODE_PLY,                            /* Pull index Y from stack */
+    /* ====================================== */
+    /* ====================================== */
 
 
     OPCODE_REP,                            /* Reset status bits */

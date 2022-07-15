@@ -1442,7 +1442,8 @@ uint16_t alu(uint32_t operand0, uint32_t operand1, uint32_t op, uint32_t width)
     uint32_t sign_mask = width ? 0x00000080 : 0x00008000;
     uint32_t carry_mask = width ? 0x00000100 : 0x00010000;
     uint32_t zero_mask = width ? 0x000000ff : 0x0000ffff;
-    uint32_t carry = cpu_state.reg_p[cpu_state.reg_e] & CPU_STATUS_FLAG_CARRY;
+    uint8_t flags = cpu_state.reg_p[cpu_state.reg_e];
+    uint32_t carry = flags & CPU_STATUS_FLAG_CARRY;
     uint32_t result;
 //    uint32_t flags = 0;
 
@@ -1484,7 +1485,7 @@ uint16_t alu(uint32_t operand0, uint32_t operand1, uint32_t op, uint32_t width)
         case ALU_OP_ROL:
         case ALU_OP_SHL:
             /* shift left shifts msb into the carry */
-            (operand0 & sign_mask) ? (cpu_state.reg_p[cpu_state.reg_e] |= CPU_STATUS_FLAG_CARRY) : (cpu_state.reg_p[cpu_state.reg_e] &= ~CPU_STATUS_FLAG_CARRY);
+            flags = (operand0 & sign_mask) ? (flags | CPU_STATUS_FLAG_CARRY) : (flags & (~CPU_STATUS_FLAG_CARRY));
             /* rotate left shifts the carry into the lsb */
             result = (operand0 << 1) | (op == ALU_OP_ROL && carry);
         break;
@@ -1495,7 +1496,7 @@ uint16_t alu(uint32_t operand0, uint32_t operand1, uint32_t op, uint32_t width)
             operand0 = carry ? (operand0 | carry_mask) : operand0;
         case ALU_OP_SHR:
             /* shift right shifts lsb into the carry */
-            (operand0 & 1) ? (cpu_state.reg_p[cpu_state.reg_e] |= CPU_STATUS_FLAG_CARRY) : (cpu_state.reg_p[cpu_state.reg_e] &= ~CPU_STATUS_FLAG_CARRY);
+            flags = (operand0 & 1) ? (flags = CPU_STATUS_FLAG_CARRY) : (flags & (~CPU_STATUS_FLAG_CARRY));
             result = operand0 >> 1;
         break;
 
@@ -1509,21 +1510,22 @@ uint16_t alu(uint32_t operand0, uint32_t operand1, uint32_t op, uint32_t width)
     }
 
     /* every alu op affects negative and zero */
-    (result & sign_mask) ? (cpu_state.reg_p[cpu_state.reg_e] |= CPU_STATUS_FLAG_NEGATIVE) : (cpu_state.reg_p[cpu_state.reg_e] &= ~CPU_STATUS_FLAG_NEGATIVE);
-    (result & zero_mask) ? (cpu_state.reg_p[cpu_state.reg_e] &= ~CPU_STATUS_FLAG_ZERO) : (cpu_state.reg_p[cpu_state.reg_e] |= CPU_STATUS_FLAG_ZERO);
+    flags = (result & sign_mask) ? (flags | CPU_STATUS_FLAG_NEGATIVE) : (flags & (~CPU_STATUS_FLAG_NEGATIVE));
+    flags = (result & zero_mask) ? (flags & (~CPU_STATUS_FLAG_ZERO)) : (flags | CPU_STATUS_FLAG_ZERO);
 
     if(carry_flag_alu_op[op])
     {
-        (result & carry_mask) ? (cpu_state.reg_p[cpu_state.reg_e] |= CPU_STATUS_FLAG_CARRY) : (cpu_state.reg_p[cpu_state.reg_e] &= ~CPU_STATUS_FLAG_CARRY);
+        flags = (result & carry_mask) ? (flags | CPU_STATUS_FLAG_CARRY) : (flags & (~CPU_STATUS_FLAG_CARRY));
     }
 
     if(op == ALU_OP_ADD)
     {
         /* if operand0 and operand1 have the same sign, and the result have a different
         sign than the operands, then overflow ocurred */
-        (((~(operand0 ^ operand1)) & (operand1 ^ result)) & sign_mask) ?
-            (cpu_state.reg_p[cpu_state.reg_e] |= CPU_STATUS_FLAG_OVERFLOW) : (cpu_state.reg_p[cpu_state.reg_e] &= ~CPU_STATUS_FLAG_OVERFLOW);
+        flags = (((~(operand0 ^ operand1)) & (operand1 ^ result)) & sign_mask) ? (flags | CPU_STATUS_FLAG_OVERFLOW) : (flags & (~CPU_STATUS_FLAG_OVERFLOW));
     }
+
+    cpu_state.reg_p[cpu_state.reg_e] = flags;
 
     return result & zero_mask;
 }
@@ -2222,7 +2224,7 @@ uint32_t step_cpu()
         {
             uint32_t src_value;
             uint32_t zero;
-            uint32_t negative;
+            uint32_t sign;
 
             struct load_t *load = loads + (opcode.opcode - OPCODE_LDA);
 
@@ -2230,19 +2232,20 @@ uint32_t step_cpu()
             {
                 src_value = cpu_read_byte(effective_address);
                 *(uint8_t *)load->dst_reg = src_value;
-                negative = (int8_t)src_value < 0;
+                sign = (int8_t)src_value < 0;
                 zero = (int8_t)src_value == 0;
             }
             else
             {
                 src_value = cpu_read_word(effective_address);
                 *(uint16_t *)load->dst_reg = src_value;
-                negative = (int16_t)src_value < 0;
+                sign = (int16_t)src_value < 0;
                 zero = (int16_t)src_value == 0;
             }
-
-            cpu_state.reg_p[cpu_state.reg_e] = zero ? (cpu_state.reg_p[cpu_state.reg_e] | CPU_STATUS_FLAG_ZERO) : (cpu_state.reg_p[cpu_state.reg_e] & (~CPU_STATUS_FLAG_ZERO));
-            cpu_state.reg_p[cpu_state.reg_e] = negative ? (cpu_state.reg_p[cpu_state.reg_e] | CPU_STATUS_FLAG_NEGATIVE) : (cpu_state.reg_p[cpu_state.reg_e] & (~CPU_STATUS_FLAG_NEGATIVE));
+            uint8_t flags = cpu_state.reg_p[cpu_state.reg_e];
+            flags = zero ? (flags | CPU_STATUS_FLAG_ZERO) : (flags & ~CPU_STATUS_FLAG_ZERO);
+            flags = sign ? (flags | CPU_STATUS_FLAG_NEGATIVE) : (flags & ~CPU_STATUS_FLAG_NEGATIVE);
+            cpu_state.reg_p[cpu_state.reg_e] = flags;
         }
         break;
 
@@ -2263,10 +2266,6 @@ uint32_t step_cpu()
 
         case OPCODE_CLASS_STACK:
         {
-            // uint16_t src_value;
-            // void *dst_addr = NULL;
-            // byte_write = 1;
-
             if(opcode.opcode <= OPCODE_PHY)
             {
                 struct push_t *push = pushes + (opcode.opcode - OPCODE_PEA);
@@ -2318,116 +2317,14 @@ uint32_t step_cpu()
 
                 if(opcode.opcode != OPCODE_PLP)
                 {
-                    cpu_state.reg_p[cpu_state.reg_e] = zero ? (cpu_state.reg_p[cpu_state.reg_e] | CPU_STATUS_FLAG_ZERO) : (cpu_state.reg_p[cpu_state.reg_e] & (~CPU_STATUS_FLAG_ZERO));
-                    cpu_state.reg_p[cpu_state.reg_e] = sign ? (cpu_state.reg_p[cpu_state.reg_e] | CPU_STATUS_FLAG_NEGATIVE) : (cpu_state.reg_p[cpu_state.reg_e] & (~CPU_STATUS_FLAG_NEGATIVE));
+                    /* all push instructions (with the exception of plp, which affects all flags), affect the
+                    N and Z flags. */
+                    uint8_t flags = cpu_state.reg_p[cpu_state.reg_e];
+                    flags = zero ? (flags | CPU_STATUS_FLAG_ZERO) : (flags & ~CPU_STATUS_FLAG_ZERO);
+                    flags = sign ? (flags | CPU_STATUS_FLAG_NEGATIVE) : (flags & ~CPU_STATUS_FLAG_NEGATIVE);
+                    cpu_state.reg_p[cpu_state.reg_e] = flags;
                 }
             }
-
-            // switch(opcode.opcode)
-            // {
-            //     case OPCODE_PEA:
-            //         src_value = cpu_read_word(effective_address);
-            //     break;
-
-            //     case OPCODE_PEI:
-            //         effective_address = (cpu_state.reg_d + cpu_read_byte(effective_address)) & 0x0000ffff;
-            //         src_value = cpu_read_word(effective_address);
-            //     break;
-
-            //     case OPCODE_PER:
-
-            //     break;
-
-            //     case OPCODE_PHA:
-            //         byte_write = cpu_state.reg_p[0] & CPU_STATUS_FLAG_MEMORY;
-            //         src_value = cpu_state.reg_accum.reg_accumC;
-            //     break;
-
-            //     case OPCODE_PLA:
-            //         /* TODO: this instruction modifies the N and Z flags */
-            //         byte_write = cpu_state.reg_p[0] & CPU_STATUS_FLAG_MEMORY;
-            //         dst_addr = &cpu_state.reg_accum.reg_accumC;
-            //     break;
-
-            //     case OPCODE_PHB:
-            //         src_value = cpu_state.reg_dbrw.reg_dbr;
-            //     break;
-
-            //     case OPCODE_PLB:
-            //         /* TODO: this instruction modifies the N and Z flags */
-            //         dst_addr = &cpu_state.reg_dbrw.reg_dbr;
-            //     break;
-
-            //     case OPCODE_PHD:
-            //         byte_write = 0;
-            //         src_value = cpu_state.reg_d;
-            //     break;
-
-            //     case OPCODE_PLD:
-            //         /* TODO: this instruction modifies the N and Z flags */
-            //         byte_write = 0;
-            //         dst_addr = &cpu_state.reg_d;
-            //     break;
-
-            //     case OPCODE_PHK:
-            //         src_value = cpu_state.reg_pbrw.reg_pbr;
-            //     break;
-
-            //     case OPCODE_PHP:
-            //         src_value = cpu_state.reg_p[cpu_state.reg_e];
-            //     break;
-
-            //     case OPCODE_PLP:
-            //         dst_addr = &cpu_state.reg_p[cpu_state.reg_e];
-            //     break;
-
-            //     case OPCODE_PHX:
-            //         byte_write = cpu_state.reg_p[0] & CPU_STATUS_FLAG_INDEX;
-            //         src_value = cpu_state.reg_x.reg_x;
-            //     break;
-
-            //     case OPCODE_PLX:
-            //         /* TODO: this instruction modifies the N and Z flags */
-            //         byte_write = cpu_state.reg_p[0] & CPU_STATUS_FLAG_INDEX;
-            //         dst_addr = &cpu_state.reg_x.reg_x;
-            //     break;
-
-            //     case OPCODE_PHY:
-            //         byte_write = cpu_state.reg_p[0] & CPU_STATUS_FLAG_INDEX;
-            //         src_value = cpu_state.reg_y.reg_y;
-            //     break;
-
-            //     case OPCODE_PLY:
-            //         /* TODO: this instruction modifies the N and Z flags */
-            //         byte_write = cpu_state.reg_p[0] & CPU_STATUS_FLAG_INDEX;
-            //         dst_addr = &cpu_state.reg_y.reg_y;
-            //     break;
-            // }
-
-            // if(!dst_addr)
-            // {
-            //     if(!byte_write)
-            //     {
-            //         cpu_write_byte(cpu_state.reg_s, src_value >> 8);
-            //         cpu_state.reg_s--;
-            //     }
-
-            //     /* pushing */
-            //     cpu_write_byte(cpu_state.reg_s, src_value);
-            //     cpu_state.reg_s--;
-            // }
-            // else
-            // {
-            //     /* popping */
-            //     cpu_state.reg_s++;
-            //     *(uint8_t *)dst_addr = cpu_read_byte(cpu_state.reg_s);
-
-            //     if(!byte_write)
-            //     {
-            //         cpu_state.reg_s++;
-            //         *((uint8_t *)dst_addr + 1) = cpu_read_byte(cpu_state.reg_s);
-            //     }
-            // }
         }
         break;
 
@@ -2479,8 +2376,12 @@ uint32_t step_cpu()
                 break;
 
                 case OPCODE_XBA:
+                {
                     /* TODO: this instruction modifies the N flag, based on bit 7 of the accumulator */
                     cpu_state.reg_accum.reg_accumC = ((cpu_state.reg_accum.reg_accumC >> 8) & 0xff) | ((cpu_state.reg_accum.reg_accumC << 8) & 0xff00);
+                    uint8_t flags = cpu_state.reg_p[cpu_state.reg_e];
+                    cpu_state.reg_p[cpu_state.reg_e] = (cpu_state.reg_accum.reg_accumA & 0x80) ? (flags | CPU_STATUS_FLAG_NEGATIVE) : (flags & ~CPU_STATUS_FLAG_NEGATIVE);
+                }
                 break;
 
                 case OPCODE_NOP:
@@ -2525,24 +2426,24 @@ uint32_t step_cpu()
                 break;
 
                 case OPCODE_MVN:
-                    while(cpu_state.reg_accum.reg_accumC)
+                    while(cpu_state.reg_accum.reg_accumC != 0xffff)
                     {
-                        uint32_t dst_effective_address = EFFECTIVE_ADDRESS(cpu_state.reg_y.reg_yL, (uint8_t)effective_address);
-                        uint32_t src_effective_address = EFFECTIVE_ADDRESS(cpu_state.reg_x.reg_xL, (uint8_t)(effective_address >> 8));
-                        cpu_state.reg_y.reg_yL--;
-                        cpu_state.reg_x.reg_xL--;
+                        uint32_t dst_effective_address = EFFECTIVE_ADDRESS((uint8_t)effective_address, cpu_state.reg_y.reg_y);
+                        uint32_t src_effective_address = EFFECTIVE_ADDRESS((uint8_t)(effective_address >> 8), cpu_state.reg_x.reg_x);
+                        cpu_state.reg_y.reg_y++;
+                        cpu_state.reg_x.reg_x++;
                         cpu_state.reg_accum.reg_accumC--;
                         cpu_write_byte(dst_effective_address, cpu_read_byte(src_effective_address));
                     }
                 break;
 
                 case OPCODE_MVP:
-                    while(cpu_state.reg_accum.reg_accumC)
+                    while(cpu_state.reg_accum.reg_accumC != 0xffff)
                     {
-                        uint32_t dst_effective_address = EFFECTIVE_ADDRESS(cpu_state.reg_y.reg_yL, (uint8_t)effective_address);
-                        uint32_t src_effective_address = EFFECTIVE_ADDRESS(cpu_state.reg_x.reg_xL, (uint8_t)(effective_address >> 8));
-                        cpu_state.reg_y.reg_yL++;
-                        cpu_state.reg_x.reg_xL++;
+                        uint32_t dst_effective_address = EFFECTIVE_ADDRESS((uint8_t)effective_address, cpu_state.reg_y.reg_y);
+                        uint32_t src_effective_address = EFFECTIVE_ADDRESS((uint8_t)(effective_address >> 8), cpu_state.reg_x.reg_x);
+                        cpu_state.reg_y.reg_y--;
+                        cpu_state.reg_x.reg_x--;
                         cpu_state.reg_accum.reg_accumC--;
                         cpu_write_byte(dst_effective_address, cpu_read_byte(src_effective_address));
                     }
@@ -2564,16 +2465,30 @@ uint32_t step_cpu()
 
         case OPCODE_CLASS_TRANSFER:
         {
-            /* TODO: most of those will affect the flags, so handle that. */
             struct transfer_t *transfer = transfers + (opcode.opcode - OPCODE_TAX);
+            uint32_t zero;
+            uint32_t sign;
 
             if(cpu_state.reg_p[cpu_state.reg_e] & transfer->flag)
             {
                 *(uint8_t *)transfer->dst_reg = *(uint8_t *)transfer->src_reg;
+                zero = !(*(uint8_t *)transfer->dst_reg & 0xff);
+                sign = *(uint8_t *)transfer->dst_reg & 0x80;
             }
             else
             {
                 *(uint16_t *)transfer->dst_reg = *(uint16_t *)transfer->src_reg;
+                zero = !(*(uint16_t *)transfer->dst_reg & 0xffff);
+                sign = *(uint16_t *)transfer->dst_reg & 0x8000;
+            }
+
+            if(opcode.opcode != OPCODE_TXS)
+            {
+                /* TXS is the only opcode in the transfer calls that doesn't affect the Z and N flags.*/
+                uint8_t flags = cpu_state.reg_p[cpu_state.reg_e];
+                flags = zero ? (flags | CPU_STATUS_FLAG_ZERO) : (flags & ~CPU_STATUS_FLAG_ZERO);
+                flags = sign ? (flags | CPU_STATUS_FLAG_NEGATIVE) : (flags & ~CPU_STATUS_FLAG_NEGATIVE);
+                cpu_state.reg_p[cpu_state.reg_e] = flags;
             }
         }
         break;
