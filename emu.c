@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include "emu.h"
 #include "SDL2/SDL.h"
 
@@ -17,6 +18,11 @@ char *breakpoint_register_names[] =
 };
 
 extern struct cpu_state_t cpu_state;
+
+extern uint8_t *                ram1_regs;
+extern uint8_t *                ram2;
+extern struct mem_write_t *     reg_writes;
+extern struct mem_read_t *      reg_reads;
 
 //void set_breakpoint(uint32_t effective_address)
 //{
@@ -53,20 +59,30 @@ void clear_breakpoints()
     printf("breakpoints cleared\n");
 }
 
+void init_emu()
+{
+    window = SDL_CreateWindow("snes", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, window_width, window_height, 0);
+    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+
+    mem_init();
+}
+
+void shutdown_emu()
+{
+    SDL_DestroyRenderer(renderer);
+    SDL_DestroyWindow(window);
+    mem_shutdonwn();
+}
+
 void reset_emu()
 {
-//    if(!window)
-//    {
-//        window = SDL_CreateWindow("bluh", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, window_width, window_height, 0);
-//        renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
-//    }
-//    
     reset_cpu();
 }
 
 uint32_t step_emu()
 {
     uint32_t cpu_cycles = step_cpu();
+    step_dma(cpu_cycles);
     step_ppu(cpu_cycles);
     
     for(uint32_t breakpoint_index = 0; breakpoint_index < breakpoint_count; breakpoint_index++)

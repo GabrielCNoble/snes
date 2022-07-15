@@ -4,6 +4,7 @@
 #include "mem.h"
 #include "cpu.h"
 #include "ppu.h"
+#include "dma.h"
 
 /* https://problemkaputt.de/fullsnes.htm */
 
@@ -58,6 +59,10 @@ void set_execution_breakpoint(uint32_t effective_address);
 void set_register_breakpoint(uint32_t reg, uint32_t value);
 
 void clear_breakpoints();
+
+void init_emu();
+
+void shutdown_emu();
 
 void reset_emu();
 

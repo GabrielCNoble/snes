@@ -8,132 +8,135 @@
 #include <assert.h>
 #include <stdint.h>
 
-unsigned char wram1[8192];
-unsigned char wram2[20000];
+// unsigned char wram1[8192];
+// unsigned char wram2[20000];
 
-union cpu_hardware_regs_t
-{
-    unsigned char hardware_regs[CPU_REGS_END_ADDRESS - CPU_REGS_START_ADDRESS];
+// uint8_t *ram1_regs;
+// uint8_t *ram2;
 
-    struct
-    {
-        /*
-            NMITIMEN (0x4200) - Interrupt enable and joypad request
-                7    VBlank NMI enable (0 = disable, 1 = enable) - disabled on reset
-                6    Not used
-                5-4  H/V IRQ (0 = disabled, 1 = at H=H + V=any, 2 = at V=V + H=0, 3 = at H=H + V=V)
-                3-1  Not used
-                0    Joypad enable (0 = disabled, 1 = enable automatic reading of joypad)
-        */
-        uint8_t nmitimen;
+// union cpu_hardware_regs_t
+// {
+//     unsigned char hardware_regs[CPU_REGS_END_ADDRESS - CPU_REGS_START_ADDRESS];
 
-
-        uint8_t wrio;
-        uint8_t wrmpya;
-        uint8_t wrmpyb;
-        uint8_t wrdivl;
-        uint8_t wrdivh;
-        uint8_t wrdivb;
-
-        /*
-            HTIMEL/HTIMEH - H-Count timer setting
-                15-9  Not used
-                8-0   H-Count timer value (0 ... 339) (+ 1 for long lines, -1 for short lines) (0 = leftmost)
-        */
-        uint8_t htimel;
-        uint8_t htimeh;
-
-        /*
-            VTIMEL/VTIMEH - V-Count timer setting
-                15-9  Not used
-                8-0   V-Count timer value (0...261 for ntsc, 0...311 for pal) (+1 in interlace) (0 = top)
+//     struct
+//     {
+//         /*
+//             NMITIMEN (0x4200) - Interrupt enable and joypad request
+//                 7    VBlank NMI enable (0 = disable, 1 = enable) - disabled on reset
+//                 6    Not used
+//                 5-4  H/V IRQ (0 = disabled, 1 = at H=H + V=any, 2 = at V=V + H=0, 3 = at H=H + V=V)
+//                 3-1  Not used
+//                 0    Joypad enable (0 = disabled, 1 = enable automatic reading of joypad)
+//         */
+//         uint8_t nmitimen;
 
 
-        */
-        uint8_t vtimel;
-        uint8_t vtimeh;
+//         uint8_t wrio;
+//         uint8_t wrmpya;
+//         uint8_t wrmpyb;
+//         uint8_t wrdivl;
+//         uint8_t wrdivh;
+//         uint8_t wrdivb;
+
+//         /*
+//             HTIMEL/HTIMEH - H-Count timer setting
+//                 15-9  Not used
+//                 8-0   H-Count timer value (0 ... 339) (+ 1 for long lines, -1 for short lines) (0 = leftmost)
+//         */
+//         uint8_t htimel;
+//         uint8_t htimeh;
+
+//         /*
+//             VTIMEL/VTIMEH - V-Count timer setting
+//                 15-9  Not used
+//                 8-0   V-Count timer value (0...261 for ntsc, 0...311 for pal) (+1 in interlace) (0 = top)
 
 
-        uint8_t mdmaen;
-        uint8_t unused0[2];
-        uint8_t rdnmi;
+//         */
+//         uint8_t vtimel;
+//         uint8_t vtimeh;
 
 
-        /*
-            TIMEUP - H/V-Timer IRQ flag (R)(Read/Ack)
-                7   H/V-Count timer IRQ flag (0 = None, 1 = Interrupt request)
-                6-0 Not used
+//         uint8_t mdmaen;
+//         uint8_t unused0[2];
+//         uint8_t rdnmi;
 
-            The IRQ flag is automatically reset after reading from this register
-            (except when reading at the very time when the IRQ condition is true
-            (which lasts for 4-8 master cycles), then the CPU receives bit7=1, but
-            register bit7 isn't cleared). The flag is also automatically cleared
-            when disabling IRQs (by setting 4200h.Bit5-4 to zero). Unlike NMI handlers,
-            IRQ handlers MUST acknowledge IRQs, otherwise the IRQ gets executed again
-            (ie. immediately after the RTI opcode).
-        */
-        uint8_t timeup;
 
-        /*
-            HVBJOY - H/V-Blank flag and joypad busy flag (R)
-                7   V-Blank period flag (0 = No, 1 = VBlank)
-                6   H-Blank period flag (0 = No, 1 = HBlank)
-                5-1 Not used
-                0   Auto-Joypad-Read busy flag (1 = Busy)
+//         /*
+//             TIMEUP - H/V-Timer IRQ flag (R)(Read/Ack)
+//                 7   H/V-Count timer IRQ flag (0 = None, 1 = Interrupt request)
+//                 6-0 Not used
 
-            The H-Blank flag gets toggled in ALL scanlines (including during VBlank/Vsync). Both
-            H-Blank and V-Blank are always toggling (even during Forced Blank, and no matter if
-            IRQs or NMIs are enabled).
+//             The IRQ flag is automatically reset after reading from this register
+//             (except when reading at the very time when the IRQ condition is true
+//             (which lasts for 4-8 master cycles), then the CPU receives bit7=1, but
+//             register bit7 isn't cleared). The flag is also automatically cleared
+//             when disabling IRQs (by setting 4200h.Bit5-4 to zero). Unlike NMI handlers,
+//             IRQ handlers MUST acknowledge IRQs, otherwise the IRQ gets executed again
+//             (ie. immediately after the RTI opcode).
+//         */
+//         uint8_t timeup;
+
+//         /*
+//             HVBJOY - H/V-Blank flag and joypad busy flag (R)
+//                 7   V-Blank period flag (0 = No, 1 = VBlank)
+//                 6   H-Blank period flag (0 = No, 1 = HBlank)
+//                 5-1 Not used
+//                 0   Auto-Joypad-Read busy flag (1 = Busy)
+
+//             The H-Blank flag gets toggled in ALL scanlines (including during VBlank/Vsync). Both
+//             H-Blank and V-Blank are always toggling (even during Forced Blank, and no matter if
+//             IRQs or NMIs are enabled).
             
-            V-blank starts at scanline $e1 or $f0, depending on bit 2 of register $2133. When this
-            bit is 0, the frame will be 224 scanlines long (ignoring scanline 0), and so V-blank
-            will start at scanline $e1 (225). When it's 1, the frame will be 239 scanlines long,
-            (ignoring scanline 0), and so V-blank will start at scanline $f0 (240). V-blank ends
-            at scanline 0, dot 0.
+//             V-blank starts at scanline $e1 or $f0, depending on bit 2 of register $2133. When this
+//             bit is 0, the frame will be 224 scanlines long (ignoring scanline 0), and so V-blank
+//             will start at scanline $e1 (225). When it's 1, the frame will be 239 scanlines long,
+//             (ignoring scanline 0), and so V-blank will start at scanline $f0 (240). V-blank ends
+//             at scanline 0, dot 0.
             
-            H-blank starts at dot 274 of every scanline, and ends at dot 0.
-        */
-        uint8_t hvbjoy;
+//             H-blank starts at dot 274 of every scanline, and ends at dot 0.
+//         */
+//         uint8_t hvbjoy;
 
 
 
-        uint8_t rdio;
-        uint8_t rddivl;
-        uint8_t rddivh;
-        uint8_t rdmpyl;
-        uint8_t rdmpyh;
-        uint8_t stdcntrl1l;
-        uint8_t stdcntrl1h;
-        uint8_t stdcntrl2l;
-        uint8_t stdcntrl2h;
-        uint8_t stdcntrl3l;
-        uint8_t stdcntrl3h;
-        uint8_t stdcntrl4l;
-        uint8_t stdcntrl4h;
-        uint8_t unused1[0xe0];
-//        unsigned char dmatparm0;
-//        unsigned char dmataddr0;
-//        unsigned char unused2[0x03];
-//        unsigned char
-//
-//
-//        unsigned char dmatp1;
-//        unsigned char dmatc1;
-//        unsigned char dmatp2;
-//        unsigned char dmatc2;
-//        unsigned char dmatp3;
-//        unsigned char dmatc3;
-//        unsigned char dmatp4;
-//        unsigned char dmatc4;
-//        unsigned char dmatp5;
-//        unsigned char dmatc5;
-//        unsigned char dmatp6;
-//        unsigned char dmatc6;
-//        unsigned char dmatp7;
-//        unsigned char dmatc7;
+//         uint8_t rdio;
+//         uint8_t rddivl;
+//         uint8_t rddivh;
+//         uint8_t rdmpyl;
+//         uint8_t rdmpyh;
+//         uint8_t stdcntrl1l;
+//         uint8_t stdcntrl1h;
+//         uint8_t stdcntrl2l;
+//         uint8_t stdcntrl2h;
+//         uint8_t stdcntrl3l;
+//         uint8_t stdcntrl3h;
+//         uint8_t stdcntrl4l;
+//         uint8_t stdcntrl4h;
+//         uint8_t unused1[0xe0];
+// //        unsigned char dmatparm0;
+// //        unsigned char dmataddr0;
+// //        unsigned char unused2[0x03];
+// //        unsigned char
+// //
+// //
+// //        unsigned char dmatp1;
+// //        unsigned char dmatc1;
+// //        unsigned char dmatp2;
+// //        unsigned char dmatc2;
+// //        unsigned char dmatp3;
+// //        unsigned char dmatc3;
+// //        unsigned char dmatp4;
+// //        unsigned char dmatc4;
+// //        unsigned char dmatp5;
+// //        unsigned char dmatc5;
+// //        unsigned char dmatp6;
+// //        unsigned char dmatc6;
+// //        unsigned char dmatp7;
+// //        unsigned char dmatc7;
 
-    };
-}hardware_regs;
+//     };
+// }hardware_regs;
 
 unsigned long step_count = 0;
 
@@ -512,6 +515,106 @@ struct opcode_t opcode_matrix[256] =
     [0xfb] = OPCODE(OPCODE_XCE, OPCODE_CLASS_STANDALONE, ADDRESS_MODE_ACCUMULATOR)
 };
 
+const char *opcode_strs[] = {
+    [OPCODE_BRK] = "brk",
+    [OPCODE_BIT] = "bit",
+    [OPCODE_BCC] = "bcc",
+    [OPCODE_BCS] = "bcs",
+    [OPCODE_BNE] = "bne",
+    [OPCODE_BEQ] = "beq",
+    [OPCODE_BPL] = "bpl",
+    [OPCODE_BMI] = "bmi",
+    [OPCODE_BVC] = "bvc",
+    [OPCODE_BVS] = "bvs",
+    [OPCODE_BRA] = "bra",
+    [OPCODE_BRL] = "brl",
+    [OPCODE_CLC] = "clc",
+    [OPCODE_CLD] = "cld",
+    [OPCODE_CLV] = "clv",
+    [OPCODE_CLI] = "cli",
+    [OPCODE_CMP] = "cmp",
+    [OPCODE_CPX] = "cpx",
+    [OPCODE_CPY] = "cpy",
+    [OPCODE_ADC] = "adc",
+    [OPCODE_AND] = "and",
+    [OPCODE_SBC] = "sbc",
+    [OPCODE_EOR] = "eor",
+    [OPCODE_ORA] = "ora",
+    [OPCODE_ROL] = "rol",
+    [OPCODE_ROR] = "ror",
+    [OPCODE_DEC] = "dec",
+    [OPCODE_INC] = "inc",
+    [OPCODE_ASL] = "asl",
+    [OPCODE_LSR] = "lsr",
+    [OPCODE_DEX] = "dex",
+    [OPCODE_INX] = "inx",
+    [OPCODE_DEY] = "dey",
+    [OPCODE_INY] = "iny",
+    [OPCODE_TRB] = "trb",
+    [OPCODE_TSB] = "tsb",
+    [OPCODE_JMP] = "jmp",
+    [OPCODE_JML] = "jml",
+    [OPCODE_JSL] = "jsl",
+    [OPCODE_JSR] = "jsr",
+    [OPCODE_LDA] = "lda",
+    [OPCODE_LDX] = "ldx",
+    [OPCODE_LDY] = "ldy",
+    [OPCODE_STA] = "sta",
+    [OPCODE_STX] = "stx",
+    [OPCODE_STY] = "sty",
+    [OPCODE_STZ] = "stz",
+    [OPCODE_MVN] = "mvn",
+    [OPCODE_MVP] = "mvp",
+    [OPCODE_NOP] = "nop",
+    [OPCODE_PEA] = "pea",
+    [OPCODE_PEI] = "pei",
+    [OPCODE_PER] = "per",                            
+    [OPCODE_PHA] = "pha",                            
+    [OPCODE_PHB] = "phb",                            
+    [OPCODE_PHD] = "phd",                            
+    [OPCODE_PHK] = "phk",                            
+    [OPCODE_PHP] = "php",                            
+    [OPCODE_PHX] = "phx",                            
+    [OPCODE_PHY] = "phy",                            
+    [OPCODE_PLA] = "Pla",                            
+    [OPCODE_PLB] = "plb",                            
+    [OPCODE_PLD] = "pld",                            
+    [OPCODE_PLP] = "plp",                            
+    [OPCODE_PLX] = "plx",                            
+    [OPCODE_PLY] = "ply",                            
+    [OPCODE_REP] = "rep",                            
+    [OPCODE_RTI] = "rti",                            
+    [OPCODE_RTL] = "rtl",                            
+    [OPCODE_RTS] = "rts",                            
+    [OPCODE_SEP] = "sep",                            
+    [OPCODE_SEC] = "sec",                            
+    [OPCODE_SED] = "sed",                            
+    [OPCODE_SEI] = "sei",                            
+    [OPCODE_TAX] = "tax",                            
+    [OPCODE_TAY] = "tay",                            
+    [OPCODE_TCD] = "tcd",                            
+    [OPCODE_TCS] = "tcs",                            
+    [OPCODE_TDC] = "tdc",                            
+    [OPCODE_TSC] = "tsc",                            
+    [OPCODE_TSX] = "tsx",                            
+    [OPCODE_TXA] = "txa",                            
+    [OPCODE_TXS] = "txs",                            
+    [OPCODE_TXY] = "txy",                            
+    [OPCODE_TYA] = "tya",                            
+    [OPCODE_TYX] = "tyx",                            
+    [OPCODE_WAI] = "wai",                            
+    [OPCODE_WDM] = "wdm",                            
+    [OPCODE_XBA] = "xba",                            
+    [OPCODE_STP] = "stp",                            
+    [OPCODE_COP] = "cop",                            
+    [OPCODE_XCE] = "xce",                            
+    [OPCODE_UNKNOWN] = "UNKNOWN",
+};
+
+// const char *cpu_reg_strs[] = {
+//     // [CPU_REG_]
+// };
+
 struct branch_cond_t branch_conds[5] = 
 {
     [0] = {CPU_STATUS_FLAG_CARRY},
@@ -535,6 +638,36 @@ struct transfer_params_t transfer_params[] =
     [TPARM_INDEX(OPCODE_TXY)] = {.src_reg = &cpu_state.reg_x.reg_x,          .dst_reg = &cpu_state.reg_y.reg_y,          .flag = CPU_STATUS_FLAG_INDEX},
     [TPARM_INDEX(OPCODE_TYA)] = {.src_reg = &cpu_state.reg_y.reg_y,          .dst_reg = &cpu_state.reg_accum.reg_accumC, .flag = CPU_STATUS_FLAG_MEMORY},
     [TPARM_INDEX(OPCODE_TYX)] = {.src_reg = &cpu_state.reg_y.reg_y,          .dst_reg = &cpu_state.reg_x.reg_x,          .flag = CPU_STATUS_FLAG_INDEX},
+};
+
+struct transfer_t transfers[] = {
+    [OPCODE_TAX - OPCODE_TAX] = {.src_reg = &cpu_state.reg_accum.reg_accumC, .dst_reg = &cpu_state.reg_x.reg_x,          .flag = CPU_STATUS_FLAG_INDEX},
+    [OPCODE_TAY - OPCODE_TAX] = {.src_reg = &cpu_state.reg_accum.reg_accumC, .dst_reg = &cpu_state.reg_y.reg_y,          .flag = CPU_STATUS_FLAG_INDEX},
+    [OPCODE_TCD - OPCODE_TAX] = {.src_reg = &cpu_state.reg_accum.reg_accumC, .dst_reg = &cpu_state.reg_d},
+    [OPCODE_TCS - OPCODE_TAX] = {.src_reg = &cpu_state.reg_accum.reg_accumC, .dst_reg = &cpu_state.reg_s},
+    [OPCODE_TDC - OPCODE_TAX] = {.src_reg = &cpu_state.reg_d,                .dst_reg = &cpu_state.reg_accum.reg_accumC, .flag = CPU_STATUS_FLAG_MEMORY},
+    [OPCODE_TSC - OPCODE_TAX] = {.src_reg = &cpu_state.reg_s,                .dst_reg = &cpu_state.reg_accum.reg_accumC, .flag = CPU_STATUS_FLAG_MEMORY},
+    [OPCODE_TSX - OPCODE_TAX] = {.src_reg = &cpu_state.reg_s,                .dst_reg = &cpu_state.reg_x.reg_x,          .flag = CPU_STATUS_FLAG_INDEX},
+    [OPCODE_TXA - OPCODE_TAX] = {.src_reg = &cpu_state.reg_x.reg_x,          .dst_reg = &cpu_state.reg_accum.reg_accumC, .flag = CPU_STATUS_FLAG_MEMORY},
+    [OPCODE_TXS - OPCODE_TAX] = {.src_reg = &cpu_state.reg_x.reg_x,          .dst_reg = &cpu_state.reg_s},
+    [OPCODE_TXY - OPCODE_TAX] = {.src_reg = &cpu_state.reg_x.reg_x,          .dst_reg = &cpu_state.reg_y.reg_y,          .flag = CPU_STATUS_FLAG_INDEX},
+    [OPCODE_TYA - OPCODE_TAX] = {.src_reg = &cpu_state.reg_y.reg_y,          .dst_reg = &cpu_state.reg_accum.reg_accumC, .flag = CPU_STATUS_FLAG_MEMORY},
+    [OPCODE_TYX - OPCODE_TAX] = {.src_reg = &cpu_state.reg_y.reg_y,          .dst_reg = &cpu_state.reg_x.reg_x,          .flag = CPU_STATUS_FLAG_INDEX},
+};
+
+uint32_t zero_reg = 0;
+
+struct store_t stores[] = {
+    [OPCODE_STA - OPCODE_STA] = {.src_reg = &cpu_state.reg_accum.reg_accumC, .flag = CPU_STATUS_FLAG_MEMORY},
+    [OPCODE_STX - OPCODE_STA] = {.src_reg = &cpu_state.reg_x.reg_x,          .flag = CPU_STATUS_FLAG_INDEX},
+    [OPCODE_STY - OPCODE_STA] = {.src_reg = &cpu_state.reg_y.reg_y,          .flag = CPU_STATUS_FLAG_INDEX},
+    [OPCODE_STZ - OPCODE_STA] = {.src_reg = &zero_reg,                       .flag = CPU_STATUS_FLAG_MEMORY}
+};
+
+struct load_t loads[] = {
+    [OPCODE_LDA - OPCODE_LDA] = {.dst_reg = &cpu_state.reg_accum.reg_accumC, .flag = CPU_STATUS_FLAG_MEMORY},
+    [OPCODE_LDX - OPCODE_LDA] = {.dst_reg = &cpu_state.reg_x.reg_x,          .flag = CPU_STATUS_FLAG_INDEX},
+    [OPCODE_LDY - OPCODE_LDA] = {.dst_reg = &cpu_state.reg_y.reg_y,          .flag = CPU_STATUS_FLAG_INDEX},
 };
 
 uint8_t carry_flag_alu_op[ALU_OP_LAST] = 
@@ -856,7 +989,7 @@ char *instruction_str(unsigned int effective_address)
 {
 //    char *opcode_str;
     char *mem_str;
-    unsigned char *opcode_address;
+    // unsigned char *opcode_address;
     char *opcode_str;
     char *mem_address;
     char addr_mode_str[128];
@@ -865,8 +998,9 @@ char *instruction_str(unsigned int effective_address)
     uint32_t address = 0;
     struct opcode_t op_code;
 
-    opcode_address = memory_pointer(effective_address);
-    op_code = opcode_matrix[opcode_address[0]];
+    // opcode_address = memory_pointer(effective_address);
+    // op_code = opcode_matrix[opcode_address[0]];
+    op_code = opcode_matrix[read_byte(effective_address)];
     width = opcode_width(&op_code);
 
 //    for(int32_t i = width - 1; i > 0; i--)
@@ -883,7 +1017,8 @@ char *instruction_str(unsigned int effective_address)
             strcat(addr_mode_str, temp_str);
             for(int32_t i = width - 1; i > 0; i--)
             {
-                sprintf(temp_str, "%02x", opcode_address[i]);
+                // sprintf(temp_str, "%02x", opcode_address[i]);
+                sprintf(temp_str, "%02x", read_byte(effective_address + i));
                 strcat(addr_mode_str, temp_str);
             }
             strcat(addr_mode_str, ")");
@@ -893,7 +1028,8 @@ char *instruction_str(unsigned int effective_address)
             strcpy(addr_mode_str, "absolute addr( pointer (");
             for(int32_t i = width - 1; i > 0; i--)
             {
-                sprintf(temp_str, "%02x", opcode_address[i]);
+                // sprintf(temp_str, "%02x", opcode_address[i]);
+                sprintf(temp_str, "%02x", read_byte(effective_address + i));
                 strcat(addr_mode_str, temp_str);
             }
             
@@ -906,7 +1042,8 @@ char *instruction_str(unsigned int effective_address)
             strcpy(addr_mode_str, "absolute addr(");
             for(int32_t i = width - 1; i > 0; i--)
             {
-                sprintf(temp_str, "%02x", opcode_address[i]);
+                // sprintf(temp_str, "%02x", opcode_address[i]);
+                sprintf(temp_str, "%02x", read_byte(effective_address + i));
                 strcat(addr_mode_str, temp_str);
             }
 
@@ -919,7 +1056,8 @@ char *instruction_str(unsigned int effective_address)
             strcpy(addr_mode_str, "absolute addr(");
             for(int32_t i = width - 1; i > 0; i--)
             {
-                sprintf(temp_str, "%02x", opcode_address[i]);
+                // sprintf(temp_str, "%02x", opcode_address[i]);
+                sprintf(temp_str, "%02x", read_byte(effective_address + i));
                 strcat(addr_mode_str, temp_str);
             }
 
@@ -932,7 +1070,8 @@ char *instruction_str(unsigned int effective_address)
             strcpy(addr_mode_str, "absolute addr( pointer (");
             for(int32_t i = width - 1; i > 0; i--)
             {
-                sprintf(temp_str, "%02x", opcode_address[i]);
+                // sprintf(temp_str, "%02x", opcode_address[i]);
+                sprintf(temp_str, "%02x", read_byte(effective_address + i));
                 strcat(addr_mode_str, temp_str);
             }
             strcat(addr_mode_str, ") )");
@@ -942,7 +1081,8 @@ char *instruction_str(unsigned int effective_address)
             strcpy(addr_mode_str, "absolute long addr(");
             for(int32_t i = width - 1; i > 0; i--)
             {
-                sprintf(temp_str, "%02x", opcode_address[i]);
+                // sprintf(temp_str, "%02x", opcode_address[i]);
+                sprintf(temp_str, "%02x", read_byte(effective_address + i));
                 strcat(addr_mode_str, temp_str);
             }
 
@@ -955,7 +1095,8 @@ char *instruction_str(unsigned int effective_address)
             strcpy(addr_mode_str, "absolute long addr(");
             for(int32_t i = width - 1; i > 0; i--)
             {
-                sprintf(temp_str, "%02x", opcode_address[i]);
+                // sprintf(temp_str, "%02x", opcode_address[i]);
+                sprintf(temp_str, "%02x", read_byte(effective_address + i));
                 strcat(addr_mode_str, temp_str);
             }
 
@@ -967,8 +1108,10 @@ char *instruction_str(unsigned int effective_address)
         break;
 
         case ADDRESS_MODE_BLOCK_MOVE:
-            sprintf(addr_mode_str, "dst addr(%02x:%04x), src addr(%02x:%04x)", opcode_address[1], cpu_state.reg_y.reg_y,
-                                                                               opcode_address[2], cpu_state.reg_x.reg_x);
+            // sprintf(addr_mode_str, "dst addr(%02x:%04x), src addr(%02x:%04x)", opcode_address[1], cpu_state.reg_y.reg_y,
+            //                                                                    opcode_address[2], cpu_state.reg_x.reg_x);
+            sprintf(addr_mode_str, "dst addr(%02x:%04x), src addr(%02x:%04x)", read_byte(effective_address + 1), cpu_state.reg_y.reg_y,
+                                                                               read_byte(effective_address + 2), cpu_state.reg_x.reg_x);
         break;
 
         case ADDRESS_MODE_DIRECT_INDEXED_INDIRECT:
@@ -984,9 +1127,12 @@ char *instruction_str(unsigned int effective_address)
         break;
 
         case ADDRESS_MODE_DIRECT_INDIRECT_INDEXED:
-            mem_address = memory_pointer(cpu_state.reg_d + opcode_address[1]);
-            sprintf(addr_mode_str, "[pointer(D(%04x) + offset(%02x))](%04x) + Y(%04x)", cpu_state.reg_d, opcode_address[1],
-                                                                                            *(unsigned short *)mem_address, cpu_state.reg_y.reg_y);
+            // mem_address = memory_pointer(cpu_state.reg_d + opcode_address[1]);
+            uint8_t offset = read_byte(effective_address + 1);
+            uint16_t mem_address = read_word(cpu_state.reg_d + offset);
+            // sprintf(addr_mode_str, "[pointer(D(%04x) + offset(%02x))](%04x) + Y(%04x)", cpu_state.reg_d, opcode_address[1],
+            //                                                                                 *(unsigned short *)mem_address, cpu_state.reg_y.reg_y);
+            sprintf(addr_mode_str, "[pointer(D(%04x) + offset(%02x))](%04x) + Y(%04x)", cpu_state.reg_d, offset, mem_address, cpu_state.reg_y.reg_y);
         break;
 
         case ADDRESS_MODE_DIRECT_INDIRECT_LONG_INDEXED:
@@ -998,11 +1144,13 @@ char *instruction_str(unsigned int effective_address)
         break;
 
         case ADDRESS_MODE_DIRECT_INDIRECT:
-            sprintf(addr_mode_str, "pointer(D(%04x) + offset(%02x))", cpu_state.reg_d, opcode_address[1]);
+            // sprintf(addr_mode_str, "pointer(D(%04x) + offset(%02x))", cpu_state.reg_d, opcode_address[1]);
+            sprintf(addr_mode_str, "pointer(D(%04x) + offset(%02x))", cpu_state.reg_d, read_byte(effective_address + 1));
         break;
 
         case ADDRESS_MODE_DIRECT:
-            sprintf(addr_mode_str, "D(%04x) + offset(%02x)", cpu_state.reg_d, opcode_address[1]);
+            // sprintf(addr_mode_str, "D(%04x) + offset(%02x)", cpu_state.reg_d, opcode_address[1]);
+            sprintf(addr_mode_str, "D(%04x) + offset(%02x)", cpu_state.reg_d, read_byte(effective_address + 1));
         break;
 
         case ADDRESS_MODE_IMMEDIATE:
@@ -1010,7 +1158,8 @@ char *instruction_str(unsigned int effective_address)
 
             for(int32_t i = width - 1; i > 0; i--)
             {
-                sprintf(temp_str, "%02x", opcode_address[i]);
+                // sprintf(temp_str, "%02x", opcode_address[i]);
+                sprintf(temp_str, "%02x", read_byte(effective_address + i));
                 strcat(addr_mode_str, temp_str);
             }
             strcat(addr_mode_str, ")");
@@ -1025,7 +1174,8 @@ char *instruction_str(unsigned int effective_address)
         break;
 
         case ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE:
-            sprintf(addr_mode_str, "pc(%04x) + offset(%02x)", cpu_state.reg_pc, opcode_address[1]);
+            // sprintf(addr_mode_str, "pc(%04x) + offset(%02x)", cpu_state.reg_pc, opcode_address[1]);
+            sprintf(addr_mode_str, "pc(%04x) + offset(%02x)", cpu_state.reg_pc, read_byte(effective_address + 1));
         break;
 
         case ADDRESS_MODE_STACK:
@@ -1034,7 +1184,8 @@ char *instruction_str(unsigned int effective_address)
         break;
 
         case ADDRESS_MODE_STACK_RELATIVE:
-            sprintf(addr_mode_str, "S(%04x) + offset(%02x)", cpu_state.reg_s, opcode_address[1]);
+            // sprintf(addr_mode_str, "S(%04x) + offset(%02x)", cpu_state.reg_s, opcode_address[1]);
+            sprintf(addr_mode_str, "S(%04x) + offset(%02x)", cpu_state.reg_s, read_byte(effective_address + 1));
         break;
 
         case ADDRESS_MODE_STACK_RELATIVE_INDIRECT_INDEXED:
@@ -1047,388 +1198,14 @@ char *instruction_str(unsigned int effective_address)
         break;
     }
     
-    
-    switch(op_code.opcode)
-    {
-        case OPCODE_ADC:
-            opcode_str = "ADC";
-        break;
-
-        case OPCODE_AND:
-            opcode_str = "AND";
-        break;
-
-        case OPCODE_ASL:
-            opcode_str = "ASL";
-        break;
-
-        case OPCODE_BCC:
-            opcode_str = "BCC";
-        break;
-
-        case OPCODE_BCS:
-            opcode_str = "BCS";
-        break;
-
-        case OPCODE_BEQ:
-            opcode_str = "BEQ";
-        break;
-
-        case OPCODE_BMI:
-            opcode_str = "BMI";
-        break;
-
-        case OPCODE_BNE:
-            opcode_str = "BNE";
-        break;
-
-        case OPCODE_BPL:
-            opcode_str = "BPL";
-        break;
-
-        case OPCODE_BRA:
-            opcode_str = "BRA";
-        break;
-
-        case OPCODE_BRK:
-            opcode_str = "BRK";
-        break;
-
-        case OPCODE_BRL:
-            opcode_str = "BRL";
-        break;
-
-        case OPCODE_BVC:
-            opcode_str = "BVC";
-        break;
-
-        case OPCODE_BVS:
-            opcode_str = "BVS";
-        break;
-
-        case OPCODE_BIT:
-            opcode_str = "BIT";
-        break;
-
-        case OPCODE_CLC:
-            opcode_str = "CLC";
-        break;
-
-        case OPCODE_CLD:
-            opcode_str = "CLD";
-        break;
-
-        case OPCODE_CLV:
-            opcode_str = "CLV";
-        break;
-
-        case OPCODE_CLI:
-            opcode_str = "CLI";
-        break;
-
-        case OPCODE_CMP:
-            opcode_str = "CMP";
-        break;
-
-        case OPCODE_CPX:
-            opcode_str = "CPX";
-        break;
-
-        case OPCODE_CPY:
-            opcode_str = "CPY";
-        break;
-
-        case OPCODE_DEC:
-            opcode_str = "DEC";
-        break;
-
-        case OPCODE_INC:
-            opcode_str = "INC";
-        break;
-
-        case OPCODE_DEX:
-            opcode_str = "DEX";
-        break;
-
-        case OPCODE_INX:
-            opcode_str = "INX";
-        break;
-
-        case OPCODE_DEY:
-            opcode_str = "DEY";
-        break;
-
-        case OPCODE_INY:
-            opcode_str = "INY";
-        break;
-
-        case OPCODE_JMP:
-            opcode_str = "JMP";
-        break;
-
-        case OPCODE_JML:
-            opcode_str = "JML";
-        break;
-
-        case OPCODE_JSL:
-            opcode_str = "JSL";
-        break;
-
-        case OPCODE_JSR:
-            opcode_str = "JSR";
-        break;
-
-        case OPCODE_LDA:
-            opcode_str = "LDA";
-        break;
-
-        case OPCODE_STA:
-            opcode_str = "STA";
-        break;
-
-        case OPCODE_LDX:
-            opcode_str = "LDX";
-        break;
-
-        case OPCODE_STX:
-            opcode_str = "STX";
-        break;
-
-        case OPCODE_LDY:
-            opcode_str = "LDY";
-        break;
-
-        case OPCODE_STY:
-            opcode_str = "STY";
-        break;
-
-        case OPCODE_STZ:
-            opcode_str = "STZ";
-        break;
-
-        case OPCODE_LSR:
-            opcode_str = "LSR";
-        break;
-
-        case OPCODE_MVN:
-            opcode_str = "MVN";
-        break;
-
-        case OPCODE_MVP:
-            opcode_str = "MVP";
-        break;
-
-        case OPCODE_NOP:
-            opcode_str = "NOP";
-        break;
-
-        case OPCODE_PEA:
-            opcode_str = "PEA";
-        break;
-
-        case OPCODE_PEI:
-            opcode_str = "PEI";
-        break;
-
-        case OPCODE_PER:
-            opcode_str = "PER";
-        break;
-
-        case OPCODE_PHA:
-            opcode_str = "PHA";
-        break;
-
-        case OPCODE_PHB:
-            opcode_str = "PHB";
-        break;
-
-        case OPCODE_PHD:
-            opcode_str = "PHD";
-        break;
-
-        case OPCODE_PHK:
-            opcode_str = "PHK";
-        break;
-
-        case OPCODE_PHP:
-            opcode_str = "PHP";
-        break;
-
-        case OPCODE_PHX:
-            opcode_str = "PHX";
-        break;
-
-        case OPCODE_PHY:
-            opcode_str = "PHY";
-        break;
-
-        case OPCODE_PLA:
-            opcode_str = "PLA";
-        break;
-
-        case OPCODE_PLB:
-            opcode_str = "PLB";
-        break;
-
-        case OPCODE_PLD:
-            opcode_str = "PLD";
-        break;
-
-        case OPCODE_PLP:
-            opcode_str = "PLP";
-        break;
-
-        case OPCODE_PLX:
-            opcode_str = "PLX";
-        break;
-
-        case OPCODE_PLY:
-            opcode_str = "PLY";
-        break;
-
-        case OPCODE_REP:
-            opcode_str = "REP";
-        break;
-
-        case OPCODE_ROL:
-            opcode_str = "ROL";
-        break;
-
-        case OPCODE_ROR:
-            opcode_str = "ROR";
-        break;
-
-        case OPCODE_RTI:
-            opcode_str = "RTI";
-        break;
-
-        case OPCODE_RTL:
-            opcode_str = "RTL";
-        break;
-
-        case OPCODE_RTS:
-            opcode_str = "RTS";
-        break;
-
-        case OPCODE_SBC:
-            opcode_str = "SBC";
-        break;
-
-        case OPCODE_SEP:
-            opcode_str = "SEP";
-        break;
-
-        case OPCODE_SEC:
-            opcode_str = "SEC";
-        break;
-
-        case OPCODE_SED:
-            opcode_str = "SED";
-        break;
-
-        case OPCODE_SEI:
-            opcode_str = "SEI";
-        break;
-
-        case OPCODE_TAX:
-            opcode_str = "TAX";
-        break;
-
-        case OPCODE_TAY:
-            opcode_str = "TAY";
-        break;
-
-        case OPCODE_TCD:
-            opcode_str = "TCD";
-        break;
-
-        case OPCODE_TCS:
-            opcode_str = "TCS";
-        break;
-
-        case OPCODE_TDC:
-            opcode_str = "TDC";
-        break;
-
-        case OPCODE_TSC:
-            opcode_str = "TSC";
-        break;
-
-        case OPCODE_TSX:
-            opcode_str = "TSX";
-        break;
-
-        case OPCODE_TXA:
-            opcode_str = "TXA";
-        break;
-
-        case OPCODE_TXS:
-            opcode_str = "TXS";
-        break;
-
-        case OPCODE_TXY:
-            opcode_str = "TXY";
-        break;
-
-        case OPCODE_TYA:
-            opcode_str = "TYA";
-        break;
-
-        case OPCODE_TYX:
-            opcode_str = "TYX";
-        break;
-
-        case OPCODE_WAI:
-            opcode_str = "WAI";
-        break;
-
-        case OPCODE_WDM:
-            opcode_str = "WDM";
-        break;
-
-        case OPCODE_XBA:
-            opcode_str = "XBA";
-        break;
-
-        case OPCODE_TRB:
-            opcode_str = "TRB";
-        break;
-
-        case OPCODE_TSB:
-            opcode_str = "TSB";
-        break;
-
-        case OPCODE_STP:
-            opcode_str = "STP";
-        break;
-
-        case OPCODE_COP:
-            opcode_str = "COP";
-        break;
-
-        case OPCODE_EOR:
-            opcode_str = "EOR";
-        break;
-
-        case OPCODE_ORA:
-            opcode_str = "ORA";
-        break;
-
-        case OPCODE_XCE:
-            opcode_str = "XCE";
-        break;
-
-        default:
-        case OPCODE_UNKNOWN:
-            opcode_str = "UNKNOWN";
-        break;
-    }
+    opcode_str = opcode_strs[op_code.opcode];
 
     sprintf(instruction_str_buffer, "[%02x:%04x]: ", (effective_address >> 16) & 0xff, effective_address & 0xffff);
 
     for(int32_t i = 0; i < width; i++)
     {
-        sprintf(temp_str, "%02x ", opcode_address[i]);
+        // sprintf(temp_str, "%02x ", opcode_address[i]);
+        sprintf(temp_str, "%02x", read_byte(effective_address + i));
         strcat(instruction_str_buffer, temp_str);
     }
 
@@ -1517,72 +1294,39 @@ int dump_cpu(int show_registers)
     return 0;
 }
 
-void poke(uint32_t effective_address, uint32_t *value)
-{
-    unsigned char *memory;
-
-    memory = memory_pointer(effective_address);
-
-    if(memory)
-    {
-        printf("[%02x:%04x] %02x %02x %02x %02x ", (effective_address >> 16) & 0xff, effective_address & 0xffff,
-                                                        memory[0], memory[1], memory[2], memory[3]);
-
-        if(value)
-        {
-            if(*value & 0x00ff0000)
-            {
-                memcpy(memory, value, 3);
-            }
-            else if(*value & 0x0000ff00)
-            {
-                memcpy(memory, value, 2);
-            }
-            else
-            {
-                memcpy(memory, value, 1);
-            }
-
-            printf("-> %02x %02x %02x %02x ", memory[0], memory[1], memory[2], memory[3]);
-        }
-
-        printf("\n");
-    }
-}
-
 int view_hardware_registers()
 {
-    int i;
+    // int i;
 
-    for(i = 0; i < sizeof(hardware_regs.hardware_regs); i++)
-    {
-        printf("<0x%04x>: 0x%02x\n", CPU_REGS_START_ADDRESS + i, hardware_regs.hardware_regs[i]);
-    }
+    // for(i = 0; i < sizeof(hardware_regs.hardware_regs); i++)
+    // {
+    //     printf("<0x%04x>: 0x%02x\n", CPU_REGS_START_ADDRESS + i, hardware_regs.hardware_regs[i]);
+    // }
 }
 
-void *cpu_pointer(uint32_t effective_address, uint32_t access_location)
-{
-    void *pointer = NULL;
+// void *cpu_pointer(uint32_t effective_address, uint32_t access_location)
+// {
+//     void *pointer = NULL;
 
-    switch(access_location)
-    {
-        case ACCESS_LOCATION_REGS:
-            pointer = (void *)(hardware_regs.hardware_regs + (effective_address & 0xffff) - CPU_REGS_START_ADDRESS);
-        break;
+//     switch(access_location)
+//     {
+//         case ACCESS_LOCATION_REGS:
+//             pointer = (void *)(hardware_regs.hardware_regs + (effective_address & 0xffff) - CPU_REGS_START_ADDRESS);
+//         break;
 
-        case ACCESS_LOCATION_WRAM1:
-            pointer = (void *)(wram1 + (effective_address & 0xffff) - RAM1_START_ADDRESS);
-        break;
-    }
+//         case ACCESS_LOCATION_WRAM1:
+//             pointer = (void *)(wram1 + (effective_address & 0xffff) - RAM1_START_ADDRESS);
+//         break;
+//     }
     
-    return pointer;
-}
+//     return pointer;
+// }
 
 
 void cpu_write_byte(uint32_t effective_address, uint8_t data)
 {
     cpu_cycle_count += ACCESS_CYCLES(effective_address);
-    write_data(effective_address, data, 1);
+    write_byte(effective_address, data);
 }
 
 void cpu_write_word(uint32_t effective_address, uint16_t data)
@@ -1592,43 +1336,43 @@ void cpu_write_word(uint32_t effective_address, uint16_t data)
 }
 
 
-void cpu_regs_write(uint32_t effective_address, uint32_t data, uint32_t byte_write)
-{
-    void *pointer = (void *)(hardware_regs.hardware_regs + (effective_address & 0xffff) - CPU_REGS_START_ADDRESS);
+// void cpu_regs_write(uint32_t effective_address, uint32_t data, uint32_t byte_write)
+// {
+//     void *pointer = (void *)(hardware_regs.hardware_regs + (effective_address & 0xffff) - CPU_REGS_START_ADDRESS);
     
-    if(byte_write)
-    {
-        *(uint8_t *)pointer = data;
-    }
-    else
-    {
-        *(uint16_t *)pointer = data;
-    }
-}
+//     if(byte_write)
+//     {
+//         *(uint8_t *)pointer = data;
+//     }
+//     else
+//     {
+//         *(uint16_t *)pointer = data;
+//     }
+// }
 
-void cpu_wram1_write(uint32_t effective_address, uint32_t data, uint32_t byte_write)
-{
-    void *pointer = (void *)(wram1 + (effective_address & 0xffff) - RAM1_START_ADDRESS);
+// void cpu_wram1_write(uint32_t effective_address, uint32_t data, uint32_t byte_write)
+// {
+//     void *pointer = (void *)(wram1 + (effective_address & 0xffff) - RAM1_START_ADDRESS);
     
-    if(byte_write)
-    {
-        *(uint8_t *)pointer = data;
-    }
-    else
-    {
-        *(uint16_t *)pointer = data;
-    }
-}
+//     if(byte_write)
+//     {
+//         *(uint8_t *)pointer = data;
+//     }
+//     else
+//     {
+//         *(uint16_t *)pointer = data;
+//     }
+// }
 
-void cpu_wram2_write(uint32_t effective_address, uint32_t data, uint32_t byte_write)
-{
+// void cpu_wram2_write(uint32_t effective_address, uint32_t data, uint32_t byte_write)
+// {
     
-}
+// }
 
 uint8_t cpu_read_byte(uint32_t effective_address)
 {
     cpu_cycle_count += ACCESS_CYCLES(effective_address);
-    return read_data(effective_address);
+    return read_byte(effective_address);
 }
 
 uint16_t cpu_read_word(uint32_t effective_address)
@@ -1641,22 +1385,22 @@ uint32_t cpu_read_wordbyte(uint32_t effective_address)
     return (uint32_t)cpu_read_word(effective_address) | ((uint32_t)cpu_read_byte(effective_address + 2) << 16);
 }
 
-uint32_t cpu_regs_read(uint32_t effective_address)
-{
-    uint32_t *pointer = (void *)(hardware_regs.hardware_regs + (effective_address & 0xffff) - CPU_REGS_START_ADDRESS);
-    return *pointer;
-}
+// uint32_t cpu_regs_read(uint32_t effective_address)
+// {
+//     uint32_t *pointer = (void *)(hardware_regs.hardware_regs + (effective_address & 0xffff) - CPU_REGS_START_ADDRESS);
+//     return *pointer;
+// }
 
-uint32_t cpu_wram1_read(uint32_t effective_address)
-{
-    uint32_t *pointer = (void *)(wram1 + (effective_address & 0xffff) - RAM1_START_ADDRESS);
-    return *pointer;
-}
+// uint32_t cpu_wram1_read(uint32_t effective_address)
+// {
+//     uint32_t *pointer = (void *)(wram1 + (effective_address & 0xffff) - RAM1_START_ADDRESS);
+//     return *pointer;
+// }
 
-uint32_t cpu_wram2_read(uint32_t effective_address)
-{
-    return 0;
-}
+// uint32_t cpu_wram2_read(uint32_t effective_address)
+// {
+//     return 0;
+// }
 
 uint16_t alu(uint32_t operand0, uint32_t operand1, uint32_t op, uint32_t width)
 {
@@ -1763,7 +1507,7 @@ void reset_cpu()
     cpu_state.reg_s = (cpu_state.reg_s & 0xff) | 0x0100;
 
     cpu_state.reg_p = CPU_STATUS_FLAG_MEMORY | CPU_STATUS_FLAG_INDEX | CPU_STATUS_FLAG_IRQ_DISABLE | CPU_STATUS_FLAG_CARRY;
-    cpu_state.reg_pc = (uint16_t)read_data(0xfffc);
+    cpu_state.reg_pc = read_word(0xfffc);
 }
 
 uint32_t step_cpu()
@@ -1786,10 +1530,10 @@ uint32_t step_cpu()
         cpu_state.in_rdy = 0;
     }
 
-    if(hardware_regs.nmitimen)
-    {
+    // if(hardware_regs.nmitimen)
+    // {
         
-    }
+    // }
     
     if(!cpu_state.in_abortb)
     {
@@ -1815,7 +1559,7 @@ uint32_t step_cpu()
         return 1;
     }
 
-    /* if we got here, either we wasn't waiting for an interrupt, or we were waiting
+    /* if we got here, either we weren't waiting for an interrupt, or we were waiting
     and an interrupt has happened. Either way, we clear the WAI condition */
     cpu_state.s_wai = 0;
     
@@ -1849,22 +1593,6 @@ uint32_t step_cpu()
         cpu_state.reg_pc = cpu_read_word(handler);
         
         return cpu_cycle_count;
-    }
-    
-    if(cpu_state.reg_e)
-    {
-        /* some conditions that have to be enforced when in emulation mode */
-        
-        /* it's possible to push a value onto the stack, and pop it into
-        the status register. When in emulation mode, M and X flags are 
-        forced to 1, so here we enforce this behavior */
-        cpu_state.reg_p |= CPU_STATUS_FLAG_MEMORY | CPU_STATUS_FLAG_INDEX;
-        
-        /* in emulation mode, the upper byte of the stack pointer is forced
-        to 1, so here we enforce it to. */
-        cpu_state.reg_s = (cpu_state.reg_s & 0xff) | 0x0100;
-        cpu_state.reg_x.reg_xH = 0;
-        cpu_state.reg_y.reg_yH = 0;
     }
     
     effective_address = EFFECTIVE_ADDRESS(cpu_state.reg_pbrw.reg_pbr, cpu_state.reg_pc);
@@ -1914,6 +1642,9 @@ uint32_t step_cpu()
             /* the second and third bytes of the instruction are added to the X Index Register to
             form the low-order 16-bits of the effective address.  The Data Bank Register contains
             the high-order 8 bits of the effective address... */
+
+            /* TODO: accesses with this addressing mode can span bank boundaries. If the base address + X goes over 0xffff,
+            the data bank register gets tempoarily incremented. */
             effective_address = EFFECTIVE_ADDRESS(cpu_state.reg_dbrw.reg_dbr, cpu_read_word(effective_address) + cpu_state.reg_x.reg_x);
             cpu_state.reg_pc += 2;
         break;
@@ -1922,6 +1653,9 @@ uint32_t step_cpu()
             /* the second and third bytes of the instruction are added to the Y Index Register to
             form the low-order 16-bits of the effective address.  The Data Bank Register contains
             the high-order 8 bits of the effective address... */
+
+            /* TODO: accesses with this addressing mode can span bank boundaries. If the base address + X goes over 0xffff,
+            the data bank register gets tempoarily incremented. */
             effective_address = EFFECTIVE_ADDRESS(cpu_state.reg_dbrw.reg_dbr, cpu_read_word(effective_address) + cpu_state.reg_y.reg_y);
             cpu_state.reg_pc += 2;
         break;
@@ -1990,6 +1724,9 @@ uint32_t step_cpu()
             /* the second byte of the instruction is added to the sum of the
             Direct Register and the X Index Register to form the 16-bit effective address.
             The operand is always in Bank 0...  */
+
+            /* TOOO: in emulation mode, indexing past the end of the direct page wraps back to its start, which needs to be
+            handled here. Only the low 8 bits of the reg_x + reg_d + array_base sum are used as the direct page offset.*/
             effective_address = (uint16_t)(cpu_read_byte(effective_address) + cpu_state.reg_d + cpu_state.reg_x.reg_x);
             cpu_state.reg_pc++;
         break;
@@ -1998,6 +1735,9 @@ uint32_t step_cpu()
             /* the second byte of the instruction is added to the sum of the
             Direct Register and the Y Index Register to form the 16-bit effective address.
             The operand is always in Bank 0...  */
+
+            /* TOOO: in emulation mode, indexing past the end of the direct page wraps back to its start, which needs to be
+            handled here. Only the low 8 bits of the reg_x + reg_d + array_base sum are used as the direct page offset.*/
             effective_address = (uint16_t)(cpu_read_byte(effective_address) + cpu_state.reg_d + cpu_state.reg_y.reg_y);
             cpu_state.reg_pc++;
         break;
@@ -2527,17 +2267,6 @@ uint32_t step_cpu()
         {
             uint16_t src_value;
             void *dst_addr = NULL;
-            /* so, I'm not sure why the datasheet is so vague about the stack behavior. On some 
-            tables it seems to indicate that 16 bit is always pushed onto the stack, but then it 
-            kind of suggests that flags M and X affects what's pushed onto the stack. Emulators
-            around seems to deal with both 8 bit and 16 bit push/pulls, and that's also mentioned
-            in https://wiki.superfamicom.org/uploads/assembly-programming-manual-for-w65c816.pdf.
-            Another fun bit is that the datasheet doesn't make any effort in explaining how the 
-            stack pointer is incremented/decremented. In x86, the stack pointer points at the 
-            LAST PUSHED thing, and pushing DECREMENTS FIRST, THEN STORES THE VALUE. In w65c816, 
-            it's the opposite. It STORES FIRST, THEN DECREMENTS THE VALUE, which makes the stack
-            pointer point at the NEXT AVAILABLE POSITION. That's a pretty important difference.
-            */
             byte_write = 1;
             
             switch(opcode.opcode)
@@ -2561,6 +2290,7 @@ uint32_t step_cpu()
                 break;
 
                 case OPCODE_PLA:
+                    /* TODO: this instruction modifies the N and Z flags */
                     byte_write = cpu_state.reg_p & CPU_STATUS_FLAG_MEMORY;
                     dst_addr = &cpu_state.reg_accum.reg_accumC;
                 break;
@@ -2570,21 +2300,17 @@ uint32_t step_cpu()
                 break;
 
                 case OPCODE_PLB:
+                    /* TODO: this instruction modifies the N and Z flags */
                     dst_addr = &cpu_state.reg_dbrw.reg_dbr;
                 break;
                 
-                /* although not mentioned, the behavior for pushing the D register is
-                actually clear. It's a 16 bit register, and there's no flag to control
-                its width, so two bytes get pushed. The datasheet says PHD and PLD work
-                in emulation mode, so it's going to be 2 bytes being pushed too. However,
-                that doesn't break backwards compatibility with 6502 programs because the
-                6502 doesn't have those two instructions, so stack sanity will be preserved */
                 case OPCODE_PHD:
                     byte_write = 0;
                     src_value = cpu_state.reg_d;
                 break;
 
                 case OPCODE_PLD:
+                    /* TODO: this instruction modifies the N and Z flags */
                     byte_write = 0;
                     dst_addr = &cpu_state.reg_d;
                 break;
@@ -2607,6 +2333,7 @@ uint32_t step_cpu()
                 break;
 
                 case OPCODE_PLX:
+                    /* TODO: this instruction modifies the N and Z flags */
                     byte_write = cpu_state.reg_p & CPU_STATUS_FLAG_INDEX;
                     dst_addr = &cpu_state.reg_x.reg_x;
                 break;
@@ -2617,6 +2344,7 @@ uint32_t step_cpu()
                 break;
 
                 case OPCODE_PLY:
+                    /* TODO: this instruction modifies the N and Z flags */
                     byte_write = cpu_state.reg_p & CPU_STATUS_FLAG_INDEX;
                     dst_addr = &cpu_state.reg_y.reg_y;
                 break;
@@ -2697,6 +2425,7 @@ uint32_t step_cpu()
                 break;
 
                 case OPCODE_XBA:
+                    /* TODO: this instruction modifies the N flag, based on bit 7 of the accumulator */
                     cpu_state.reg_accum.reg_accumC = ((cpu_state.reg_accum.reg_accumC >> 8) & 0xff) | ((cpu_state.reg_accum.reg_accumC << 8) & 0xff00);
                 break;
 
@@ -2708,12 +2437,6 @@ uint32_t step_cpu()
                     temp = cpu_state.reg_p & CPU_STATUS_FLAG_CARRY;
                     cpu_state.reg_p = (cpu_state.reg_p & (~CPU_STATUS_FLAG_CARRY)) | cpu_state.reg_e;
                     cpu_state.reg_e = temp;
-
-//                    if(cpu_state.reg_e)
-//                    {
-//                        cpu_state.reg_x.reg_xH = 0;
-//                        cpu_state.reg_y.reg_yH = 0;
-//                    }
                 break;
 
                 case OPCODE_BRK:
@@ -2768,6 +2491,7 @@ uint32_t step_cpu()
 
         case OPCODE_CLASS_TRANSFER:
         {
+            /* TODO: most of those will affect the flags, so handle that. */
             struct transfer_params_t *transfer = transfer_params + TPARM_INDEX(opcode.opcode);
 
             if(cpu_state.reg_p & transfer->flag)
@@ -2781,17 +2505,31 @@ uint32_t step_cpu()
         }
         break;
     }
-    
+
     if(cpu_state.reg_p & CPU_STATUS_FLAG_INDEX)
     {
+        cpu_state.reg_x.reg_xH = 0;
+        cpu_state.reg_y.reg_yH = 0;
+    }
+
+    if(cpu_state.reg_e)
+    {
+        /* some conditions that have to be enforced when in emulation mode */
+        
+        /* it's possible to push a value onto the stack, and pop it into
+        the status register. When in emulation mode, M and X flags are 
+        forced to 1, so here we enforce this behavior */
+        cpu_state.reg_p |= CPU_STATUS_FLAG_MEMORY | CPU_STATUS_FLAG_INDEX;
+        
+        /* in emulation mode, the upper byte of the stack pointer is forced
+        to 1, so here we enforce it to. */
+        cpu_state.reg_s = (cpu_state.reg_s & 0xff) | 0x0100;
         cpu_state.reg_x.reg_xH = 0;
         cpu_state.reg_y.reg_yH = 0;
     }
     
     return cpu_cycle_count;
 }
-
-
 
 
 

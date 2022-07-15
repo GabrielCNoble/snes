@@ -12,3 +12,4 @@ test.c
 test.exe
 *.dll
 *.txt
+.vscode

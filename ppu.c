@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include "SDL2/SDL.h"
 
 #include "ppu.h"
 #include "addr.h"
@@ -291,7 +292,6 @@ union
     uint16_t word;
 }oamdata_buffer;
 
-//uint8_t oamdata_buffer[2] = {};
 
 void *ppu_regs_pointer(uint32_t effective_address)
 {
@@ -333,7 +333,7 @@ void ppu_regs_write(uint32_t effective_address, uint8_t data)
             if(oamdata_byte_index > 1)
             {
                 vram[ppu_regs.oamaddr] = oamdata_buffer.word;
-                printf("word written to vram at %x\n", ppu_regs.oamaddr);
+//                printf("word written to vram at %x\n", ppu_regs.oamaddr);
                 ppu_regs.oamaddr++;
                 oamdata_byte_index = 0;
             }
@@ -418,15 +418,19 @@ void step_ppu(uint32_t cycle_count)
         counters[H_COUNTER].counter++;
         if(counters[H_COUNTER].counter == H_BLANK_END_DOT)
         {
-            value = (uint8_t)cpu_regs_read(HVBJOY_ADDRESS);
+            // value = (uint8_t)cpu_regs_read(HVBJOY_ADDRESS);
+            value = read_byte(HVBJOY_ADDRESS);
             value &= ~H_BLANK_FLAG;
-            cpu_regs_write(HVBJOY_ADDRESS, value, 1);
+            // cpu_regs_write(HVBJOY_ADDRESS, value, 1);
+            write_byte(HVBJOY_ADDRESS, value);
         }
         else if(counters[H_COUNTER].counter == H_BLANK_START_DOT)
         {
-            value = (uint8_t)cpu_regs_read(HVBJOY_ADDRESS);
+            // value = (uint8_t)cpu_regs_read(HVBJOY_ADDRESS);
+            value = read_byte(HVBJOY_ADDRESS);
             value |= H_BLANK_FLAG;
-            cpu_regs_write(HVBJOY_ADDRESS, value, 1);
+            // cpu_regs_write(HVBJOY_ADDRESS, value, 1);
+            write_byte(HVBJOY_ADDRESS, value);
         }
         if(counters[H_COUNTER].counter == SCANLINE_DOT_LENGTH)
         {
@@ -438,9 +442,11 @@ void step_ppu(uint32_t cycle_count)
          
         if(counters[V_COUNTER].counter == V_BLANK_END_LINE)
         {
-            value = (uint8_t)cpu_regs_read(HVBJOY_ADDRESS);
+            // value = (uint8_t)cpu_regs_read(HVBJOY_ADDRESS);
+            value = read_byte(HVBJOY_ADDRESS);
             value &= ~V_BLANK_FLAG;
-            cpu_regs_write(HVBJOY_ADDRESS, value, 1);
+            // cpu_regs_write(HVBJOY_ADDRESS, value, 1);
+            write_byte(HVBJOY_ADDRESS, value);
         }
         else
         {
@@ -457,9 +463,11 @@ void step_ppu(uint32_t cycle_count)
             
             if(counters[V_COUNTER].counter == last_scanline)
             {
-                value = (uint8_t)cpu_regs_read(HVBJOY_ADDRESS);
+                // value = (uint8_t)cpu_regs_read(HVBJOY_ADDRESS);
+                value = read_byte(HVBJOY_ADDRESS);
                 value |= V_BLANK_FLAG;
-                cpu_regs_write(HVBJOY_ADDRESS, value, 1);
+                // cpu_regs_write(HVBJOY_ADDRESS, value, 1);
+                write_byte(HVBJOY_ADDRESS, value);
             }
         }
         

@@ -25,10 +25,9 @@ int main(int argc, char *argv[])
         return -1;
     }
     
-//    reset_emu();
-    
     if(argc > 1)
     {
+        init_emu();
         if(!strcmp(argv[1], "-i"))
         {
             do
@@ -96,7 +95,6 @@ int main(int argc, char *argv[])
                         {
                             while(step_emu())
                             {
-//                                SDL_Delay(1);
                                 dump_cpu(1);
                             }
                         }
@@ -146,13 +144,9 @@ int main(int argc, char *argv[])
         {
 
         }
-//        rom = load_rom_file(argv[1]);
-//        //dump_rom(&rom);
-//        //disassable(rom.rom_buffer + rom.reset_vector, 256);
-//        map_rom(&rom);
-    }
 
-    //load_rom("final_fantasy_v.smc");
+        shutdown_emu();
+    }
     
     return 0;
 }

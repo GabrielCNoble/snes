@@ -2,7 +2,7 @@
 #define CPU_H
 
 #include "addr.h"
-#include <stdint.h>
+#include <stdint.h>  
 
 enum OPCODE_CLASS
 {
@@ -11,7 +11,6 @@ enum OPCODE_CLASS
     OPCODE_CLASS_BRANCH,
     OPCODE_CLASS_STACK,
     OPCODE_CLASS_ALU,
-    // OPCODE_CLASS_COMPARISON,
     OPCODE_CLASS_TRANSFER,
     OPCODE_CLASS_STANDALONE,
 };
@@ -122,10 +121,11 @@ enum OPCODES
 
 
     OPCODE_LDA,                            /* Load accumulator with memory */
-    OPCODE_STA,                            /* Store accumulator in memory */
     OPCODE_LDX,                            /* Load index X with memory */
-    OPCODE_STX,                            /* Store index X in memory */
     OPCODE_LDY,                            /* Load index Y with memory */
+
+    OPCODE_STA,                            /* Store accumulator in memory */
+    OPCODE_STX,                            /* Store index X in memory */
     OPCODE_STY,                            /* Store index Y in memory */
     OPCODE_STZ,                            /* Store zero in memory */
 
@@ -176,10 +176,10 @@ enum OPCODES
     
     OPCODE_TAX,                            /* Transfer accumulator to index X */
     OPCODE_TAY,                            /* Transfer accumulator to index Y */
-    OPCODE_TCD,                            /* Transfer C accumulator? to direct register */
-    OPCODE_TCS,                            /* Transfer C accumulator? to stack pointer */
-    OPCODE_TDC,                            /* Transfer direct register to C accumulator? */
-    OPCODE_TSC,                            /* Transfer stack pointer to C accumulator? */
+    OPCODE_TCD,                            /* Transfer C accumulator to direct register */
+    OPCODE_TCS,                            /* Transfer C accumulator to stack pointer */
+    OPCODE_TDC,                            /* Transfer direct register to C accumulator */
+    OPCODE_TSC,                            /* Transfer stack pointer to C accumulator */
     OPCODE_TSX,                            /* Transfer stack pointer to index X */
     OPCODE_TXA,                            /* Transfer index X to accumulator */
     OPCODE_TXS,                            /* Transfer index X to stack pointer */
@@ -243,6 +243,48 @@ enum ADDRESS_MODES
 
 };
 
+enum CPU_REGS
+{
+    CPU_REG_NMITIMEN                    = 0x4200,
+    CPU_REG_WRIO                        = 0x4201,
+    CPU_REG_WRMPYA                      = 0x4202,
+    CPU_REG_WRMPYB                      = 0x4203,
+    CPU_REG_WRDIVL                      = 0x4204,
+    CPU_REG_WRDIVH                      = 0x4205,
+    CPU_REG_WRDIVB                      = 0x4206,
+    CPU_REG_HTIMEL                      = 0x4207,
+    CPU_REG_HTIMEH                      = 0x4208,
+    CPU_REG_VTIMEL                      = 0x4209,
+    CPU_REG_VTIMEH                      = 0x420a,
+    CPU_REG_MDMAEN                      = 0x420b,
+    CPU_REG_HDMAEN                      = 0x420c,
+    CPU_REG_MEMSEL                      = 0x420d,
+    CPU_REG_RDNMI                       = 0x4210,
+    CPU_REG_TIMEUP                      = 0x4211,
+    CPU_REG_HVBJOY                      = 0x4212,
+    CPU_REG_RDIO                        = 0x4213,
+    CPU_REG_RDDIVL                      = 0x4214,
+    CPU_REG_RDDIVH                      = 0x4215,
+    CPU_REG_RDMPYL                      = 0x4216,
+    CPU_REG_RDMPYH                      = 0x4217,
+    CPU_REG_STDCTRL1L                   = 0x4218,
+    CPU_REG_STDCTRL1H                   = 0x4219,
+    CPU_REG_STDCTRL2L                   = 0x421a,
+    CPU_REG_STDCTRL2H                   = 0x421b,
+    CPU_REG_STDCTRL3L                   = 0x421c,
+    CPU_REG_STDCTRL3H                   = 0x421d,
+    CPU_REG_STDCTRL4L                   = 0x421e,
+    CPU_REG_STDCTRL4H                   = 0x421f,
+
+    CPU_REG_DMA0_PARAM                  = 0x4300,
+    CPU_REG_DAM0_BBUS_ADDR              = 0x4301,
+    CPU_REG_DMA0_ATAB_ADDRL             = 0x4302,
+    CPU_REG_DMA0_ATAB_ADDRH             = 0x4303,
+    CPU_REG_DMA0_ATAB_BANK              = 0x4304,
+    CPU_REG_HDMA0_ADDR_DMA0_COUNTL      = 0x4305,
+    CPU_REG_HDMA0_ADDR_DMA0_COUNTH      = 0x4306,
+    CPU_REG_HDMA0_BANK                  = 0x4307,
+};
 
 enum CPU_STATUS_FLAGS
 {
@@ -273,9 +315,9 @@ enum CPU_INTERRUPT
 
 struct opcode_t
 {
-    unsigned char opcode;
-    unsigned address_mode : 5;
-    unsigned opcode_class : 3;
+    uint8_t opcode;
+    uint8_t address_mode : 5;
+    uint8_t opcode_class : 3;
 };
 
 struct branch_cond_t
@@ -291,16 +333,35 @@ struct transfer_params_t
     uint8_t flag;
 };
 
+struct transfer_t
+{
+    void *src_reg;
+    void *dst_reg;
+    uint8_t flag;
+};
+
+struct load_t
+{
+    void *dst_reg;
+    uint8_t flag;  
+};
+
+struct store_t
+{
+    void *src_reg;
+    uint8_t flag;
+};
+
 struct cpu_state_t
 {
     union
     {
-        unsigned short reg_accumC;
+        uint16_t reg_accumC;
 
         struct
         {
-            unsigned char reg_accumA;
-            unsigned char reg_accumB;
+            uint8_t reg_accumA;
+            uint8_t reg_accumB;
         };
 
     }reg_accum;
@@ -311,12 +372,12 @@ struct cpu_state_t
 
     union
     {
-        unsigned short reg_x;
+        uint16_t reg_x;
 
         struct
         {
-            unsigned char reg_xL;
-            unsigned char reg_xH;
+            uint8_t reg_xL;
+            uint8_t reg_xH;
         };
 
     }reg_x;
@@ -324,12 +385,12 @@ struct cpu_state_t
 
     union
     {
-        unsigned short reg_y;
+        uint16_t reg_y;
 
         struct
         {
-            unsigned char reg_yL;
-            unsigned char reg_yH;
+            uint8_t reg_yL;
+            uint8_t reg_yH;
         };
 
     }reg_y;
@@ -359,13 +420,11 @@ void disassemble(int start, int byte_count);
 
 int dump_cpu(int show_registers);
 
-void poke(uint32_t effective_address, uint32_t *value);
-
 int view_hardware_registers();
 
 //void exec_interrupt();
 
-void *cpu_pointer(uint32_t effective_address, uint32_t access_location);
+// void *cpu_pointer(uint32_t effective_address, uint32_t access_location);
 
 
 
@@ -373,11 +432,11 @@ void cpu_write_byte(uint32_t effective_address, uint8_t data);
 
 void cpu_write_word(uint32_t effective_address, uint16_t data);
 
-void cpu_regs_write(uint32_t effective_address, uint32_t data, uint32_t byte_write);
+// void cpu_regs_write(uint32_t effective_address, uint32_t data, uint32_t byte_write);
 
-void cpu_wram1_write(uint32_t effective_address, uint32_t data, uint32_t byte_write);
+// void cpu_wram1_write(uint32_t effective_address, uint32_t data, uint32_t byte_write);
 
-void cpu_wram2_write(uint32_t effective_address, uint32_t data, uint32_t byte_write);
+// void cpu_wram2_write(uint32_t effective_address, uint32_t data, uint32_t byte_write);
 
 
 
@@ -387,11 +446,11 @@ uint16_t cpu_read_word(uint32_t effective_address);
 
 uint32_t cpu_read_wordbyte(uint32_t effective_address);
 
-uint32_t cpu_regs_read(uint32_t effective_address);
+// uint32_t cpu_regs_read(uint32_t effective_address);
 
-uint32_t cpu_wram1_read(uint32_t effective_address);
+// uint32_t cpu_wram1_read(uint32_t effective_address);
 
-uint32_t cpu_wram2_read(uint32_t effective_address);
+// uint32_t cpu_wram2_read(uint32_t effective_address);
 
 uint16_t alu(uint32_t operand0, uint32_t operand1, uint32_t op, uint32_t width);
 

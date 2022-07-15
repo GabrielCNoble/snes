@@ -3,7 +3,6 @@
 
 #include <stdint.h>
 
-#pragma pack(push, 1)
 struct obj_attr_t
 {
     uint8_t h_pos;
@@ -13,7 +12,6 @@ struct obj_attr_t
     be a nice use of them.  */
     uint16_t fpcn;
 };
-#pragma pack(pop)
 
 void *ppu_regs_pointer(uint32_t effective_address);
 
