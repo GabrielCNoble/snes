@@ -3,19 +3,41 @@
 
 #include <stdint.h>
 
-enum ROM_TYPE
+enum MAP_MODE
 {
-    ROM_MAPPING_MODE_20_SLOW = 0x20,
-    ROM_MAPPING_MODE_21_SLOW = 0x21,
-    ROM_MAPPING_MODE_23_SLOW = 0x23,
-    ROM_MAPPING_MODE_25_SLOW = 0x25,
-    ROM_MAPPING_MODE_20_FAST = 0x30,
-    ROM_MAPPING_MODE_21_FAST = 0x31,
-    ROM_MAPPING_MODE_25_FAST = 0x35
+    MAP_MODE_20_SLOW = 0x20,
+    MAP_MODE_21_SLOW = 0x21,
+    MAP_MODE_23_SLOW = 0x23,
+    MAP_MODE_25_SLOW = 0x25,
+    MAP_MODE_20_FAST = 0x30,
+    MAP_MODE_21_FAST = 0x31,
+    MAP_MODE_25_FAST = 0x35
 };
 
+enum ROM_SIZE
+{
+    ROM_SIZE_3_4M   = 0x09,
+    ROM_SIZE_5_8M   = 0x0a,
+    ROM_SIZE_9_16M  = 0x0b,
+    ROM_SIZE_17_32M = 0x0c,
+    ROM_SIZE_33_64M = 0x0d,
+};
 
+enum RAM_SIZE
+{
+    RAM_SIZE_NONE   = 0x00,
+    RAM_SIZE_16K    = 0x01,
+    RAM_SIZE_64K    = 0x03,
+    RAM_SIZE_256K   = 0x05,
+    RAM_SIZE_512K   = 0x06,
+    RAM_SIZE_1M     = 0x07,
+};
 
+// enum CART_LOCS
+// {
+//     CART_LOC_ROM = 0,
+//     CART_LOC_SRAM
+// };
 //#pragma pack(push, 1)
 //struct snes_header_data_t
 //{
@@ -77,26 +99,25 @@ struct rom_header_t
 //    unsigned int rom_size;
 //};
 
+// uint32_t cart_loc(uint32_t effective_address);
 
 struct rom_header_t *get_rom_header(void *rom);
 
-uint32_t load_rom_file(char *file_name);
+uint32_t load_cart(char *file_name);
 
-void dump_rom(struct rom_t *rom);
+void unload_cart();
 
-void *mode20_rom_pointer(uint32_t effective_address);
+void *mode20_cart_pointer(uint32_t effective_address);
 
-void *mode21_rom_pointer(uint32_t effective_address);
+void *mode21_cart_pointer(uint32_t effective_address);
 
-void *rom_pointer(unsigned int effective_address);
+// void *cart_pointer(uint32_t effective_address);
 
-uint32_t rom_read(uint32_t effective_address);
+uint8_t cart_read(uint32_t effective_address);
 
-//__fastcall void access_rom(unsigned int effective_address, int write, void *data, int width);
+void cart_write(uint32_t effective_address, uint8_t data);
 
-//void map_rom(struct rom_t *rom);
-
-#endif // ROM_H
+#endif
 
 
 

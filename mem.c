@@ -4,7 +4,7 @@
 #include "addr.h"
 #include "cpu.h"
 #include "ppu.h"
-#include "rom.h"
+#include "cart.h"
 #include "dma.h"
 
 // struct mem_write_t cpu_reg_writes[CPU_REGS_END - CPU_REGS_START] = {
@@ -20,7 +20,7 @@ uint8_t *               vram;
 struct mem_write_t *    reg_writes;
 struct mem_read_t *     reg_reads;
 
-void mem_init()
+void init_mem()
 {
     /* 8KB of wram1 + cpu,ppu,etc regs */
     ram1_regs = calloc(RAM1_REGS_END - RAM1_REGS_START, 1);
@@ -32,17 +32,26 @@ void mem_init()
     reg_writes = calloc(RAM1_REGS_END - RAM1_REGS_START, sizeof(struct mem_write_t));
     reg_reads = calloc(RAM1_REGS_END - RAM1_REGS_START, sizeof(struct mem_read_t));
 
-    reg_writes[CPU_REG_MDMAEN].notify = mdmaen_write;
-    reg_writes[CPU_REG_HDMAEN].notify = hdmaen_write;
+    reg_writes[CPU_REG_MDMAEN].write = mdmaen_write;
+    reg_writes[CPU_REG_HDMAEN].write = hdmaen_write;
 
-    reg_writes[PPU_REG_VMADDL].notify = vmadd_write;
-    reg_writes[PPU_REG_VMADDH].notify = vmadd_write;
-    reg_writes[PPU_REG_VMDATAL].notify = vmdata_write;
-    reg_writes[PPU_REG_VMDATAH].notify = vmdata_write;
+    reg_writes[PPU_REG_VMADDL].write = vmadd_write;
+    reg_writes[PPU_REG_VMADDH].write = vmadd_write;
+    reg_writes[PPU_REG_VMDATAWL].write = vmdata_write;
+    reg_writes[PPU_REG_VMDATAWH].write = vmdata_write;
+    reg_writes[PPU_REG_OAMADDL].write = oamadd_write;
+    reg_writes[PPU_REG_OAMADDH].write = oamadd_write;
+    reg_writes[PPU_REG_OAMDATA].write = oamdata_write;
+
+    reg_reads[PPU_REG_SLVH].read = slhv_read;
+    reg_reads[PPU_REG_OPHCT].read = opct_read;
+    reg_reads[PPU_REG_OPVCT].read = opct_read;
+    reg_reads[PPU_REG_VMDATARL].read = vmdata_read;
+    reg_reads[PPU_REG_VMDATARH].read = vmdata_read;
 
 }
 
-void mem_shutdonwn()
+void shutdown_mem()
 {
     free(ram1_regs);
     free(ram2);
@@ -59,8 +68,8 @@ uint32_t access_location(uint32_t effective_address)
     offset = effective_address & 0xffff;
     bank = (effective_address >> 16) & 0xff;
 
-    if((bank >= RAM1_REGS_BANK_RANGE0_START && bank <= RAM1_REGS_BANK_RANGE0_START ||
-       bank >= RAM1_REGS_BANK_RANGE1_START && bank <= RAM1_REGS_BANK_RANGE1_END) && offset < RAM1_REGS_END)
+    if(((bank >= RAM1_REGS_BANK_RANGE0_START && bank <= RAM1_REGS_BANK_RANGE0_END) ||
+        (bank >= RAM1_REGS_BANK_RANGE1_START && bank <= RAM1_REGS_BANK_RANGE1_END)) && offset < RAM1_REGS_END)
     {
         if(offset < RAM1_END)
         {
@@ -80,31 +89,7 @@ uint32_t access_location(uint32_t effective_address)
         return ACCESS_RAM2;
     }
 
-    return ACCESS_ROM;
-}
-
-void *memory_pointer(uint32_t effective_address)
-{
-//     uint32_t access_location = access_location(effective_address);
-//     void *pointer = NULL;
-// //     switch(access_location)
-// //     {
-// //         case ACCESS_LOCATION_REGS:
-// //         case ACCESS_LOCATION_WRAM1:
-// //         case ACCESS_LOCATION_WRAM2:
-// //             pointer = cpu_pointer(effective_address, access_location);
-// //         break;
-        
-// //         case ACCESS_LOCATION_PPU:
-// // //            pointer = ppu_pointer(effective_address);
-// //         break;
-        
-// //         case ACCESS_LOCATION_ROM:
-// //             pointer = rom_pointer(effective_address);
-// //         break;
-// //     }
-    
-//     return pointer;
+    return ACCESS_CART;
 }
 
 void write_byte(uint32_t effective_address, uint8_t data)
@@ -120,20 +105,23 @@ void write_byte(uint32_t effective_address, uint8_t data)
     {
         uint32_t offset = (effective_address & 0xffff) - RAM1_REGS_START;
 
-        if(!reg_writes[offset].invalid)
+        if(reg_writes[offset].write)
+        {
+            reg_writes[offset].write(effective_address, data);
+        }
+        else
         {
             ram1_regs[offset] = data;
-
-            if(reg_writes[offset].notify)
-            {
-                reg_writes[offset].notify(effective_address);
-            }
         }
     }
     else if(access == ACCESS_RAM1)
     {
         uint32_t offset = (effective_address & 0xffff) - RAM1_REGS_START;
         ram1_regs[offset] = data;
+    }
+    else if(access == ACCESS_CART)
+    {
+        cart_write(effective_address, data);
     }
 }
 
@@ -151,14 +139,13 @@ uint8_t read_byte(uint32_t effective_address)
     {
         uint32_t offset = (effective_address & 0xffff) - RAM1_REGS_START;
 
-        if(!reg_reads[offset].invalid)
+        if(reg_reads[offset].read)
+        {
+            data = reg_reads[offset].read(effective_address);
+        }
+        else
         {
             data = ram1_regs[offset];
-
-            if(reg_reads[offset].notify)
-            {
-                reg_reads[offset].notify(effective_address);
-            }
         }
     }
     else if(access == ACCESS_RAM1)
@@ -166,34 +153,11 @@ uint8_t read_byte(uint32_t effective_address)
         uint32_t offset = (effective_address & 0xffff) - RAM1_REGS_START;
         data = ram1_regs[offset];
     }
-    else if(access == ACCESS_ROM)
+    else if(access == ACCESS_CART)
     {
-        data = rom_read(effective_address);
+        data = cart_read(effective_address);
     }
-    
-    // switch(access)
-    // {
-    //     case ACCESS_LOCATION_REGS:
-    //         data = cpu_regs_read(effective_address);
-    //     break;
-        
-    //     case ACCESS_LOCATION_WRAM1:
-    //         data = cpu_wram1_read(effective_address);
-    //     break;
-        
-    //     case ACCESS_LOCATION_WRAM2:
-    //         data = cpu_wram2_read(effective_address);
-    //     break;
-        
-    //     case ACCESS_LOCATION_PPU:
-    //         data = ppu_regs_read(effective_address);
-    //     break;
-        
-    //     case ACCESS_LOCATION_ROM:
-    //         data = rom_read(effective_address);
-    //     break;
-    // }
-    
+
     return data;
 }
 

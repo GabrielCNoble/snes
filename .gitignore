@@ -2,6 +2,7 @@ SDL
 *.o
 *.smc
 *.sfc
+*.srm
 *.cbp
 *.depend
 *.layout

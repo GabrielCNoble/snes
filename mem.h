@@ -1,23 +1,14 @@
-#ifndef DMOV_H
-#define DMOV_H
+#ifndef MEM_H
+#define MEM_H
 
 #include <stdint.h>
 
 enum ACCESS
 {
-    // ACCESS_LOCATION_PPU = 0,
-    // ACCESS_LOCATION_APU,
-    // ACCESS_LOCATION_WRAM1,
-    // ACCESS_LOCATION_WRAM2,
-    // ACCESS_LOCATION_REGS,
-    // ACCESS_LOCATION_ROM,
-    // ACCESS_LOCATION_CONTROLLER,
-    // ACCESS_LOCATION_DMA,
-
     ACCESS_RAM1_REGS = 0,
     ACCESS_RAM1,
     ACCESS_RAM2,
-    ACCESS_ROM,
+    ACCESS_CART,
 };
 
 #define RAM1_START      0x0000
@@ -40,19 +31,19 @@ enum ACCESS
 
 struct mem_write_t
 {
-    void (*notify)(uint32_t effective_address);
+    void (*write)(uint32_t effective_address, uint8_t value);
     uint32_t invalid;
 };
 
 struct mem_read_t
 {
-    void (*notify)(uint32_t effective_address);
+    uint8_t (*read)(uint32_t effective_address);
     uint32_t invalid;
 };
 
-void mem_init();
+void init_mem();
 
-void mem_shutdonwn();
+void shutdown_mem();
 
 uint32_t access_location(uint32_t effective_address);
 

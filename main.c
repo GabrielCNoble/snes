@@ -51,7 +51,7 @@ int main(int argc, char *argv[])
                     if(!strcmp(param, "-rom"))
                     {
                         scanf("%s", param);
-                        if(load_rom_file(param))
+                        if(load_cart(param))
                         {
                             reset_emu();
                             dump_cpu(1);

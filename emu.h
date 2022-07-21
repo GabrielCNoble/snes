@@ -60,6 +60,8 @@ void set_register_breakpoint(uint32_t reg, uint32_t value);
 
 void clear_breakpoints();
 
+void blit_backbuffer();
+
 void init_emu();
 
 void shutdown_emu();

@@ -2,7 +2,7 @@
 #define CPU_H
 
 #include "addr.h"
-#include <stdint.h>  
+#include <stdint.h>
 
 enum OPCODE_CLASS
 {
@@ -43,7 +43,7 @@ enum OPCODES
     /* ====================================== */
     /* DO NOT CHANGE THE ORDER OF THOSE ENUMS */
 
-    
+
     /* instead of having a separate switch case for each branch instruction a list of
     branches is used. Here the instructions are paired with their "opposite" instructions.
     For example, BCC (branch if carry is clear) comes before BCS (branch if carry is set).
@@ -51,7 +51,7 @@ enum OPCODES
     LSB set to zero, while its "opposite" instruction has its LSB set to one. Shifting both
     values right by one then yields the same value, which is used to index the condition table.
     The LSB then is used to decide whether the branch should be taken or not. */
-    
+
     OPCODE_BCC,                            /* Branch on carry clear (C == 0) */
     OPCODE_BCS,                            /* Branch on carry set (C == 1) */
 
@@ -60,7 +60,7 @@ enum OPCODES
 
     OPCODE_BPL,                            /* Branch if result plus (N == 0) */
     OPCODE_BMI,                            /* Branch if result minus (N == 1) */
-    
+
     OPCODE_BVC,                            /* Branch on overflow clear (V == 0) */
     OPCODE_BVS,                            /* Branch on overflow set (V == 1) */
 
@@ -81,38 +81,38 @@ enum OPCODES
     OPCODE_CPX,                            /* Compare memory and index X */
     OPCODE_CPY,                            /* Compare memory and index Y */
 
-    
+
     /* ====================================== */
     /* DO NOT CHANGE THE ORDER OF THOSE ENUMS */
-    
+
     /* bit 0 of those constants are used to index into an array containing "opposite"
     alu operations, so their order must be preserved */
-    
+
     OPCODE_ADC,                            /* Add memory to accumulator with carry */
     OPCODE_AND,                            /* AND memory with accumulator */
     OPCODE_SBC,                            /* Subtract memory from accumulator with borrow */
     OPCODE_EOR,                            /* Exclusive OR memory with accumulator */
     OPCODE_ORA,                            /* OR memory with accumulator */
-    
+
     OPCODE_ROL,                            /* Rotate left one bit (memory or accumulator) */
     OPCODE_ROR,                            /* Rotate right one bit (memory or accumulator) */
     OPCODE_DEC,                            /* Decrement memory or accumulator */
     OPCODE_INC,                            /* Increment memory or accumulator */
     OPCODE_ASL,                            /* Shift one bit left, memory or accumulator */
     OPCODE_LSR,                            /* Shift one bit right, memory or accumulator */
-    
+
     OPCODE_DEX,                            /* Decrement index X */
     OPCODE_INX,                            /* Increment index X */
     OPCODE_DEY,                            /* Decrement index Y */
     OPCODE_INY,                            /* Increment index Y */
-    
+
     OPCODE_TRB,                            /* Test and reset bit */
     OPCODE_TSB,                            /* Test and set bit */
-    
+
     /* ====================================== */
     /* ====================================== */
-    
-    
+
+
 
     OPCODE_JMP,                            /* Jump */
     OPCODE_JML,                            /* Jump long */
@@ -179,10 +179,10 @@ enum OPCODES
     OPCODE_SED,                            /* Set decimal mode */
     OPCODE_SEI,                            /* Set interrupt disable status */
 
-    
+
     /* ====================================== */
     /* DO NOT CHANGE THE ORDER OF THOSE ENUMS */
-    
+
     OPCODE_TAX,                            /* Transfer accumulator to index X */
     OPCODE_TAY,                            /* Transfer accumulator to index Y */
     OPCODE_TCD,                            /* Transfer C accumulator to direct register */
@@ -195,7 +195,7 @@ enum OPCODES
     OPCODE_TXY,                            /* Transfer index X to index Y */
     OPCODE_TYA,                            /* Transfer index Y to accumulator */
     OPCODE_TYX,                            /* Transfer index Y to index X */
-    
+
     /* ====================================== */
     /* ====================================== */
 
@@ -309,7 +309,7 @@ enum CPU_STATUS_FLAGS
 };
 
 enum CPU_STORE_RESULT
-{   
+{
     CPU_STORE_RESULT_NO_STORE = 0,          /* result gets used to set some status flags, and then is thrown away */
     CPU_STORE_RESULT_REGISTER,              /* result is kept in the register */
     CPU_STORE_RESULT_MEMORY                 /* result gets written back to memory */
@@ -353,7 +353,7 @@ struct transfer_t
 struct load_t
 {
     void *      dst_reg;
-    uint8_t     flag;  
+    uint8_t     flag;
 };
 
 struct store_t
@@ -416,14 +416,14 @@ struct cpu_state_t
         };
 
     }reg_y;
-    
+
     uint8_t reg_e;         /* emulation flag */
     uint16_t reg_d;                                     /* direct register */
     uint16_t reg_s;                                     /* stack pointer register */
 
     uint16_t reg_pc;                                    /* program counter register */
     struct {uint8_t reg_dbr; uint8_t unused;} reg_dbrw; /* data bank register */
-    struct {uint8_t reg_pbr; uint8_t unused;} reg_pbrw; /* program bank register */     
+    struct {uint8_t reg_pbr; uint8_t unused;} reg_pbrw; /* program bank register */
     uint8_t reg_p[2];                                   /* status register, one for emulation, one for native mode */
     uint8_t in_irqb;
     uint8_t in_rdy;
@@ -437,8 +437,6 @@ struct cpu_state_t
 
 
 char *instruction_str(unsigned int effective_address);
-
-void disassemble(int start, int byte_count);
 
 int dump_cpu(int show_registers);
 
@@ -454,25 +452,11 @@ void cpu_write_byte(uint32_t effective_address, uint8_t data);
 
 void cpu_write_word(uint32_t effective_address, uint16_t data);
 
-// void cpu_regs_write(uint32_t effective_address, uint32_t data, uint32_t byte_write);
-
-// void cpu_wram1_write(uint32_t effective_address, uint32_t data, uint32_t byte_write);
-
-// void cpu_wram2_write(uint32_t effective_address, uint32_t data, uint32_t byte_write);
-
-
-
 uint8_t cpu_read_byte(uint32_t effective_address);
 
 uint16_t cpu_read_word(uint32_t effective_address);
 
 uint32_t cpu_read_wordbyte(uint32_t effective_address);
-
-// uint32_t cpu_regs_read(uint32_t effective_address);
-
-// uint32_t cpu_wram1_read(uint32_t effective_address);
-
-// uint32_t cpu_wram2_read(uint32_t effective_address);
 
 uint16_t alu(uint32_t operand0, uint32_t operand1, uint32_t op, uint32_t width);
 
@@ -480,7 +464,7 @@ uint32_t check_int();
 
 void reset_cpu();
 
-uint32_t step_cpu();
+void step_cpu(int32_t cycle_count);
 
 
 

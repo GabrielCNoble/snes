@@ -1,6 +1,6 @@
 #include "cpu.h"
 #include "ppu.h"
-#include "rom.h"
+#include "cart.h"
 #include "mem.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -8,199 +8,7 @@
 #include <assert.h>
 #include <stdint.h>
 
-// unsigned char wram1[8192];
-// unsigned char wram2[20000];
-
-// uint8_t *ram1_regs;
-// uint8_t *ram2;
-
-// union cpu_hardware_regs_t
-// {
-//     unsigned char hardware_regs[CPU_REGS_END_ADDRESS - CPU_REGS_START_ADDRESS];
-
-//     struct
-//     {
-//         /*
-//             NMITIMEN (0x4200) - Interrupt enable and joypad request
-//                 7    VBlank NMI enable (0 = disable, 1 = enable) - disabled on reset
-//                 6    Not used
-//                 5-4  H/V IRQ (0 = disabled, 1 = at H=H + V=any, 2 = at V=V + H=0, 3 = at H=H + V=V)
-//                 3-1  Not used
-//                 0    Joypad enable (0 = disabled, 1 = enable automatic reading of joypad)
-//         */
-//         uint8_t nmitimen;
-
-
-//         uint8_t wrio;
-//         uint8_t wrmpya;
-//         uint8_t wrmpyb;
-//         uint8_t wrdivl;
-//         uint8_t wrdivh;
-//         uint8_t wrdivb;
-
-//         /*
-//             HTIMEL/HTIMEH - H-Count timer setting
-//                 15-9  Not used
-//                 8-0   H-Count timer value (0 ... 339) (+ 1 for long lines, -1 for short lines) (0 = leftmost)
-//         */
-//         uint8_t htimel;
-//         uint8_t htimeh;
-
-//         /*
-//             VTIMEL/VTIMEH - V-Count timer setting
-//                 15-9  Not used
-//                 8-0   V-Count timer value (0...261 for ntsc, 0...311 for pal) (+1 in interlace) (0 = top)
-
-
-//         */
-//         uint8_t vtimel;
-//         uint8_t vtimeh;
-
-
-//         uint8_t mdmaen;
-//         uint8_t unused0[2];
-//         uint8_t rdnmi;
-
-
-//         /*
-//             TIMEUP - H/V-Timer IRQ flag (R)(Read/Ack)
-//                 7   H/V-Count timer IRQ flag (0 = None, 1 = Interrupt request)
-//                 6-0 Not used
-
-//             The IRQ flag is automatically reset after reading from this register
-//             (except when reading at the very time when the IRQ condition is true
-//             (which lasts for 4-8 master cycles), then the CPU receives bit7=1, but
-//             register bit7 isn't cleared). The flag is also automatically cleared
-//             when disabling IRQs (by setting 4200h.Bit5-4 to zero). Unlike NMI handlers,
-//             IRQ handlers MUST acknowledge IRQs, otherwise the IRQ gets executed again
-//             (ie. immediately after the RTI opcode).
-//         */
-//         uint8_t timeup;
-
-//         /*
-//             HVBJOY - H/V-Blank flag and joypad busy flag (R)
-//                 7   V-Blank period flag (0 = No, 1 = VBlank)
-//                 6   H-Blank period flag (0 = No, 1 = HBlank)
-//                 5-1 Not used
-//                 0   Auto-Joypad-Read busy flag (1 = Busy)
-
-//             The H-Blank flag gets toggled in ALL scanlines (including during VBlank/Vsync). Both
-//             H-Blank and V-Blank are always toggling (even during Forced Blank, and no matter if
-//             IRQs or NMIs are enabled).
-
-//             V-blank starts at scanline $e1 or $f0, depending on bit 2 of register $2133. When this
-//             bit is 0, the frame will be 224 scanlines long (ignoring scanline 0), and so V-blank
-//             will start at scanline $e1 (225). When it's 1, the frame will be 239 scanlines long,
-//             (ignoring scanline 0), and so V-blank will start at scanline $f0 (240). V-blank ends
-//             at scanline 0, dot 0.
-
-//             H-blank starts at dot 274 of every scanline, and ends at dot 0.
-//         */
-//         uint8_t hvbjoy;
-
-
-
-//         uint8_t rdio;
-//         uint8_t rddivl;
-//         uint8_t rddivh;
-//         uint8_t rdmpyl;
-//         uint8_t rdmpyh;
-//         uint8_t stdcntrl1l;
-//         uint8_t stdcntrl1h;
-//         uint8_t stdcntrl2l;
-//         uint8_t stdcntrl2h;
-//         uint8_t stdcntrl3l;
-//         uint8_t stdcntrl3h;
-//         uint8_t stdcntrl4l;
-//         uint8_t stdcntrl4h;
-//         uint8_t unused1[0xe0];
-// //        unsigned char dmatparm0;
-// //        unsigned char dmataddr0;
-// //        unsigned char unused2[0x03];
-// //        unsigned char
-// //
-// //
-// //        unsigned char dmatp1;
-// //        unsigned char dmatc1;
-// //        unsigned char dmatp2;
-// //        unsigned char dmatc2;
-// //        unsigned char dmatp3;
-// //        unsigned char dmatc3;
-// //        unsigned char dmatp4;
-// //        unsigned char dmatc4;
-// //        unsigned char dmatp5;
-// //        unsigned char dmatc5;
-// //        unsigned char dmatp6;
-// //        unsigned char dmatc6;
-// //        unsigned char dmatp7;
-// //        unsigned char dmatc7;
-
-//     };
-// }hardware_regs;
-
 unsigned long step_count = 0;
-
-
-//unsigned char reg_e;         /* emulation flag */
-//unsigned short reg_ir;      /* instruction register */
-//unsigned short reg_tcu;     /* timing control unit */
-
-
-//union
-//{
-//    unsigned short reg_accumC;
-//
-//    struct
-//    {
-//        unsigned char reg_accumA;
-//        unsigned char reg_accumB;
-//    };
-//
-//}reg_accum;
-//
-//uint32_t reg_temp0;
-//uint32_t reg_temp1;
-//
-//
-//union
-//{
-//    unsigned short reg_x;
-//
-//    struct
-//    {
-//        unsigned char reg_xL;
-//        unsigned char reg_xH;
-//    };
-//
-//}reg_x;
-//
-//
-//union
-//{
-//    unsigned short reg_y;
-//
-//    struct
-//    {
-//        unsigned char reg_yL;
-//        unsigned char reg_yH;
-//    };
-//
-//}reg_y;
-//
-//uint16_t reg_d;       /* direct register */
-//uint16_t reg_s;       /* stack pointer register */
-//
-//uint16_t reg_pc;       /* program counter register */
-//struct {uint8_t reg_dbr; uint8_t unused;} reg_dbrw; /* data bank register */
-//struct {uint8_t reg_pbr; uint8_t unused;} reg_pbrw; /* program bank register */
-//uint8_t reg_p;        /* status register */
-//uint8_t in_irqb = 1;
-//uint8_t in_rdy = 1;
-//uint8_t in_resb = 1;
-//uint8_t in_prev_resb = 0;
-//uint8_t in_abortb = 1;
-//uint8_t in_nmib = 1;
-//unsigned char s_wai = 0;
 
 struct cpu_state_t cpu_state = {.in_irqb = 1, .in_rdy = 1, .in_resb = 1, .in_abortb = 1, .in_nmib = 1};
 
@@ -1010,7 +818,7 @@ char *instruction_str(unsigned int effective_address)
 //    char *opcode_str;
     char *mem_str;
     // unsigned char *opcode_address;
-    char *opcode_str;
+    const char *opcode_str;
     char *mem_address;
     char addr_mode_str[128];
     char temp_str[64];
@@ -1022,12 +830,6 @@ char *instruction_str(unsigned int effective_address)
     // op_code = opcode_matrix[opcode_address[0]];
     op_code = opcode_matrix[read_byte(effective_address)];
     width = opcode_width(&op_code);
-
-//    for(int32_t i = width - 1; i > 0; i--)
-//    {
-//        address <<= 8;
-//        address |= opcode_address[i];
-//    }
 
     switch(op_code.address_mode)
     {
@@ -1241,32 +1043,6 @@ char *instruction_str(unsigned int effective_address)
     return instruction_str_buffer;
 }
 
-void disassemble(int start, int byte_count)
-{
-//    int bytes_disassmd = 0;
-//    int opcode_offset;
-//
-//    if(start >= 0)
-//    {
-//        cpu_state.reg_pc = start & 0xffff;
-//        cpu_state.reg_pbrw.reg_pbr = (start >> 16) & 0xff;
-//    }
-//
-//    while(bytes_disassmd < byte_count)
-//    {
-//        opcode_offset = disassemble_current(0);
-//
-//        bytes_disassmd += opcode_offset;
-//
-//        if((unsigned short)(cpu_state.reg_pc + (unsigned short)opcode_offset) < (unsigned short)cpu_state.reg_pc)
-//        {
-//            cpu_state.reg_pbrw.reg_pbr++;
-//        }
-//
-//        reg_pc += opcode_offset;
-//    }
-}
-
 int dump_cpu(int show_registers)
 {
     int address;
@@ -1339,25 +1115,6 @@ int view_hardware_registers()
     // }
 }
 
-// void *cpu_pointer(uint32_t effective_address, uint32_t access_location)
-// {
-//     void *pointer = NULL;
-
-//     switch(access_location)
-//     {
-//         case ACCESS_LOCATION_REGS:
-//             pointer = (void *)(hardware_regs.hardware_regs + (effective_address & 0xffff) - CPU_REGS_START_ADDRESS);
-//         break;
-
-//         case ACCESS_LOCATION_WRAM1:
-//             pointer = (void *)(wram1 + (effective_address & 0xffff) - RAM1_START_ADDRESS);
-//         break;
-//     }
-
-//     return pointer;
-// }
-
-
 void cpu_write_byte(uint32_t effective_address, uint8_t data)
 {
     cpu_cycle_count += ACCESS_CYCLES(effective_address);
@@ -1369,40 +1126,6 @@ void cpu_write_word(uint32_t effective_address, uint16_t data)
     cpu_write_byte(effective_address, data);
     cpu_write_byte(effective_address + 1, (data >> 8) & 0xff);
 }
-
-
-// void cpu_regs_write(uint32_t effective_address, uint32_t data, uint32_t byte_write)
-// {
-//     void *pointer = (void *)(hardware_regs.hardware_regs + (effective_address & 0xffff) - CPU_REGS_START_ADDRESS);
-
-//     if(byte_write)
-//     {
-//         *(uint8_t *)pointer = data;
-//     }
-//     else
-//     {
-//         *(uint16_t *)pointer = data;
-//     }
-// }
-
-// void cpu_wram1_write(uint32_t effective_address, uint32_t data, uint32_t byte_write)
-// {
-//     void *pointer = (void *)(wram1 + (effective_address & 0xffff) - RAM1_START_ADDRESS);
-
-//     if(byte_write)
-//     {
-//         *(uint8_t *)pointer = data;
-//     }
-//     else
-//     {
-//         *(uint16_t *)pointer = data;
-//     }
-// }
-
-// void cpu_wram2_write(uint32_t effective_address, uint32_t data, uint32_t byte_write)
-// {
-
-// }
 
 uint8_t cpu_read_byte(uint32_t effective_address)
 {
@@ -1443,21 +1166,33 @@ uint16_t alu(uint32_t operand0, uint32_t operand1, uint32_t op, uint32_t width)
     uint32_t carry_mask = width ? 0x00000100 : 0x00010000;
     uint32_t zero_mask = width ? 0x000000ff : 0x0000ffff;
     uint8_t flags = cpu_state.reg_p[cpu_state.reg_e];
-    uint32_t carry = flags & CPU_STATUS_FLAG_CARRY;
     uint32_t result;
 //    uint32_t flags = 0;
 
-    operand0 = operand0 & zero_mask;
+    // if(op == ALU_OP_CMP)
+    // {
+    //     flags |= CPU_STATUS_FLAG_CARRY;
+    // }
+
+    // uint32_t carry = flags & CPU_STATUS_FLAG_CARRY;
+    operand0 &= zero_mask;
+    // operand1 &= zero_mask;
+
     /* if it's a subtraction or a comparison, invert the second operand for the subtraction */
-    operand1 = ((op == ALU_OP_SUB || op == ALU_OP_CMP) ? -operand1 : operand1) & zero_mask;
-    carry = (op == ALU_OP_SUB ? (carry ^ 1) : carry) & zero_mask;
+    // operand1 = ((op == ALU_OP_SUB || op == ALU_OP_CMP) ? -operand1 : operand1);
+    // carry = (op == ALU_OP_SUB ? (carry ^ 1) : carry);
+    uint32_t carry = flags & CPU_STATUS_FLAG_CARRY;
 
     switch(op)
     {
         case ALU_OP_CMP:
-            /* clear carry for comparision subtraction */
-            carry = 0;
+            carry = 1;
         case ALU_OP_SUB:
+            operand1 = ((~operand1) & zero_mask) + 1;
+            operand1 -= (!carry);
+            result = operand0 + operand1;
+        break;
+
         case ALU_OP_ADD:
             result = operand0 + operand1 + carry;
         break;
@@ -1487,7 +1222,7 @@ uint16_t alu(uint32_t operand0, uint32_t operand1, uint32_t op, uint32_t width)
             /* shift left shifts msb into the carry */
             flags = (operand0 & sign_mask) ? (flags | CPU_STATUS_FLAG_CARRY) : (flags & (~CPU_STATUS_FLAG_CARRY));
             /* rotate left shifts the carry into the lsb */
-            result = (operand0 << 1) | (op == ALU_OP_ROL && carry);
+            result = (operand0 << 1) | (op == ALU_OP_ROL && (flags & CPU_STATUS_FLAG_CARRY));
         break;
 
 
@@ -1496,7 +1231,7 @@ uint16_t alu(uint32_t operand0, uint32_t operand1, uint32_t op, uint32_t width)
             operand0 = carry ? (operand0 | carry_mask) : operand0;
         case ALU_OP_SHR:
             /* shift right shifts lsb into the carry */
-            flags = (operand0 & 1) ? (flags = CPU_STATUS_FLAG_CARRY) : (flags & (~CPU_STATUS_FLAG_CARRY));
+            flags = (operand0 & 1) ? (flags | CPU_STATUS_FLAG_CARRY) : (flags & (~CPU_STATUS_FLAG_CARRY));
             result = operand0 >> 1;
         break;
 
@@ -1548,7 +1283,7 @@ void reset_cpu()
     cpu_state.reg_pc = read_word(0xfffc);
 }
 
-uint32_t step_cpu()
+void step_cpu(int32_t cycle_count)
 {
     struct opcode_t opcode;
     uint32_t effective_address;
@@ -1594,7 +1329,7 @@ uint32_t step_cpu()
     {
         /* WAI condition is active, and no interrupt happened, or rdy pin is being held
         low, so we do nothing */
-        return 1;
+        return;
     }
 
     /* if we got here, either we weren't waiting for an interrupt, or we were waiting
@@ -1630,7 +1365,7 @@ uint32_t step_cpu()
 
         cpu_state.reg_pc = cpu_read_word(handler);
 
-        return cpu_cycle_count;
+        return;
     }
 
     effective_address = EFFECTIVE_ADDRESS(cpu_state.reg_pbrw.reg_pbr, cpu_state.reg_pc);
@@ -1677,25 +1412,25 @@ uint32_t step_cpu()
         break;
 
         case ADDRESS_MODE_ABSOLUTE_INDEXED_X:
+        {
             /* the second and third bytes of the instruction are added to the X Index Register to
             form the low-order 16-bits of the effective address.  The Data Bank Register contains
             the high-order 8 bits of the effective address... */
-
-            /* TODO: accesses with this addressing mode can span bank boundaries. If the base address + X goes over 0xffff,
-            the data bank register gets tempoarily incremented. */
-            effective_address = EFFECTIVE_ADDRESS(cpu_state.reg_dbrw.reg_dbr, cpu_read_word(effective_address) + cpu_state.reg_x.reg_x);
+            uint32_t offset = (uint32_t)cpu_read_word(effective_address) + (uint32_t)cpu_state.reg_x.reg_x;
+            effective_address = EFFECTIVE_ADDRESS(cpu_state.reg_dbrw.reg_dbr, 0) + offset;
             cpu_state.reg_pc += 2;
+        }
         break;
 
         case ADDRESS_MODE_ABSOLUTE_INDEXED_Y:
+        {
             /* the second and third bytes of the instruction are added to the Y Index Register to
             form the low-order 16-bits of the effective address.  The Data Bank Register contains
             the high-order 8 bits of the effective address... */
-
-            /* TODO: accesses with this addressing mode can span bank boundaries. If the base address + X goes over 0xffff,
-            the data bank register gets tempoarily incremented. */
-            effective_address = EFFECTIVE_ADDRESS(cpu_state.reg_dbrw.reg_dbr, cpu_read_word(effective_address) + cpu_state.reg_y.reg_y);
+            uint32_t offset = (uint32_t)cpu_read_word(effective_address) + (uint32_t)cpu_state.reg_y.reg_y;
+            effective_address = EFFECTIVE_ADDRESS(cpu_state.reg_dbrw.reg_dbr, 0) + offset;
             cpu_state.reg_pc += 2;
+        }
         break;
 
         case ADDRESS_MODE_ABSOLUTE_INDIRECT:
@@ -1882,10 +1617,25 @@ uint32_t step_cpu()
         case ADDRESS_MODE_STACK:
             if(opcode.opcode == OPCODE_PEA)
             {
+                effective_address = cpu_read_word(effective_address);
+                pushes[OPCODE_PEA - OPCODE_PEA].src_reg = &effective_address;
+                pushes[OPCODE_PEA - OPCODE_PEA].flag = 0xffff;
                 cpu_state.reg_pc += 2;
+            }
+            else if(opcode.opcode == OPCODE_PER)
+            {
+                effective_address = cpu_read_word(effective_address);
+                cpu_state.reg_pc += 2;
+                effective_address += cpu_state.reg_pc;
+                pushes[OPCODE_PER - OPCODE_PEA].src_reg = &effective_address;
+                pushes[OPCODE_PER - OPCODE_PEA].flag = 0xffff;
             }
             else if(opcode.opcode == OPCODE_PEI)
             {
+                effective_address = EFFECTIVE_ADDRESS(0, (uint16_t)cpu_read_byte(effective_address) + cpu_state.reg_d);
+                effective_address = cpu_read_word(effective_address);
+                pushes[OPCODE_PEI - OPCODE_PEA].src_reg = &effective_address;
+                pushes[OPCODE_PEI - OPCODE_PEA].flag = 0xffff;
                 cpu_state.reg_pc++;
             }
             /* :) */
@@ -2284,7 +2034,7 @@ uint32_t step_cpu()
                     as the flag mask to be tested, because that will always fail the above
                     condition. For registers that are always 16 but, we use 0xffff as the
                     flag mask, which makes the above condition always pass. */
-                    cpu_write_byte(cpu_state.reg_s, (*(uint16_t *)push->src_reg) >> 8);
+                    cpu_write_byte(cpu_state.reg_s, *((uint8_t *)push->src_reg + 1));
                     cpu_state.reg_s--;
                 }
 
@@ -2513,8 +2263,6 @@ uint32_t step_cpu()
         cpu_state.reg_x.reg_xH = 0;
         cpu_state.reg_y.reg_yH = 0;
     }
-
-    return cpu_cycle_count;
 }
 
 

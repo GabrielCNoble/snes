@@ -2,7 +2,7 @@
 #define MAIN_H
 
 
-#include "rom.h"
+#include "cart.h"
 #include "cpu.h"
 #include "ppu.h"
 #include "emu.h"
