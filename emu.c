@@ -121,6 +121,7 @@ void init_emu()
     init_apu();
     init_ppu();
     init_mem();
+    init_dma();
 }
 
 void shutdown_emu()
@@ -140,7 +141,7 @@ void reset_emu()
 uint32_t step_emu()
 {
     int32_t step_cycles = 0;
-    uint32_t hdma_active = ram1_regs[CPU_REG_HDMAEN] && (ram1_regs[CPU_REG_HVBJOY] & (CPU_HVBJOY_FLAG_HBLANK | CPU_HVBJOY_FLAG_VBLANK) == CPU_HVBJOY_FLAG_HBLANK);
+    uint32_t hdma_active = ram1_regs[CPU_REG_HDMAEN] && ((ram1_regs[CPU_REG_HVBJOY] & (CPU_HVBJOY_FLAG_HBLANK | CPU_HVBJOY_FLAG_VBLANK)) == CPU_HVBJOY_FLAG_HBLANK);
 
     if(!ram1_regs[CPU_REG_MDMAEN] || !hdma_active)
     {
@@ -155,7 +156,7 @@ uint32_t step_emu()
     step_dma(step_cycles);
     step_hdma(step_cycles);
     step_apu(step_cycles);
-    
+
     if(step_ppu(step_cycles))
     {
         blit_backbuffer();

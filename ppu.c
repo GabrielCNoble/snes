@@ -201,7 +201,9 @@ uint32_t step_ppu(int32_t cycle_count)
                 uint8_t inidisp = ram1_regs[PPU_REG_INIDISP];
                 float brightness = (float)(inidisp & 0xf) / 15.0;
                 struct dot_t *dot = framebuffer + vcounter * FRAMEBUFFER_WIDTH + hcounter;
-
+                dot->r = 255 * brightness;
+                dot->g = 255 * brightness;
+                dot->b = 255 * brightness;
 
                 // uint32_t intersect_count = 0;
                 // for(uint32_t index = 0; index < 128; index++)
