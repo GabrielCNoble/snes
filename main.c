@@ -17,16 +17,16 @@ int main(int argc, char *argv[])
     int disasm_start;
     int disasm_count;
     uint32_t step_count;
-    
+
     uint32_t breakpoint_count = 0;
     uint32_t breakpoints[32];
-    
+
     if(SDL_Init(SDL_INIT_EVERYTHING) < 0)
     {
         printf("error: %s\n", SDL_GetError());
         return -1;
     }
-    
+
     if(argc > 1)
     {
         init_emu();
@@ -107,7 +107,7 @@ int main(int argc, char *argv[])
                         else if(!strcmp(param, "-breakpoint"))
                         {
                             scanf("%s", param);
-                            
+
                             if(!strcmp(param, "e"))
                             {
                                 uint32_t address;
@@ -153,6 +153,6 @@ int main(int argc, char *argv[])
 
         shutdown_emu();
     }
-    
+
     return 0;
 }

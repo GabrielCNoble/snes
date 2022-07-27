@@ -6,6 +6,7 @@
 #include "ppu.h"
 #include "cart.h"
 #include "dma.h"
+#include "apu.h"
 
 // struct mem_write_t cpu_reg_writes[CPU_REGS_END - CPU_REGS_START] = {
 
@@ -42,12 +43,38 @@ void init_mem()
     reg_writes[PPU_REG_OAMADDL].write = oamadd_write;
     reg_writes[PPU_REG_OAMADDH].write = oamadd_write;
     reg_writes[PPU_REG_OAMDATA].write = oamdata_write;
+    reg_writes[PPU_REG_BGMODE].write = bgmode_write;
+
+    reg_writes[PPU_REG_BG1SC].write = bgsc_write;
+    reg_writes[PPU_REG_BG2SC].write = bgsc_write;
+    reg_writes[PPU_REG_BG3SC].write = bgsc_write;
+    reg_writes[PPU_REG_BG4SC].write = bgsc_write;
+
+    reg_writes[PPU_REG_COLDATA].write = coldata_write;
+
+    reg_writes[PPU_REG_BG1HOFS].write = bgoffs_write;
+    reg_writes[PPU_REG_BG1VOFS].write = bgoffs_write;
+    reg_writes[PPU_REG_BG2HOFS].write = bgoffs_write;
+    reg_writes[PPU_REG_BG2VOFS].write = bgoffs_write;
+    reg_writes[PPU_REG_BG3HOFS].write = bgoffs_write;
+    reg_writes[PPU_REG_BG3VOFS].write = bgoffs_write;
+    reg_writes[PPU_REG_BG4HOFS].write = bgoffs_write;
+    reg_writes[PPU_REG_BG4VOFS].write = bgoffs_write;
+
+    reg_writes[APU_REG_IO0].write = apuio_write;
+    reg_writes[APU_REG_IO1].write = apuio_write;
+    reg_writes[APU_REG_IO2].write = apuio_write;
+    reg_writes[APU_REG_IO3].write = apuio_write;
 
     reg_reads[PPU_REG_SLVH].read = slhv_read;
     reg_reads[PPU_REG_OPHCT].read = opct_read;
     reg_reads[PPU_REG_OPVCT].read = opct_read;
     reg_reads[PPU_REG_VMDATARL].read = vmdata_read;
     reg_reads[PPU_REG_VMDATARH].read = vmdata_read;
+    reg_reads[APU_REG_IO0].read = apuio_read;
+    reg_reads[APU_REG_IO1].read = apuio_read;
+    reg_reads[APU_REG_IO2].read = apuio_read;
+    reg_reads[APU_REG_IO3].read = apuio_read;
 
 }
 
@@ -76,7 +103,7 @@ uint32_t access_location(uint32_t effective_address)
             return ACCESS_RAM1;
         }
 
-        return ACCESS_RAM1_REGS;
+        return ACCESS_REGS;
     }
 
     if(bank == RAM1_EXTRA_BANK && offset < RAM1_END)
@@ -101,7 +128,7 @@ void write_byte(uint32_t effective_address, uint8_t data)
         uint32_t offset = effective_address - RAM2_START;
         ram2[offset] = data;
     }
-    else if(access == ACCESS_RAM1_REGS)
+    else if(access == ACCESS_REGS)
     {
         uint32_t offset = (effective_address & 0xffff) - RAM1_REGS_START;
 
@@ -135,7 +162,7 @@ uint8_t read_byte(uint32_t effective_address)
         uint32_t offset = effective_address - RAM2_START;
         data = ram2[offset];
     }
-    else if(access == ACCESS_RAM1_REGS)
+    else if(access == ACCESS_REGS)
     {
         uint32_t offset = (effective_address & 0xffff) - RAM1_REGS_START;
 

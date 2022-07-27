@@ -5,20 +5,20 @@
 
 enum ACCESS
 {
-    ACCESS_RAM1_REGS = 0,
+    ACCESS_REGS = 0,
     ACCESS_RAM1,
     ACCESS_RAM2,
     ACCESS_CART,
 };
 
-#define RAM1_START      0x0000
-#define RAM1_REGS_START  0x0000
-#define RAM1_END        0x2000
-#define PPU_REGS_START  0x2100
-#define PPU_REGS_END    0x2184
-#define CPU_REGS_START  0x4200
-#define CPU_REGS_END    0x437b
-#define RAM1_REGS_END   0x6000
+#define RAM1_START          0x0000
+#define RAM1_REGS_START     0x0000
+#define RAM1_END            0x2000
+#define PPU_REGS_START      0x2100
+#define PPU_REGS_END        0x2184
+#define CPU_REGS_START      0x4200
+#define CPU_REGS_END        0x437b
+#define RAM1_REGS_END       0x6000
 
 #define RAM1_REGS_BANK_RANGE0_START 0x00
 #define RAM1_REGS_BANK_RANGE0_END   0x3f
@@ -39,6 +39,11 @@ struct mem_read_t
 {
     uint8_t (*read)(uint32_t effective_address);
     uint32_t invalid;
+};
+
+struct blah_t
+{
+    uint64_t clock;
 };
 
 void init_mem();

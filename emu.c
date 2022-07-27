@@ -15,6 +15,7 @@ uint32_t        get_input = 0;
 uint64_t        counter_frequency;
 uint64_t        prev_count = 0;
 SDL_atomic_t    blit_semaphore = {0};
+uint64_t        master_cycles = 0;
 
 uint32_t window_width = 800;
 uint32_t window_height = 600;
@@ -35,6 +36,8 @@ extern struct mem_read_t *      reg_reads;
 extern struct dot_t *           framebuffer;
 extern uint32_t                 cpu_cycle_count;
 extern uint8_t                  active_channels;
+extern uint16_t                 hcounter;
+extern uint16_t                 vcounter;
 
 void set_execution_breakpoint(uint32_t effective_address)
 {
@@ -115,6 +118,7 @@ void init_emu()
     SDL_DetachThread(SDL_CreateThread(window_thread, "window thread", NULL));
     counter_frequency = SDL_GetPerformanceFrequency();
     prev_count = SDL_GetPerformanceCounter();
+    init_apu();
     init_ppu();
     init_mem();
 }
@@ -128,25 +132,36 @@ void shutdown_emu()
 
 void reset_emu()
 {
+    master_cycles = 0;
     reset_cpu();
+    reset_ppu();
 }
 
 uint32_t step_emu()
 {
-    if(!active_channels)
+    int32_t step_cycles = 0;
+    uint32_t hdma_active = ram1_regs[CPU_REG_HDMAEN] && (ram1_regs[CPU_REG_HVBJOY] & (CPU_HVBJOY_FLAG_HBLANK | CPU_HVBJOY_FLAG_VBLANK) == CPU_HVBJOY_FLAG_HBLANK);
+
+    if(!ram1_regs[CPU_REG_MDMAEN] || !hdma_active)
     {
         step_cpu(4);
+        step_cycles = cpu_cycle_count;
     }
     else
     {
-        cpu_cycle_count = 4;
+        step_cycles = 4;
     }
+
+    step_dma(step_cycles);
+    step_hdma(step_cycles);
+    step_apu(step_cycles);
     
-    step_dma(cpu_cycle_count);
-    if(step_ppu(cpu_cycle_count))
+    if(step_ppu(step_cycles))
     {
         blit_backbuffer();
     }
+
+    master_cycles += step_cycles;
 
     for(uint32_t breakpoint_index = 0; breakpoint_index < breakpoint_count; breakpoint_index++)
     {

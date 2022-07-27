@@ -169,6 +169,11 @@ uint32_t load_cart(char *file_name)
     printf("ram size: %s\n", ram_size_str);
     printf("game name: %s\n", game_name);
 
+    if(!rom_sizes[rom_header->rom_size])
+    {
+        rom_header->rom_size = ROM_SIZE_17_32M;
+    }
+
     uint8_t *resized_rom_buffer = calloc(1, rom_sizes[rom_header->rom_size]);
     memcpy(resized_rom_buffer, file_buffer, file_size);
     rom_buffer = resized_rom_buffer + has_smc_header;

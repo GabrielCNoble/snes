@@ -324,98 +324,98 @@ struct opcode_t opcode_matrix[256] =
 };
 
 const char *opcode_strs[] = {
-    [OPCODE_BRK] = "brk",
-    [OPCODE_BIT] = "bit",
-    [OPCODE_BCC] = "bcc",
-    [OPCODE_BCS] = "bcs",
-    [OPCODE_BNE] = "bne",
-    [OPCODE_BEQ] = "beq",
-    [OPCODE_BPL] = "bpl",
-    [OPCODE_BMI] = "bmi",
-    [OPCODE_BVC] = "bvc",
-    [OPCODE_BVS] = "bvs",
-    [OPCODE_BRA] = "bra",
-    [OPCODE_BRL] = "brl",
-    [OPCODE_CLC] = "clc",
-    [OPCODE_CLD] = "cld",
-    [OPCODE_CLV] = "clv",
-    [OPCODE_CLI] = "cli",
-    [OPCODE_CMP] = "cmp",
-    [OPCODE_CPX] = "cpx",
-    [OPCODE_CPY] = "cpy",
-    [OPCODE_ADC] = "adc",
-    [OPCODE_AND] = "and",
-    [OPCODE_SBC] = "sbc",
-    [OPCODE_EOR] = "eor",
-    [OPCODE_ORA] = "ora",
-    [OPCODE_ROL] = "rol",
-    [OPCODE_ROR] = "ror",
-    [OPCODE_DEC] = "dec",
-    [OPCODE_INC] = "inc",
-    [OPCODE_ASL] = "asl",
-    [OPCODE_LSR] = "lsr",
-    [OPCODE_DEX] = "dex",
-    [OPCODE_INX] = "inx",
-    [OPCODE_DEY] = "dey",
-    [OPCODE_INY] = "iny",
-    [OPCODE_TRB] = "trb",
-    [OPCODE_TSB] = "tsb",
-    [OPCODE_JMP] = "jmp",
-    [OPCODE_JML] = "jml",
-    [OPCODE_JSL] = "jsl",
-    [OPCODE_JSR] = "jsr",
-    [OPCODE_LDA] = "lda",
-    [OPCODE_LDX] = "ldx",
-    [OPCODE_LDY] = "ldy",
-    [OPCODE_STA] = "sta",
-    [OPCODE_STX] = "stx",
-    [OPCODE_STY] = "sty",
-    [OPCODE_STZ] = "stz",
-    [OPCODE_MVN] = "mvn",
-    [OPCODE_MVP] = "mvp",
-    [OPCODE_NOP] = "nop",
-    [OPCODE_PEA] = "pea",
-    [OPCODE_PEI] = "pei",
-    [OPCODE_PER] = "per",
-    [OPCODE_PHA] = "pha",
-    [OPCODE_PHB] = "phb",
-    [OPCODE_PHD] = "phd",
-    [OPCODE_PHK] = "phk",
-    [OPCODE_PHP] = "php",
-    [OPCODE_PHX] = "phx",
-    [OPCODE_PHY] = "phy",
-    [OPCODE_PLA] = "Pla",
-    [OPCODE_PLB] = "plb",
-    [OPCODE_PLD] = "pld",
-    [OPCODE_PLP] = "plp",
-    [OPCODE_PLX] = "plx",
-    [OPCODE_PLY] = "ply",
-    [OPCODE_REP] = "rep",
-    [OPCODE_RTI] = "rti",
-    [OPCODE_RTL] = "rtl",
-    [OPCODE_RTS] = "rts",
-    [OPCODE_SEP] = "sep",
-    [OPCODE_SEC] = "sec",
-    [OPCODE_SED] = "sed",
-    [OPCODE_SEI] = "sei",
-    [OPCODE_TAX] = "tax",
-    [OPCODE_TAY] = "tay",
-    [OPCODE_TCD] = "tcd",
-    [OPCODE_TCS] = "tcs",
-    [OPCODE_TDC] = "tdc",
-    [OPCODE_TSC] = "tsc",
-    [OPCODE_TSX] = "tsx",
-    [OPCODE_TXA] = "txa",
-    [OPCODE_TXS] = "txs",
-    [OPCODE_TXY] = "txy",
-    [OPCODE_TYA] = "tya",
-    [OPCODE_TYX] = "tyx",
-    [OPCODE_WAI] = "wai",
-    [OPCODE_WDM] = "wdm",
-    [OPCODE_XBA] = "xba",
-    [OPCODE_STP] = "stp",
-    [OPCODE_COP] = "cop",
-    [OPCODE_XCE] = "xce",
+    [OPCODE_BRK] = "BRK",
+    [OPCODE_BIT] = "BIT",
+    [OPCODE_BCC] = "BCC",
+    [OPCODE_BCS] = "BCS",
+    [OPCODE_BNE] = "BNE",
+    [OPCODE_BEQ] = "BEQ",
+    [OPCODE_BPL] = "BPL",
+    [OPCODE_BMI] = "BMI",
+    [OPCODE_BVC] = "BVC",
+    [OPCODE_BVS] = "BVS",
+    [OPCODE_BRA] = "BRA",
+    [OPCODE_BRL] = "BRL",
+    [OPCODE_CLC] = "CLC",
+    [OPCODE_CLD] = "CLD",
+    [OPCODE_CLV] = "CLV",
+    [OPCODE_CLI] = "CLI",
+    [OPCODE_CMP] = "CMP",
+    [OPCODE_CPX] = "CPX",
+    [OPCODE_CPY] = "CPY",
+    [OPCODE_ADC] = "ADC",
+    [OPCODE_AND] = "AND",
+    [OPCODE_SBC] = "SBC",
+    [OPCODE_EOR] = "EOR",
+    [OPCODE_ORA] = "ORA",
+    [OPCODE_ROL] = "ROL",
+    [OPCODE_ROR] = "ROR",
+    [OPCODE_DEC] = "DEC",
+    [OPCODE_INC] = "INC",
+    [OPCODE_ASL] = "ASL",
+    [OPCODE_LSR] = "LSR",
+    [OPCODE_DEX] = "DEX",
+    [OPCODE_INX] = "INX",
+    [OPCODE_DEY] = "DEY",
+    [OPCODE_INY] = "INY",
+    [OPCODE_TRB] = "TRB",
+    [OPCODE_TSB] = "TSB",
+    [OPCODE_JMP] = "JMP",
+    [OPCODE_JML] = "JML",
+    [OPCODE_JSL] = "JSL",
+    [OPCODE_JSR] = "JSR",
+    [OPCODE_LDA] = "LDA",
+    [OPCODE_LDX] = "LDX",
+    [OPCODE_LDY] = "LDY",
+    [OPCODE_STA] = "STA",
+    [OPCODE_STX] = "STX",
+    [OPCODE_STY] = "STY",
+    [OPCODE_STZ] = "STZ",
+    [OPCODE_MVN] = "MVN",
+    [OPCODE_MVP] = "MVP",
+    [OPCODE_NOP] = "NOP",
+    [OPCODE_PEA] = "PEA",
+    [OPCODE_PEI] = "PEI",
+    [OPCODE_PER] = "PER",
+    [OPCODE_PHA] = "PHA",
+    [OPCODE_PHB] = "PHB",
+    [OPCODE_PHD] = "PHD",
+    [OPCODE_PHK] = "PHK",
+    [OPCODE_PHP] = "PHP",
+    [OPCODE_PHX] = "PHX",
+    [OPCODE_PHY] = "PHY",
+    [OPCODE_PLA] = "PLA",
+    [OPCODE_PLB] = "PLB",
+    [OPCODE_PLD] = "PLD",
+    [OPCODE_PLP] = "PLP",
+    [OPCODE_PLX] = "PLX",
+    [OPCODE_PLY] = "PLY",
+    [OPCODE_REP] = "REP",
+    [OPCODE_RTI] = "RTI",
+    [OPCODE_RTL] = "RTL",
+    [OPCODE_RTS] = "RTS",
+    [OPCODE_SEP] = "SEP",
+    [OPCODE_SEC] = "SEC",
+    [OPCODE_SED] = "SED",
+    [OPCODE_SEI] = "SEI",
+    [OPCODE_TAX] = "TAX",
+    [OPCODE_TAY] = "TAY",
+    [OPCODE_TCD] = "TCD",
+    [OPCODE_TCS] = "TCS",
+    [OPCODE_TDC] = "TDC",
+    [OPCODE_TSC] = "TSC",
+    [OPCODE_TSX] = "TSX",
+    [OPCODE_TXA] = "TXA",
+    [OPCODE_TXS] = "TXS",
+    [OPCODE_TXY] = "TXY",
+    [OPCODE_TYA] = "TYA",
+    [OPCODE_TYX] = "TYX",
+    [OPCODE_WAI] = "WAI",
+    [OPCODE_WDM] = "WDM",
+    [OPCODE_XBA] = "XBA",
+    [OPCODE_STP] = "STP",
+    [OPCODE_COP] = "COP",
+    [OPCODE_XCE] = "XCE",
     [OPCODE_UNKNOWN] = "UNKNOWN",
 };
 
@@ -432,21 +432,21 @@ struct branch_cond_t branch_conds[5] =
     [4] = {0xff}
 };
 
-struct transfer_params_t transfer_params[] =
-{
-    [TPARM_INDEX(OPCODE_TAX)] = {.src_reg = &cpu_state.reg_accum.reg_accumC, .dst_reg = &cpu_state.reg_x.reg_x,          .flag = CPU_STATUS_FLAG_INDEX},
-    [TPARM_INDEX(OPCODE_TAY)] = {.src_reg = &cpu_state.reg_accum.reg_accumC, .dst_reg = &cpu_state.reg_y.reg_y,          .flag = CPU_STATUS_FLAG_INDEX},
-    [TPARM_INDEX(OPCODE_TCD)] = {.src_reg = &cpu_state.reg_accum.reg_accumC, .dst_reg = &cpu_state.reg_d},
-    [TPARM_INDEX(OPCODE_TCS)] = {.src_reg = &cpu_state.reg_accum.reg_accumC, .dst_reg = &cpu_state.reg_s},
-    [TPARM_INDEX(OPCODE_TDC)] = {.src_reg = &cpu_state.reg_d,                .dst_reg = &cpu_state.reg_accum.reg_accumC, .flag = CPU_STATUS_FLAG_MEMORY},
-    [TPARM_INDEX(OPCODE_TSC)] = {.src_reg = &cpu_state.reg_s,                .dst_reg = &cpu_state.reg_accum.reg_accumC, .flag = CPU_STATUS_FLAG_MEMORY},
-    [TPARM_INDEX(OPCODE_TSX)] = {.src_reg = &cpu_state.reg_s,                .dst_reg = &cpu_state.reg_x.reg_x,          .flag = CPU_STATUS_FLAG_INDEX},
-    [TPARM_INDEX(OPCODE_TXA)] = {.src_reg = &cpu_state.reg_x.reg_x,          .dst_reg = &cpu_state.reg_accum.reg_accumC, .flag = CPU_STATUS_FLAG_MEMORY},
-    [TPARM_INDEX(OPCODE_TXS)] = {.src_reg = &cpu_state.reg_x.reg_x,          .dst_reg = &cpu_state.reg_s},
-    [TPARM_INDEX(OPCODE_TXY)] = {.src_reg = &cpu_state.reg_x.reg_x,          .dst_reg = &cpu_state.reg_y.reg_y,          .flag = CPU_STATUS_FLAG_INDEX},
-    [TPARM_INDEX(OPCODE_TYA)] = {.src_reg = &cpu_state.reg_y.reg_y,          .dst_reg = &cpu_state.reg_accum.reg_accumC, .flag = CPU_STATUS_FLAG_MEMORY},
-    [TPARM_INDEX(OPCODE_TYX)] = {.src_reg = &cpu_state.reg_y.reg_y,          .dst_reg = &cpu_state.reg_x.reg_x,          .flag = CPU_STATUS_FLAG_INDEX},
-};
+//struct transfer_params_t transfer_params[] =
+//{
+//    [TPARM_INDEX(OPCODE_TAX)] = {.src_reg = &cpu_state.reg_accum.reg_accumC, .dst_reg = &cpu_state.reg_x.reg_x,          .flag = CPU_STATUS_FLAG_INDEX},
+//    [TPARM_INDEX(OPCODE_TAY)] = {.src_reg = &cpu_state.reg_accum.reg_accumC, .dst_reg = &cpu_state.reg_y.reg_y,          .flag = CPU_STATUS_FLAG_INDEX},
+//    [TPARM_INDEX(OPCODE_TCD)] = {.src_reg = &cpu_state.reg_accum.reg_accumC, .dst_reg = &cpu_state.reg_d},
+//    [TPARM_INDEX(OPCODE_TCS)] = {.src_reg = &cpu_state.reg_accum.reg_accumC, .dst_reg = &cpu_state.reg_s},
+//    [TPARM_INDEX(OPCODE_TDC)] = {.src_reg = &cpu_state.reg_d,                .dst_reg = &cpu_state.reg_accum.reg_accumC, .flag = CPU_STATUS_FLAG_MEMORY},
+//    [TPARM_INDEX(OPCODE_TSC)] = {.src_reg = &cpu_state.reg_s,                .dst_reg = &cpu_state.reg_accum.reg_accumC, .flag = CPU_STATUS_FLAG_MEMORY},
+//    [TPARM_INDEX(OPCODE_TSX)] = {.src_reg = &cpu_state.reg_s,                .dst_reg = &cpu_state.reg_x.reg_x,          .flag = CPU_STATUS_FLAG_INDEX},
+//    [TPARM_INDEX(OPCODE_TXA)] = {.src_reg = &cpu_state.reg_x.reg_x,          .dst_reg = &cpu_state.reg_accum.reg_accumC, .flag = CPU_STATUS_FLAG_MEMORY},
+//    [TPARM_INDEX(OPCODE_TXS)] = {.src_reg = &cpu_state.reg_x.reg_x,          .dst_reg = &cpu_state.reg_s},
+//    [TPARM_INDEX(OPCODE_TXY)] = {.src_reg = &cpu_state.reg_x.reg_x,          .dst_reg = &cpu_state.reg_y.reg_y,          .flag = CPU_STATUS_FLAG_INDEX},
+//    [TPARM_INDEX(OPCODE_TYA)] = {.src_reg = &cpu_state.reg_y.reg_y,          .dst_reg = &cpu_state.reg_accum.reg_accumC, .flag = CPU_STATUS_FLAG_MEMORY},
+//    [TPARM_INDEX(OPCODE_TYX)] = {.src_reg = &cpu_state.reg_y.reg_y,          .dst_reg = &cpu_state.reg_x.reg_x,          .flag = CPU_STATUS_FLAG_INDEX},
+//};
 
 struct transfer_t transfers[] = {
     [OPCODE_TAX - OPCODE_TAX] = {.src_reg = &cpu_state.reg_accum.reg_accumC, .dst_reg = &cpu_state.reg_x.reg_x,          .flag = CPU_STATUS_FLAG_INDEX},
@@ -1287,12 +1287,13 @@ void step_cpu(int32_t cycle_count)
 {
     struct opcode_t opcode;
     uint32_t effective_address;
-    uint32_t old_effective_address;
+    // uint32_t old_effective_address;
     uint16_t handler = 0;
-    int temp;
-    int temp2;
-    int temp3;
-    int byte_write;
+    uint32_t pc_increment = 0;
+    // int temp;
+    // int temp2;
+    // int temp3;
+    // int byte_write;
 
     cpu_cycle_count = 0;
 
@@ -1368,6 +1369,7 @@ void step_cpu(int32_t cycle_count)
         return;
     }
 
+    uint16_t opcode_pc = cpu_state.reg_pc;
     effective_address = EFFECTIVE_ADDRESS(cpu_state.reg_pbrw.reg_pbr, cpu_state.reg_pc);
     opcode = opcode_matrix[cpu_read_byte(effective_address)];
     cpu_state.reg_pc++;
@@ -1901,7 +1903,7 @@ void step_cpu(int32_t cycle_count)
                     cpu_state.reg_s++;
                     cpu_state.reg_p[cpu_state.reg_e] = cpu_read_byte(cpu_state.reg_s);
                     cpu_state.reg_s++;
-                    cpu_state.reg_pc = cpu_read_byte(cpu_state.reg_s);
+                    cpu_state.reg_pc = (uint16_t)cpu_read_byte(cpu_state.reg_s);
                     cpu_state.reg_s++;
                     cpu_state.reg_pc |= (uint16_t)cpu_read_byte(cpu_state.reg_s) << 8;
 
@@ -1914,7 +1916,7 @@ void step_cpu(int32_t cycle_count)
 
                 case OPCODE_RTL:
                     cpu_state.reg_s++;
-                    cpu_state.reg_pc = cpu_read_byte(cpu_state.reg_s);
+                    cpu_state.reg_pc = (uint16_t)cpu_read_byte(cpu_state.reg_s);
                     cpu_state.reg_s++;
                     cpu_state.reg_pc |= (uint16_t)cpu_read_byte(cpu_state.reg_s) << 8;
                     cpu_state.reg_pc++;
@@ -1924,7 +1926,7 @@ void step_cpu(int32_t cycle_count)
 
                 case OPCODE_RTS:
                     cpu_state.reg_s++;
-                    cpu_state.reg_pc = cpu_read_byte(cpu_state.reg_s);
+                    cpu_state.reg_pc = (uint16_t)cpu_read_byte(cpu_state.reg_s);
                     cpu_state.reg_s++;
                     cpu_state.reg_pc |= (uint16_t)cpu_read_byte(cpu_state.reg_s) << 8;
                     cpu_state.reg_pc++;
@@ -2127,7 +2129,6 @@ void step_cpu(int32_t cycle_count)
 
                 case OPCODE_XBA:
                 {
-                    /* TODO: this instruction modifies the N flag, based on bit 7 of the accumulator */
                     cpu_state.reg_accum.reg_accumC = ((cpu_state.reg_accum.reg_accumC >> 8) & 0xff) | ((cpu_state.reg_accum.reg_accumC << 8) & 0xff00);
                     uint8_t flags = cpu_state.reg_p[cpu_state.reg_e];
                     cpu_state.reg_p[cpu_state.reg_e] = (cpu_state.reg_accum.reg_accumA & 0x80) ? (flags | CPU_STATUS_FLAG_NEGATIVE) : (flags & ~CPU_STATUS_FLAG_NEGATIVE);
@@ -2175,20 +2176,26 @@ void step_cpu(int32_t cycle_count)
                     goto _brk_interrupt;
                 break;
 
+                /* apparently MVN and MVP operate similar to rep stos* x86 instructions, although it refetches the
+                opcode every time. I'm not sure if that's the case for x86. Regardless, we restore PC to point at the
+                opcode as long as there's stuff to move */
                 case OPCODE_MVN:
-                    while(cpu_state.reg_accum.reg_accumC != 0xffff)
+                {
+                    uint32_t dst_effective_address = EFFECTIVE_ADDRESS((uint8_t)effective_address, cpu_state.reg_y.reg_y);
+                    uint32_t src_effective_address = EFFECTIVE_ADDRESS((uint8_t)(effective_address >> 8), cpu_state.reg_x.reg_x);
+                    cpu_state.reg_y.reg_y++;
+                    cpu_state.reg_x.reg_x++;
+                    cpu_state.reg_accum.reg_accumC--;
+                    cpu_write_byte(dst_effective_address, cpu_read_byte(src_effective_address));
+
+                    if(cpu_state.reg_accum.reg_accumC != 0xffff)
                     {
-                        uint32_t dst_effective_address = EFFECTIVE_ADDRESS((uint8_t)effective_address, cpu_state.reg_y.reg_y);
-                        uint32_t src_effective_address = EFFECTIVE_ADDRESS((uint8_t)(effective_address >> 8), cpu_state.reg_x.reg_x);
-                        cpu_state.reg_y.reg_y++;
-                        cpu_state.reg_x.reg_x++;
-                        cpu_state.reg_accum.reg_accumC--;
-                        cpu_write_byte(dst_effective_address, cpu_read_byte(src_effective_address));
+                        cpu_state.reg_pc = opcode_pc;
                     }
+                }
                 break;
 
                 case OPCODE_MVP:
-                    while(cpu_state.reg_accum.reg_accumC != 0xffff)
                     {
                         uint32_t dst_effective_address = EFFECTIVE_ADDRESS((uint8_t)effective_address, cpu_state.reg_y.reg_y);
                         uint32_t src_effective_address = EFFECTIVE_ADDRESS((uint8_t)(effective_address >> 8), cpu_state.reg_x.reg_x);
@@ -2196,6 +2203,11 @@ void step_cpu(int32_t cycle_count)
                         cpu_state.reg_x.reg_x--;
                         cpu_state.reg_accum.reg_accumC--;
                         cpu_write_byte(dst_effective_address, cpu_read_byte(src_effective_address));
+
+                        if(cpu_state.reg_accum.reg_accumC != 0xffff)
+                        {
+                            cpu_state.reg_pc = opcode_pc;
+                        }
                     }
                 break;
 

@@ -5,6 +5,19 @@
 #include "cpu.h"
 #include "ppu.h"
 #include "dma.h"
+#include "apu.h"
+
+/*
+    Just a small heads-up regarding comments explaining snes aspects. Much of the stuff explained here is explicitly state in many
+    sources I checked, but some parts that should ALSO be explicitly stated (at least in my opinion, since they're crucial details) 
+    are left as an exercise to the reader to figure out, which is downright bullshit. 
+    
+    Some of the details are backed by official documentation, and I try my best to leave no stones unturned when explaining. Sometimes
+    it may even seem excessive.
+
+    Some of the details are conjecture on my part of how it probably works, given all the documentation I found. If I got something
+    wrong, please let me know!
+*/
 
 /* https://problemkaputt.de/fullsnes.htm */
 

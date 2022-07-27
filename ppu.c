@@ -47,17 +47,7 @@
 #define V_BLANK_END_LINE 0
 
 /* https://www.raphnet.net/divers/retro_challenge_2019_03/qsnesdoc.html */
-
-/*
-    https://en.wikibooks.org/wiki/Super_NES_Programming/SNES_Specs
-
-    THANK FUCKING GOD FOR TELLING ME THE OBVIOUS THING THAT EVERY OTHER FREAKING
-    DOCUMENT SEEMED TO SKIP, FOR SOME REASON. THANKS FOR TELLING ME THAT VRAM IS
-    ACTUALLY A *SEPARATE CHIP* IN THE SNES. BECAUSE WHY WOULD MENTIONING THAT
-    WOULD BE IMPORTANT, RIGHT? IT'S NOT LIKE ANY MORON EMULATOR WRITTER WILL
-    FIRST ASSUME VRAM RESIDES IN THE 120K WRAM AREA. NO, NOT AT ALL.
-*/
-// uint16_t vram[0x7fff];
+/* https://en.wikibooks.org/wiki/Super_NES_Programming/SNES_Specs */
 
 #define H_COUNTER 0
 #define V_COUNTER 1
@@ -71,15 +61,15 @@ uint16_t latched_counters[2];
 struct dot_t *framebuffer;
 
 
-#define PPU_REG_OFFSET(reg) (reg-PPU_REGS_START_ADDRESS)
+// #define PPU_REG_OFFSET(reg) (reg-PPU_REGS_START_ADDRESS)
 
-char *ppu_reg_names[PPU_REGS_END_ADDRESS - PPU_REGS_START_ADDRESS] = {
-    [PPU_REG_OFFSET(INIDISP_ADDRESS)] = "INIDSP",
-    [PPU_REG_OFFSET(OBJSEL_ADDRESS)] = "OBJSEL",
-    [PPU_REG_OFFSET(OAMADDRL_ADDRESS)] = "OAMADDRL",
-    [PPU_REG_OFFSET(OAMADDRH_ADDRESS)] = "OAMADDRH",
-    [PPU_REG_OFFSET(OAMDATA_ADDRESS)] = "OAMDATA",
-};
+// char *ppu_reg_names[PPU_REGS_END_ADDRESS - PPU_REGS_START_ADDRESS] = {
+//     [PPU_REG_OFFSET(INIDISP_ADDRESS)] = "INIDSP",
+//     [PPU_REG_OFFSET(OBJSEL_ADDRESS)] = "OBJSEL",
+//     [PPU_REG_OFFSET(OAMADDRL_ADDRESS)] = "OAMADDRL",
+//     [PPU_REG_OFFSET(OAMADDRH_ADDRESS)] = "OAMADDRH",
+//     [PPU_REG_OFFSET(OAMDATA_ADDRESS)] = "OAMDATA",
+// };
 
 #define VERBOSE
 
@@ -110,6 +100,17 @@ uint32_t vmadd_increment_shifts[] = {
     [PPU_VMADD_INC128]  = 7,
 };
 
+uint32_t objsel_size_sel_sizes[][2] = {
+    [PPU_OBJSEL_SIZE_SEL_8_16]      = {8, 16},
+    [PPU_OBJSEL_SIZE_SEL_8_32]      = {8, 32},
+    [PPU_OBJSEL_SIZE_SEL_8_64]      = {8, 64},
+    [PPU_OBJSEL_SIZE_SEL_16_32]     = {16, 32},
+    [PPU_OBJSEL_SIZE_SEL_16_64]     = {16, 64},
+    [PPU_OBJSEL_SIZE_SEL_32_64]     = {32, 64},
+};
+
+struct bg_offset_t bg_offsets[4];
+
 void init_ppu()
 {
     framebuffer = calloc(FRAMEBUFFER_WIDTH * FRAMEBUFFER_HEIGHT, sizeof(struct dot_t));
@@ -124,6 +125,11 @@ void reset_ppu()
 {
     vcounter = 0;
     hcounter = 0;
+
+    bg_offsets[0] = (struct bg_offset_t){};
+    bg_offsets[1] = (struct bg_offset_t){};
+    bg_offsets[2] = (struct bg_offset_t){};
+    bg_offsets[3] = (struct bg_offset_t){};
 }
 
 uint32_t step_ppu(int32_t cycle_count)
@@ -136,7 +142,8 @@ uint32_t step_ppu(int32_t cycle_count)
     uint8_t value;
     uint32_t vblank = 0;
 
-    struct obj_attr_t *obj_attrs = (struct obj_attr_t *)oam;
+    struct obj_attr_t *obj_tab1 = (struct obj_attr_t *)oam;
+    uint16_t *obj_tab2 = (uint16_t *)(oam + 512);
 
     if(iterations)
     {
@@ -144,14 +151,15 @@ uint32_t step_ppu(int32_t cycle_count)
 
         for(uint32_t iteration = 0; iteration < iterations; iteration++)
         {
+            uint32_t *obj_sizes = objsel_size_sel_sizes[ram1_regs[PPU_REG_OBJSEL] >> 5];
             hcounter++;
             if(hcounter == H_BLANK_END_DOT)
             {
-                ram1_regs[CPU_REG_HVBJOY] &= ~H_BLANK_FLAG;
+                ram1_regs[CPU_REG_HVBJOY] &= ~CPU_HVBJOY_FLAG_HBLANK;
             }
             else if(hcounter == H_BLANK_START_DOT)
             {
-                ram1_regs[CPU_REG_HVBJOY] |= H_BLANK_FLAG;
+                ram1_regs[CPU_REG_HVBJOY] |= CPU_HVBJOY_FLAG_HBLANK;
             }
             if(hcounter == SCANLINE_DOT_LENGTH)
             {
@@ -162,7 +170,7 @@ uint32_t step_ppu(int32_t cycle_count)
 
             if(vcounter == V_BLANK_END_LINE)
             {
-                ram1_regs[CPU_REG_HVBJOY] &= ~V_BLANK_FLAG;
+                ram1_regs[CPU_REG_HVBJOY] &= ~CPU_HVBJOY_FLAG_VBLANK;
             }
             else
             {
@@ -180,7 +188,7 @@ uint32_t step_ppu(int32_t cycle_count)
 
                 if(vcounter == last_scanline)
                 {
-                    ram1_regs[CPU_REG_HVBJOY] |= V_BLANK_FLAG;
+                    ram1_regs[CPU_REG_HVBJOY] |= CPU_HVBJOY_FLAG_VBLANK;
                     vblank = 1;
                 }
             }
@@ -188,47 +196,51 @@ uint32_t step_ppu(int32_t cycle_count)
             vcounter %= SCANLINE_COUNT;
 
             uint8_t hvbjoy = ram1_regs[CPU_REG_HVBJOY];
-            if(!(hvbjoy & V_BLANK_FLAG) && !(hvbjoy & H_BLANK_FLAG))
+            if(!(hvbjoy & CPU_HVBJOY_FLAG_VBLANK) && !(hvbjoy & CPU_HVBJOY_FLAG_HBLANK))
             {
                 uint8_t inidisp = ram1_regs[PPU_REG_INIDISP];
                 float brightness = (float)(inidisp & 0xf) / 15.0;
                 struct dot_t *dot = framebuffer + vcounter * FRAMEBUFFER_WIDTH + hcounter;
 
-                uint32_t intersect_count = 0;
-                for(uint32_t index = 0; index < 128; index++)
-                {
-                    struct obj_attr_t *attr = obj_attrs + index;
-                    if(hcounter >= attr->h_pos && hcounter < attr->h_pos + 16 &&
-                       vcounter >= attr->v_pos && vcounter < attr->v_pos + 16)
-                    {
-                        dot->r = 255 * brightness;
-                        dot->g = 255 * brightness;
-                        dot->b = 255 * brightness;
-                        intersect_count++;
-                    }
-                }
 
-                if(!intersect_count)
-                {
-                    dot->r = 0;
-                    dot->g = 0;
-                    dot->b = 0;
-                }
+                // uint32_t intersect_count = 0;
+                // for(uint32_t index = 0; index < 128; index++)
+                // {
+                //     struct obj_attr_t *attr1 = obj_tab1 + index;
+                //     uint16_t attr2 = (obj_tab2[index >> 4] >> (index & 0xf)) & 0x3;
+                //     uint16_t v_pos = attr1->v_pos;
+                //     uint16_t h_pos = attr1->h_pos | ((attr2 & 1) << 8);
+                //     uint32_t size = obj_sizes[attr2 >> 1];
+                //     if(hcounter >= h_pos && hcounter < h_pos + size &&
+                //        vcounter >= v_pos && vcounter < v_pos + size)
+                //     {
+                //         dot->r = 255 * brightness;
+                //         dot->g = 255 * brightness;
+                //         dot->b = 255 * brightness;
+                //         intersect_count++;
+                //     }
+                // }
 
-//                dot->r = 255 * (((float)vcounter / (float)FRAMEBUFFER_HEIGHT) * brightness);
-//                dot->g = 255 * (((float)vcounter / (float)FRAMEBUFFER_HEIGHT) * brightness);
-//                dot->b = 255 * (((float)vcounter / (float)FRAMEBUFFER_HEIGHT) * brightness);
+                // if(!intersect_count)
+                // {
+                //     dot->r = 0;
+                //     dot->g = 0;
+                //     dot->b = 0;
+                // }
 
-
-//                dot->r = (rand() % 255) * brightness;
-//                dot->g = (rand() % 255) * brightness;
-//                dot->b = (rand() % 255) * brightness;
                 dot->a = 255;
             }
         }
     }
 
     return vblank;
+}
+
+void mode0_draw()
+{
+    uint8_t bg_mode = ram1_regs[PPU_REG_BGMODE];
+
+
 }
 
 void dump_ppu()
@@ -241,6 +253,11 @@ void dump_ppu()
 //    printf("==================================================\n");
 //    printf("==================================================\n");
 }
+
+
+
+
+
 
 uint8_t slhv_read(uint32_t effective_address)
 {
@@ -295,6 +312,8 @@ uint8_t vmdata_read(uint32_t effective_address)
         vram_addr += ((read_order == PPU_VMDATA_ADDR_INC_LH && reg == PPU_REG_VMDATARH) ||
                       (read_order == PPU_VMDATA_ADDR_INC_HL && reg == PPU_REG_VMDATARL)) << increment_shift;
     }
+
+    return value;
 }
 
 void oamadd_write(uint32_t effective_address, uint8_t value)
@@ -304,13 +323,54 @@ void oamadd_write(uint32_t effective_address, uint8_t value)
     oam_addr = ((uint16_t)ram1_regs[PPU_REG_OAMADDL] | ((uint16_t)ram1_regs[PPU_REG_OAMADDH] << 8)) & 0x01ff;
     oam_addr <<= 1;
     draw_oam_addr = oam_addr;
-    // printf("oamaddr: %d\n", oam_addr);
+//    printf("oamaddr: %d\n", oam_addr);
 }
 
 void oamdata_write(uint32_t effective_address, uint8_t value)
 {
     oam[oam_addr] = value;
-    // printf("oamdata: %d (%x)\n", oam_addr, value);
+//    printf("oamdata: %d (%x)\n", oam_addr, value);
     oam_addr++;
 }
 
+void bgmode_write(uint32_t effective_address, uint8_t value)
+{
+    ram1_regs[PPU_REG_BGMODE] = value;
+}
+
+void bgsc_write(uint32_t effective_address, uint8_t value)
+{
+    uint32_t reg = effective_address & 0xffff;
+    ram1_regs[reg] = value;
+}
+
+void bgoffs_write(uint32_t effective_address, uint8_t value)
+{
+    uint32_t reg = (effective_address & 0xffff) - PPU_REG_BG1HOFS;
+    /* two registers per background (h and v offsets), so bit 1 gives us the
+    offset of the background we want to */
+    struct bg_offset_t *bg_offset = &bg_offsets[reg >> 1];
+    /* for each background, the first register is the horizontal offset, the second
+    is vertical offset. */
+    uint32_t offset_index = reg & 1;
+
+    if(bg_offset->lsb_written[offset_index])
+    {
+        bg_offset->offsets[offset_index] &= 0x00ff;
+        bg_offset->offsets[offset_index] |= ((uint16_t)value << 8) & 0x1fff;
+
+        // printf("offset for bg %d is h: %d -- v: %d\n", reg >> 1, bg_offset->offsets[0], bg_offset->offsets[1]);
+    }
+    else
+    {
+        bg_offset->offsets[offset_index] &= 0xff00;
+        bg_offset->offsets[offset_index] |= value;
+    }
+
+    bg_offset->lsb_written[offset_index] ^= 1;
+}
+
+void coldata_write(uint32_t effective_address, uint8_t value)
+{
+    ram1_regs[PPU_REG_COLDATA] = value;
+}
