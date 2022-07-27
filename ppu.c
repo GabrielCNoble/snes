@@ -93,6 +93,8 @@ uint16_t draw_oam_addr = 0;
 uint8_t oam_byte = 0;
 uint8_t oam[544];
 
+// uint8_t cgram[];
+
 uint32_t vmadd_increment_shifts[] = {
     [PPU_VMADD_INC1]    = 0,
     [PPU_VMADD_INC32]   = 5,
@@ -281,6 +283,7 @@ void vmadd_write(uint32_t effective_address, uint8_t value)
 {
     uint32_t reg = PPU_REG_VMADDH - (effective_address & 0xffff);
     ram1_regs[reg] = value;
+    vram_addr = (uint16_t)ram1_regs[PPU_REG_VMADDL] | ((uint16_t)ram1_regs[PPU_REG_VMADDH] << 8);
 }
 
 void vmdata_write(uint32_t effective_address, uint8_t value)

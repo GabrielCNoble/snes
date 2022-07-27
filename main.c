@@ -64,6 +64,18 @@ int main(int argc, char *argv[])
                             step_emu();
                             dump_emu();
                         }
+                        else if(!strcmp(param, "-stepn"))
+                        {
+                            uint32_t step_count;
+                            scanf("%d", &step_count);
+                            while(step_count)
+                            {
+                                step_emu();
+                                step_count--;
+                            }
+
+                            dump_emu();
+                        }
                         else if(!strcmp(param, "-poke"))
                         {
                             scanf("%x", &poke_addr);
