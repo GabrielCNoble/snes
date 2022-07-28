@@ -31,14 +31,12 @@ enum ACCESS
 
 struct mem_write_t
 {
-    void (*write)(uint32_t effective_address, uint8_t value);
-    uint32_t invalid;
+    void (*write)(uint32_t effective_address, uint64_t master_clock, uint8_t value);
 };
 
 struct mem_read_t
 {
-    uint8_t (*read)(uint32_t effective_address);
-    uint32_t invalid;
+    uint8_t (*read)(uint32_t effective_address, uint64_t master_clock);
 };
 
 struct blah_t
@@ -52,13 +50,13 @@ void shutdown_mem();
 
 uint32_t access_location(uint32_t effective_address);
 
-void *memory_pointer(uint32_t effective_address);
+// void *memory_pointer(uint32_t effective_address);
 
-void write_byte(uint32_t effective_address, uint8_t data);
+void write_byte(uint32_t effective_address, uint64_t master_clock, uint8_t data);
 
-uint8_t read_byte(uint32_t effective_address);
+uint8_t read_byte(uint32_t effective_address, uint64_t master_clock);
 
-uint16_t read_word(uint32_t effective_address);
+uint16_t read_word(uint32_t effective_address, uint64_t master_clock);
 
 void poke(uint32_t effective_address, uint32_t *value);
 

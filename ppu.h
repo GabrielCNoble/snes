@@ -8,7 +8,7 @@ struct obj_attr_t
     uint8_t h_pos;
     uint8_t v_pos;
     /* f -> flip, p -> priority, c -> color, n-> name. If the arrangement
-    of bit fields in memory wasn't implementation defined this would 
+    of bit fields in memory wasn't implementation defined this would
     be a nice use of them.  */
     uint16_t fpcn;
 };
@@ -55,7 +55,7 @@ enum PPU_REGS
     PPU_REG_BG12NBA         = 0x210b,
     PPU_REG_BG34NBA         = 0x210c,
 
-    /* horizontal and vertical offsets for backgrounds 1-4. For modes 0-6, 
+    /* horizontal and vertical offsets for backgrounds 1-4. For modes 0-6,
     it's a 11 bit value from 0 to 1023. The value is the offset between the
     bottom right corner of the background and the top left corner of the display
     area.  */
@@ -93,7 +93,7 @@ enum PPU_REGS
     PPU_REG_WCOLOBJLOG      = 0x212b,
     PPU_REG_TMAIN           = 0x212c,
     PPU_REG_TSUB            = 0x212d,
-    PPU_REG_COLDATA         = 0x2132,       
+    PPU_REG_COLDATA         = 0x2132,
     PPU_REG_SETINI          = 0x2133,
     PPU_REG_SLVH            = 0x2137,
     PPU_REG_OPHCT           = 0x213c,
@@ -154,11 +154,23 @@ enum PPU_BGMODE_CHR_SIZES
     PPU_BGMODE_BG4_CHR_SIZE_16x16 = 1 << 7,
 };
 
+struct reg_write_t
+{
+    struct reg_write_t *    next;
+    uint64_t                cycle;
+    uint16_t                reg;
+    uint8_t                 value;
+};
+
 void init_ppu();
 
 void shutdown_ppu();
 
 void reset_ppu();
+
+struct reg_write_t *queue_write(uint16_t reg, uint64_t cycle, uint8_t value);
+
+void apply_writes();
 
 uint32_t step_ppu(int32_t cycle_count);
 
@@ -166,27 +178,29 @@ void mode0_draw();
 
 void dump_ppu();
 
-uint8_t slhv_read(uint32_t effective_address);
+void inidisp_write(uint32_t effective_address, uint64_t master_cycle, uint8_t value);
 
-uint8_t opct_read(uint32_t effective_address);
+uint8_t slhv_read(uint32_t effective_address, uint64_t master_cycle);
 
-void vmadd_write(uint32_t effective_address, uint8_t value);
+uint8_t opct_read(uint32_t effective_address, uint64_t master_cycle);
 
-void vmdata_write(uint32_t effective_address, uint8_t value);
+void vmadd_write(uint32_t effective_address, uint64_t master_cycle, uint8_t value);
 
-uint8_t vmdata_read(uint32_t effective_address);
+void vmdata_write(uint32_t effective_address, uint64_t master_cycle, uint8_t value);
 
-void oamadd_write(uint32_t effective_address, uint8_t value);
+uint8_t vmdata_read(uint32_t effective_address, uint64_t master_cycle);
 
-void oamdata_write(uint32_t effective_address, uint8_t value);
+void oamadd_write(uint32_t effective_address, uint64_t master_cycle, uint8_t value);
 
-void bgmode_write(uint32_t effective_address, uint8_t value);
+void oamdata_write(uint32_t effective_address, uint64_t master_cycle, uint8_t value);
 
-void bgsc_write(uint32_t effective_address, uint8_t value);
+void bgmode_write(uint32_t effective_address, uint64_t master_cycle, uint8_t value);
 
-void bgoffs_write(uint32_t effective_address, uint8_t value);
+void bgsc_write(uint32_t effective_address, uint64_t master_cycle, uint8_t value);
 
-void coldata_write(uint32_t effective_address, uint8_t value);
+void bgoffs_write(uint32_t effective_address, uint64_t master_cycle, uint8_t value);
+
+void coldata_write(uint32_t effective_address, uint64_t master_cycle, uint8_t value);
 
 
 

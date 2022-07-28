@@ -104,7 +104,7 @@ enum HDMA_PARAMS
 void init_dma();
 
 void step_dma(int32_t cycle_count);
- 
+
 uint32_t hdma_idle_state(int32_t cycle_count);
 
 uint32_t hdma_init_state(int32_t cycle_count);
@@ -129,8 +129,8 @@ void step_hdma(int32_t cycle_count);
 
 void dma_reg_list(uint16_t mode, uint16_t reg, uint16_t *reg_list);
 
-void mdmaen_write(uint32_t effective_address, uint8_t data);
+void mdmaen_write(uint32_t effective_address, uint64_t master_cycles, uint8_t data);
 
-void hdmaen_write(uint32_t effective_address, uint8_t data);
+void hdmaen_write(uint32_t effective_address, uint64_t master_cycles, uint8_t data);
 
 #endif

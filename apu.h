@@ -21,8 +21,8 @@ void init_apu();
 
 void step_apu(int32_t cycles);
 
-uint8_t apuio_read(uint32_t effective_address);
+uint8_t apuio_read(uint32_t effective_address, uint64_t master_cycles);
 
-void apuio_write(uint32_t effective_address, uint8_t data);
+void apuio_write(uint32_t effective_address, uint64_t master_cycles, uint8_t data);
 
 #endif

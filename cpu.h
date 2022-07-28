@@ -272,8 +272,8 @@ enum CPU_REGS
     are initialized, there's a 18 cycles overhead. After that, channels are
     initialized, with a 8 byte overhead for direct table channels, and 24 cycles
     overhead for indirect table channels.
-    
-    I'm not really sure what should happen if the cpu ends up writing to this 
+
+    I'm not really sure what should happen if the cpu ends up writing to this
     register during this initialization period. Didn't really find whether the
     value gets latched when initialization begins. The behavior implemented here
     is: the channels will be initialized one after another, taking into consideration
@@ -306,36 +306,36 @@ enum CPU_REGS
 
     CPU_REG_DMA0_PARAM                      = 0x4300,
     CPU_REG_DMA0_BBUS_ADDR                  = 0x4301,
-    
+
     CPU_REG_HDMA0_ATAB_DMA0_ADDRL           = 0x4302,
     CPU_REG_HDMA0_ATAB_DMA0_ADDRH           = 0x4303,
     CPU_REG_HDMA0_ATAB_DMA0_BANK            = 0x4304,
 
-    /* not really mentioned anywhere, but I guess those should be incremented (except the bank) after 
+    /* not really mentioned anywhere, but I guess those should be incremented (except the bank) after
     every byte written, just like happens with <43X8> and <43X9>...? */
     CPU_REG_HDMA0_IND_ADDR_DMA0_COUNTL      = 0x4305,
     CPU_REG_HDMA0_IND_ADDR_DMA0_COUNTH      = 0x4306,
     CPU_REG_HDMA0_IND_ADDR_BANK             = 0x4307,
 
-    /* 
-        Those get loaded from <0x43X2> and <0x43X3>, and are incremented as the hdma goes forward. 
-        
-        If the transfer is using a direct table, this is the address of the data to be transferred, 
+    /*
+        Those get loaded from <0x43X2> and <0x43X3>, and are incremented as the hdma goes forward.
+
+        If the transfer is using a direct table, this is the address of the data to be transferred,
         and is incremented every time a byte is transferred. How many times it's incremented depends
         on the value specified for the write mode in <0x43X1>. If the write mode specifies a single
         write to a single register, it'll be incremented once. If it specifies two writes to the same
         register, or one write to two consecutive registers, then it gets incremented twice. And so on.
-        Once the amount of writes specified is reached, the address will be pointing at the next direct 
+        Once the amount of writes specified is reached, the address will be pointing at the next direct
         table entry. The line count byte will be loaded into <0x43Xa> and those registers will be updated
         to point at the data right after it, and then the whole thing repeats.
-        
-        If the transfer is using an indirect table, this is the address of an indirect table entry, 
+
+        If the transfer is using an indirect table, this is the address of an indirect table entry,
         and it's incremented every time the entry is used. Each entry is composed by 3 bytes. The
         first is the line count, and the next two are the pointer to the actual data to be transferred.
         Once the data referenced by the entry is transferred, this register gets incremente by 3,
         which makes it point at the next indirect table entry. The line count byte gets loaded into
         <0x43Xa>, the register gets updated to point at the indirect address portion of the indirect
-        table entry, and the indirect address gets loaded into <0x43X5> and <0x43X6>. 
+        table entry, and the indirect address gets loaded into <0x43X5> and <0x43X6>.
     */
 
     CPU_REG_HDMA0_DIR_ADDRL                 = 0x4308,
@@ -501,7 +501,7 @@ int view_hardware_registers();
 
 // void *cpu_pointer(uint32_t effective_address, uint32_t access_location);
 
-
+uint32_t cpu_mem_cycles(uint32_t effective_address);
 
 void cpu_write_byte(uint32_t effective_address, uint8_t data);
 

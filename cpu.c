@@ -13,12 +13,14 @@ unsigned long step_count = 0;
 struct cpu_state_t cpu_state = {.in_irqb = 1, .in_rdy = 1, .in_resb = 1, .in_abortb = 1, .in_nmib = 1};
 
 uint32_t cpu_cycle_count = 0;
+extern uint64_t master_cycles;
+extern uint8_t  *ram1_regs;
 
 #define ALU_WIDTH_WORD 0
 #define ALU_WIDTH_BYTE 1
 
-#define HIGHSPEED_ACCESS(effective_address) (effective_address & 0x00800000)
-#define ACCESS_CYCLES(effective_address) (HIGHSPEED_ACCESS(effective_address) ? 6 : 8)
+//#define HIGHSPEED_ACCESS(effective_address) (effective_address & 0x00800000)
+//#define ACCESS_CYCLES(effective_address) (HIGHSPEED_ACCESS(effective_address) ? 6 : 8)
 
 #define OPCODE(op, cat, addr_mod) {.opcode = op, .address_mode = addr_mod, .opcode_class = cat}
 
@@ -828,7 +830,8 @@ char *instruction_str(unsigned int effective_address)
 
     // opcode_address = memory_pointer(effective_address);
     // op_code = opcode_matrix[opcode_address[0]];
-    op_code = opcode_matrix[read_byte(effective_address)];
+//    uint64_t elapsed_cycles = master_cycles;
+    op_code = opcode_matrix[read_byte(effective_address, 0)];
     width = opcode_width(&op_code);
 
     switch(op_code.address_mode)
@@ -840,7 +843,7 @@ char *instruction_str(unsigned int effective_address)
             for(int32_t i = width - 1; i > 0; i--)
             {
                 // sprintf(temp_str, "%02x", opcode_address[i]);
-                sprintf(temp_str, "%02x", read_byte(effective_address + i));
+                sprintf(temp_str, "%02x", read_byte(effective_address + i, 0));
                 strcat(addr_mode_str, temp_str);
             }
             strcat(addr_mode_str, ")");
@@ -851,7 +854,7 @@ char *instruction_str(unsigned int effective_address)
             for(int32_t i = width - 1; i > 0; i--)
             {
                 // sprintf(temp_str, "%02x", opcode_address[i]);
-                sprintf(temp_str, "%02x", read_byte(effective_address + i));
+                sprintf(temp_str, "%02x", read_byte(effective_address + i, 0));
                 strcat(addr_mode_str, temp_str);
             }
 
@@ -865,7 +868,7 @@ char *instruction_str(unsigned int effective_address)
             for(int32_t i = width - 1; i > 0; i--)
             {
                 // sprintf(temp_str, "%02x", opcode_address[i]);
-                sprintf(temp_str, "%02x", read_byte(effective_address + i));
+                sprintf(temp_str, "%02x", read_byte(effective_address + i, 0));
                 strcat(addr_mode_str, temp_str);
             }
 
@@ -879,7 +882,7 @@ char *instruction_str(unsigned int effective_address)
             for(int32_t i = width - 1; i > 0; i--)
             {
                 // sprintf(temp_str, "%02x", opcode_address[i]);
-                sprintf(temp_str, "%02x", read_byte(effective_address + i));
+                sprintf(temp_str, "%02x", read_byte(effective_address + i, 0));
                 strcat(addr_mode_str, temp_str);
             }
 
@@ -893,7 +896,7 @@ char *instruction_str(unsigned int effective_address)
             for(int32_t i = width - 1; i > 0; i--)
             {
                 // sprintf(temp_str, "%02x", opcode_address[i]);
-                sprintf(temp_str, "%02x", read_byte(effective_address + i));
+                sprintf(temp_str, "%02x", read_byte(effective_address + i, 0));
                 strcat(addr_mode_str, temp_str);
             }
             strcat(addr_mode_str, ") )");
@@ -904,7 +907,7 @@ char *instruction_str(unsigned int effective_address)
             for(int32_t i = width - 1; i > 0; i--)
             {
                 // sprintf(temp_str, "%02x", opcode_address[i]);
-                sprintf(temp_str, "%02x", read_byte(effective_address + i));
+                sprintf(temp_str, "%02x", read_byte(effective_address + i, 0));
                 strcat(addr_mode_str, temp_str);
             }
 
@@ -918,7 +921,7 @@ char *instruction_str(unsigned int effective_address)
             for(int32_t i = width - 1; i > 0; i--)
             {
                 // sprintf(temp_str, "%02x", opcode_address[i]);
-                sprintf(temp_str, "%02x", read_byte(effective_address + i));
+                sprintf(temp_str, "%02x", read_byte(effective_address + i, 0));
                 strcat(addr_mode_str, temp_str);
             }
 
@@ -932,8 +935,8 @@ char *instruction_str(unsigned int effective_address)
         case ADDRESS_MODE_BLOCK_MOVE:
             // sprintf(addr_mode_str, "dst addr(%02x:%04x), src addr(%02x:%04x)", opcode_address[1], cpu_state.reg_y.reg_y,
             //                                                                    opcode_address[2], cpu_state.reg_x.reg_x);
-            sprintf(addr_mode_str, "dst addr(%02x:%04x), src addr(%02x:%04x)", read_byte(effective_address + 1), cpu_state.reg_y.reg_y,
-                                                                               read_byte(effective_address + 2), cpu_state.reg_x.reg_x);
+            sprintf(addr_mode_str, "dst addr(%02x:%04x), src addr(%02x:%04x)", read_byte(effective_address + 1, 0), cpu_state.reg_y.reg_y,
+                                                                               read_byte(effective_address + 2, 0), cpu_state.reg_x.reg_x);
         break;
 
         case ADDRESS_MODE_DIRECT_INDEXED_INDIRECT:
@@ -950,8 +953,8 @@ char *instruction_str(unsigned int effective_address)
 
         case ADDRESS_MODE_DIRECT_INDIRECT_INDEXED:
             // mem_address = memory_pointer(cpu_state.reg_d + opcode_address[1]);
-            uint8_t offset = read_byte(effective_address + 1);
-            uint16_t mem_address = read_word(cpu_state.reg_d + offset);
+            uint8_t offset = read_byte(effective_address + 1, 0);
+            uint16_t mem_address = read_word(cpu_state.reg_d + offset, 0);
             // sprintf(addr_mode_str, "[pointer(D(%04x) + offset(%02x))](%04x) + Y(%04x)", cpu_state.reg_d, opcode_address[1],
             //                                                                                 *(unsigned short *)mem_address, cpu_state.reg_y.reg_y);
             sprintf(addr_mode_str, "[pointer(D(%04x) + offset(%02x))](%04x) + Y(%04x)", cpu_state.reg_d, offset, mem_address, cpu_state.reg_y.reg_y);
@@ -967,12 +970,12 @@ char *instruction_str(unsigned int effective_address)
 
         case ADDRESS_MODE_DIRECT_INDIRECT:
             // sprintf(addr_mode_str, "pointer(D(%04x) + offset(%02x))", cpu_state.reg_d, opcode_address[1]);
-            sprintf(addr_mode_str, "pointer(D(%04x) + offset(%02x))", cpu_state.reg_d, read_byte(effective_address + 1));
+            sprintf(addr_mode_str, "pointer(D(%04x) + offset(%02x))", cpu_state.reg_d, read_byte(effective_address + 1, 0));
         break;
 
         case ADDRESS_MODE_DIRECT:
             // sprintf(addr_mode_str, "D(%04x) + offset(%02x)", cpu_state.reg_d, opcode_address[1]);
-            sprintf(addr_mode_str, "D(%04x) + offset(%02x)", cpu_state.reg_d, read_byte(effective_address + 1));
+            sprintf(addr_mode_str, "D(%04x) + offset(%02x)", cpu_state.reg_d, read_byte(effective_address + 1, 0));
         break;
 
         case ADDRESS_MODE_IMMEDIATE:
@@ -981,7 +984,7 @@ char *instruction_str(unsigned int effective_address)
             for(int32_t i = width - 1; i > 0; i--)
             {
                 // sprintf(temp_str, "%02x", opcode_address[i]);
-                sprintf(temp_str, "%02x", read_byte(effective_address + i));
+                sprintf(temp_str, "%02x", read_byte(effective_address + i, 0));
                 strcat(addr_mode_str, temp_str);
             }
             strcat(addr_mode_str, ")");
@@ -997,7 +1000,7 @@ char *instruction_str(unsigned int effective_address)
 
         case ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE:
             // sprintf(addr_mode_str, "pc(%04x) + offset(%02x)", cpu_state.reg_pc, opcode_address[1]);
-            sprintf(addr_mode_str, "pc(%04x) + offset(%02x)", cpu_state.reg_pc, read_byte(effective_address + 1));
+            sprintf(addr_mode_str, "pc(%04x) + offset(%02x)", cpu_state.reg_pc, read_byte(effective_address + 1, 0));
         break;
 
         case ADDRESS_MODE_STACK:
@@ -1007,7 +1010,7 @@ char *instruction_str(unsigned int effective_address)
 
         case ADDRESS_MODE_STACK_RELATIVE:
             // sprintf(addr_mode_str, "S(%04x) + offset(%02x)", cpu_state.reg_s, opcode_address[1]);
-            sprintf(addr_mode_str, "S(%04x) + offset(%02x)", cpu_state.reg_s, read_byte(effective_address + 1));
+            sprintf(addr_mode_str, "S(%04x) + offset(%02x)", cpu_state.reg_s, read_byte(effective_address + 1, 0));
         break;
 
         case ADDRESS_MODE_STACK_RELATIVE_INDIRECT_INDEXED:
@@ -1027,7 +1030,7 @@ char *instruction_str(unsigned int effective_address)
     for(int32_t i = 0; i < width; i++)
     {
         // sprintf(temp_str, "%02x ", opcode_address[i]);
-        sprintf(temp_str, "%02x", read_byte(effective_address + i));
+        sprintf(temp_str, "%02x", read_byte(effective_address + i, 0));
         strcat(instruction_str_buffer, temp_str);
     }
 
@@ -1115,10 +1118,21 @@ int view_hardware_registers()
     // }
 }
 
+uint32_t cpu_mem_cycles(uint32_t effective_address)
+{
+    if(effective_address & 0x800000 && (ram1_regs[CPU_REG_MEMSEL] & 1))
+    {
+        return 6;
+    }
+
+    return 8;
+}
+
 void cpu_write_byte(uint32_t effective_address, uint8_t data)
 {
-    cpu_cycle_count += ACCESS_CYCLES(effective_address);
-    write_byte(effective_address, data);
+//    cpu_cycle_count += ACCESS_CYCLES(effective_address);
+    cpu_cycle_count += cpu_mem_cycles(effective_address);
+    write_byte(effective_address, master_cycles + cpu_cycle_count, data);
 }
 
 void cpu_write_word(uint32_t effective_address, uint16_t data)
@@ -1129,8 +1143,9 @@ void cpu_write_word(uint32_t effective_address, uint16_t data)
 
 uint8_t cpu_read_byte(uint32_t effective_address)
 {
-    cpu_cycle_count += ACCESS_CYCLES(effective_address);
-    return read_byte(effective_address);
+//    cpu_cycle_count += ACCESS_CYCLES(effective_address);
+    cpu_cycle_count += cpu_mem_cycles(effective_address);
+    return read_byte(effective_address, master_cycles + cpu_cycle_count);
 }
 
 uint16_t cpu_read_word(uint32_t effective_address)
@@ -1280,7 +1295,7 @@ void reset_cpu()
 
     cpu_state.reg_p[0] = CPU_STATUS_FLAG_MEMORY | CPU_STATUS_FLAG_INDEX;
     cpu_state.reg_p[1] = CPU_STATUS_FLAG_IRQ_DISABLE | CPU_STATUS_FLAG_CARRY;
-    cpu_state.reg_pc = read_word(0xfffc);
+    cpu_state.reg_pc = read_word(0xfffc, 0);
 }
 
 void step_cpu(int32_t cycle_count)
@@ -1936,6 +1951,7 @@ void step_cpu(int32_t cycle_count)
                     cpu_state.reg_pbrw.reg_pbr = (uint8_t)(effective_address >> 16);
                 case OPCODE_BRA:
                     cpu_state.reg_pc = (uint16_t)effective_address;
+                    cpu_cycle_count += 6;
                 break;
 
                 default:
@@ -1965,6 +1981,7 @@ void step_cpu(int32_t cycle_count)
                     if(execute_branch)
                     {
                         cpu_state.reg_pc = (uint16_t)effective_address;
+                        cpu_cycle_count += 6;
                     }
                 }
                 break;

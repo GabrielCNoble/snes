@@ -56,7 +56,10 @@
 
 uint16_t vcounter = 0;
 uint16_t hcounter = 0;
+uint8_t  sub_dot = 0;
+uint8_t  dot_length = 4;
 uint16_t latched_counters[2];
+uint32_t scanline_cycles = 0;
 
 struct dot_t *framebuffer;
 
@@ -85,8 +88,13 @@ uint32_t            vram_addr;
 uint32_t            last_vmdata_reg;
 extern uint8_t *    vram;
 extern uint8_t *    ram1_regs;
+extern uint64_t     master_cycles;
 uint32_t            cur_field = 0;
 int32_t             ppu_cycle_count = 0;
+
+struct reg_write_t *    free_writes = NULL;
+struct reg_write_t *    pending_writes = NULL;
+struct reg_write_t *    last_pending_write = NULL;
 
 uint16_t oam_addr = 0;
 uint16_t draw_oam_addr = 0;
@@ -134,25 +142,88 @@ void reset_ppu()
     bg_offsets[3] = (struct bg_offset_t){};
 }
 
+struct reg_write_t *queue_write(uint16_t reg, uint64_t cycle, uint8_t value)
+{
+    struct reg_write_t *write = NULL;
+
+    if(free_writes)
+    {
+        write = free_writes;
+        free_writes = free_writes->next;
+        write->next = NULL;
+    }
+    else
+    {
+        write = calloc(1, sizeof(struct reg_write_t));
+    }
+
+    write->reg = reg;
+    write->cycle = cycle;
+    write->value = value;
+
+    if(!pending_writes)
+    {
+        pending_writes = write;
+    }
+    else
+    {
+        last_pending_write->next = write;
+    }
+    last_pending_write = write;
+
+    return write;
+}
+
+void apply_writes()
+{
+    if(pending_writes)
+    {
+        uint64_t ppu_master_cycle = master_cycles + ppu_cycle_count;
+        while(pending_writes && pending_writes->cycle < ppu_master_cycle)
+        {
+            ram1_regs[pending_writes->reg] = pending_writes->value;
+            struct reg_write_t *next_write = pending_writes->next;
+            pending_writes->next = free_writes;
+            free_writes = pending_writes;
+            pending_writes = next_write;
+        }
+    }
+}
+
 uint32_t step_ppu(int32_t cycle_count)
 {
     /* TODO: handle 6 cycle dots */
     ppu_cycle_count += cycle_count;
-    int32_t iterations = ppu_cycle_count / PPU_CYCLES_PER_DOT;
-
-//    cycle_count >>= 2;
+    uint64_t ppu_master_cycles = master_cycles;
+    int32_t dot_count = ppu_cycle_count / PPU_CYCLES_PER_DOT;
     uint8_t value;
     uint32_t vblank = 0;
 
     struct obj_attr_t *obj_tab1 = (struct obj_attr_t *)oam;
     uint16_t *obj_tab2 = (uint16_t *)(oam + 512);
+//    uint32_t dot_length;
 
-    if(iterations)
+    while(ppu_cycle_count)
     {
-        ppu_cycle_count -= PPU_CYCLES_PER_DOT * iterations;
-
-        for(uint32_t iteration = 0; iteration < iterations; iteration++)
+        while(pending_writes && pending_writes->cycle <= ppu_master_cycles)
         {
+            struct reg_write_t *next_write = pending_writes->next;
+            ram1_regs[pending_writes->reg] = pending_writes->value;
+            pending_writes->next = free_writes;
+            free_writes = pending_writes;
+            pending_writes = next_write;
+        }
+
+        sub_dot++;
+        scanline_cycles++;
+
+        if(sub_dot == dot_length)
+        {
+            sub_dot = 0;
+//            ppu_cycle_count -= PPU_CYCLES_PER_DOT * dot_count;
+
+//            for(uint32_t dot_index = 0; dot_index < dot_count; dot_index++)
+//            {
             uint32_t *obj_sizes = objsel_size_sel_sizes[ram1_regs[PPU_REG_OBJSEL] >> 5];
             hcounter++;
             if(hcounter == H_BLANK_END_DOT)
@@ -166,9 +237,20 @@ uint32_t step_ppu(int32_t cycle_count)
             if(hcounter == SCANLINE_DOT_LENGTH)
             {
                 vcounter++;
+                hcounter = 0;
+                scanline_cycles = 0;
             }
 
-            hcounter %= SCANLINE_DOT_LENGTH;
+//            hcounter %= SCANLINE_DOT_LENGTH;
+
+            if(hcounter == 322 || hcounter == 326)
+            {
+                dot_length = 6;
+            }
+            else
+            {
+                dot_length = 4;
+            }
 
             if(vcounter == V_BLANK_END_LINE)
             {
@@ -206,36 +288,104 @@ uint32_t step_ppu(int32_t cycle_count)
                 dot->r = 255 * brightness;
                 dot->g = 255 * brightness;
                 dot->b = 255 * brightness;
-
-                // uint32_t intersect_count = 0;
-                // for(uint32_t index = 0; index < 128; index++)
-                // {
-                //     struct obj_attr_t *attr1 = obj_tab1 + index;
-                //     uint16_t attr2 = (obj_tab2[index >> 4] >> (index & 0xf)) & 0x3;
-                //     uint16_t v_pos = attr1->v_pos;
-                //     uint16_t h_pos = attr1->h_pos | ((attr2 & 1) << 8);
-                //     uint32_t size = obj_sizes[attr2 >> 1];
-                //     if(hcounter >= h_pos && hcounter < h_pos + size &&
-                //        vcounter >= v_pos && vcounter < v_pos + size)
-                //     {
-                //         dot->r = 255 * brightness;
-                //         dot->g = 255 * brightness;
-                //         dot->b = 255 * brightness;
-                //         intersect_count++;
-                //     }
-                // }
-
-                // if(!intersect_count)
-                // {
-                //     dot->r = 0;
-                //     dot->g = 0;
-                //     dot->b = 0;
-                // }
-
                 dot->a = 255;
             }
+//            }
         }
+
+        ppu_master_cycles++;
+        ppu_cycle_count--;
     }
+
+//    if(dot_count)
+//    {
+//        ppu_cycle_count -= PPU_CYCLES_PER_DOT * dot_count;
+//
+//        for(uint32_t dot_index = 0; dot_index < dot_count; dot_index++)
+//        {
+//            uint32_t *obj_sizes = objsel_size_sel_sizes[ram1_regs[PPU_REG_OBJSEL] >> 5];
+//            hcounter++;
+//            if(hcounter == H_BLANK_END_DOT)
+//            {
+//                ram1_regs[CPU_REG_HVBJOY] &= ~CPU_HVBJOY_FLAG_HBLANK;
+//            }
+//            else if(hcounter == H_BLANK_START_DOT)
+//            {
+//                ram1_regs[CPU_REG_HVBJOY] |= CPU_HVBJOY_FLAG_HBLANK;
+//            }
+//            if(hcounter == SCANLINE_DOT_LENGTH)
+//            {
+//                vcounter++;
+//            }
+//
+//            hcounter %= SCANLINE_DOT_LENGTH;
+//
+//            if(vcounter == V_BLANK_END_LINE)
+//            {
+//                ram1_regs[CPU_REG_HVBJOY] &= ~CPU_HVBJOY_FLAG_VBLANK;
+//            }
+//            else
+//            {
+//                uint32_t last_scanline;
+//                uint8_t setini = ram1_regs[PPU_REG_SETINI];
+//
+//                if(setini & PPU_SETINI_FLAG_BGV_SEL)
+//                {
+//                    last_scanline = 240;
+//                }
+//                else
+//                {
+//                    last_scanline = 225;
+//                }
+//
+//                if(vcounter == last_scanline)
+//                {
+//                    ram1_regs[CPU_REG_HVBJOY] |= CPU_HVBJOY_FLAG_VBLANK;
+//                    vblank = 1;
+//                }
+//            }
+//
+//            vcounter %= SCANLINE_COUNT;
+//
+//            uint8_t hvbjoy = ram1_regs[CPU_REG_HVBJOY];
+//            if(!(hvbjoy & CPU_HVBJOY_FLAG_VBLANK) && !(hvbjoy & CPU_HVBJOY_FLAG_HBLANK))
+//            {
+//                uint8_t inidisp = ram1_regs[PPU_REG_INIDISP];
+//                float brightness = (float)(inidisp & 0xf) / 15.0;
+//                struct dot_t *dot = framebuffer + vcounter * FRAMEBUFFER_WIDTH + hcounter;
+//                dot->r = 255 * brightness;
+//                dot->g = 255 * brightness;
+//                dot->b = 255 * brightness;
+//
+//                // uint32_t intersect_count = 0;
+//                // for(uint32_t index = 0; index < 128; index++)
+//                // {
+//                //     struct obj_attr_t *attr1 = obj_tab1 + index;
+//                //     uint16_t attr2 = (obj_tab2[index >> 4] >> (index & 0xf)) & 0x3;
+//                //     uint16_t v_pos = attr1->v_pos;
+//                //     uint16_t h_pos = attr1->h_pos | ((attr2 & 1) << 8);
+//                //     uint32_t size = obj_sizes[attr2 >> 1];
+//                //     if(hcounter >= h_pos && hcounter < h_pos + size &&
+//                //        vcounter >= v_pos && vcounter < v_pos + size)
+//                //     {
+//                //         dot->r = 255 * brightness;
+//                //         dot->g = 255 * brightness;
+//                //         dot->b = 255 * brightness;
+//                //         intersect_count++;
+//                //     }
+//                // }
+//
+//                // if(!intersect_count)
+//                // {
+//                //     dot->r = 0;
+//                //     dot->g = 0;
+//                //     dot->b = 0;
+//                // }
+//
+//                dot->a = 255;
+//            }
+//        }
+//    }
 
     return vblank;
 }
@@ -259,18 +409,20 @@ void dump_ppu()
 }
 
 
+void inidisp_write(uint32_t effective_address, uint64_t master_cycle, uint8_t value)
+{
+//    ram1_regs[PPU_REG_INIDISP] = value;
+    queue_write(PPU_REG_INIDISP, master_cycle, value);
+}
 
-
-
-
-uint8_t slhv_read(uint32_t effective_address)
+uint8_t slhv_read(uint32_t effective_address, uint64_t master_cycle)
 {
     latched_counters[0] = hcounter;
     latched_counters[1] = vcounter;
     return 0;
 }
 
-uint8_t opct_read(uint32_t effective_address)
+uint8_t opct_read(uint32_t effective_address, uint64_t master_cycle)
 {
     uint32_t reg = effective_address & 0xffff;
     uint32_t index = PPU_REG_OPVCT - reg;
@@ -279,14 +431,14 @@ uint8_t opct_read(uint32_t effective_address)
     return value;
 }
 
-void vmadd_write(uint32_t effective_address, uint8_t value)
+void vmadd_write(uint32_t effective_address, uint64_t master_cycle, uint8_t value)
 {
     uint32_t reg = PPU_REG_VMADDH - (effective_address & 0xffff);
     ram1_regs[reg] = value;
     vram_addr = (uint16_t)ram1_regs[PPU_REG_VMADDL] | ((uint16_t)ram1_regs[PPU_REG_VMADDH] << 8);
 }
 
-void vmdata_write(uint32_t effective_address, uint8_t value)
+void vmdata_write(uint32_t effective_address, uint64_t master_cycle, uint8_t value)
 {
     uint32_t write_order = ram1_regs[PPU_REG_VMAINC] & 0x80;
     uint32_t reg = effective_address & 0xffff;
@@ -302,7 +454,7 @@ void vmdata_write(uint32_t effective_address, uint8_t value)
     }
 }
 
-uint8_t vmdata_read(uint32_t effective_address)
+uint8_t vmdata_read(uint32_t effective_address, uint64_t master_cycle)
 {
     uint32_t read_order = ram1_regs[PPU_REG_VMAINC] & 0x80;
     uint32_t reg = effective_address & 0xffff;
@@ -321,7 +473,7 @@ uint8_t vmdata_read(uint32_t effective_address)
     return value;
 }
 
-void oamadd_write(uint32_t effective_address, uint8_t value)
+void oamadd_write(uint32_t effective_address, uint64_t master_cycle, uint8_t value)
 {
     uint32_t reg = effective_address & 0xffff;
     ram1_regs[reg] = value;
@@ -331,25 +483,25 @@ void oamadd_write(uint32_t effective_address, uint8_t value)
 //    printf("oamaddr: %d\n", oam_addr);
 }
 
-void oamdata_write(uint32_t effective_address, uint8_t value)
+void oamdata_write(uint32_t effective_address, uint64_t master_cycle, uint8_t value)
 {
     oam[oam_addr] = value;
 //    printf("oamdata: %d (%x)\n", oam_addr, value);
     oam_addr++;
 }
 
-void bgmode_write(uint32_t effective_address, uint8_t value)
+void bgmode_write(uint32_t effective_address, uint64_t master_cycle, uint8_t value)
 {
     ram1_regs[PPU_REG_BGMODE] = value;
 }
 
-void bgsc_write(uint32_t effective_address, uint8_t value)
+void bgsc_write(uint32_t effective_address, uint64_t master_cycle, uint8_t value)
 {
     uint32_t reg = effective_address & 0xffff;
     ram1_regs[reg] = value;
 }
 
-void bgoffs_write(uint32_t effective_address, uint8_t value)
+void bgoffs_write(uint32_t effective_address, uint64_t master_cycle, uint8_t value)
 {
     uint32_t reg = (effective_address & 0xffff) - PPU_REG_BG1HOFS;
     /* two registers per background (h and v offsets), so bit 1 gives us the
@@ -375,7 +527,7 @@ void bgoffs_write(uint32_t effective_address, uint8_t value)
     bg_offset->lsb_written[offset_index] ^= 1;
 }
 
-void coldata_write(uint32_t effective_address, uint8_t value)
+void coldata_write(uint32_t effective_address, uint64_t master_cycle, uint8_t value)
 {
     ram1_regs[PPU_REG_COLDATA] = value;
 }

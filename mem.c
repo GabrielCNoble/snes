@@ -52,6 +52,7 @@ void init_mem()
 
     reg_writes[PPU_REG_COLDATA].write = coldata_write;
 
+    reg_writes[PPU_REG_INIDISP].write = inidisp_write;
     reg_writes[PPU_REG_BG1HOFS].write = bgoffs_write;
     reg_writes[PPU_REG_BG1VOFS].write = bgoffs_write;
     reg_writes[PPU_REG_BG2HOFS].write = bgoffs_write;
@@ -119,7 +120,7 @@ uint32_t access_location(uint32_t effective_address)
     return ACCESS_CART;
 }
 
-void write_byte(uint32_t effective_address, uint8_t data)
+void write_byte(uint32_t effective_address, uint64_t master_cycle, uint8_t data)
 {
     uint32_t access = access_location(effective_address);
 
@@ -134,7 +135,7 @@ void write_byte(uint32_t effective_address, uint8_t data)
 
         if(reg_writes[offset].write)
         {
-            reg_writes[offset].write(effective_address, data);
+            reg_writes[offset].write(effective_address, master_cycle, data);
         }
         else
         {
@@ -152,7 +153,7 @@ void write_byte(uint32_t effective_address, uint8_t data)
     }
 }
 
-uint8_t read_byte(uint32_t effective_address)
+uint8_t read_byte(uint32_t effective_address, uint64_t master_cycle)
 {
     uint32_t access = access_location(effective_address);
     uint8_t data = 0;
@@ -168,7 +169,7 @@ uint8_t read_byte(uint32_t effective_address)
 
         if(reg_reads[offset].read)
         {
-            data = reg_reads[offset].read(effective_address);
+            data = reg_reads[offset].read(effective_address, master_cycle);
         }
         else
         {
@@ -188,10 +189,10 @@ uint8_t read_byte(uint32_t effective_address)
     return data;
 }
 
-uint16_t read_word(uint32_t effective_address)
+uint16_t read_word(uint32_t effective_address, uint64_t master_cycle)
 {
     uint16_t data;
-    data = (uint16_t)read_byte(effective_address) | ((uint16_t)read_byte(effective_address + 1) << 8);
+    data = (uint16_t)read_byte(effective_address, master_cycle) | ((uint16_t)read_byte(effective_address + 1, master_cycle) << 8);
     return data;
 }
 
@@ -203,10 +204,10 @@ void poke(uint32_t effective_address, uint32_t *value)
 
     // if(memory)
     {
-        uint8_t byte0 = read_byte(effective_address);
-        uint8_t byte1 = read_byte(effective_address + 1);
-        uint8_t byte2 = read_byte(effective_address + 2);
-        uint8_t byte3 = read_byte(effective_address + 3);
+        uint8_t byte0 = read_byte(effective_address, 0);
+        uint8_t byte1 = read_byte(effective_address + 1, 0);
+        uint8_t byte2 = read_byte(effective_address + 2, 0);
+        uint8_t byte3 = read_byte(effective_address + 3, 0);
 
         printf("[%02x:%04x] %02x %02x %02x %02x ", (effective_address >> 16) & 0xff, effective_address & 0xffff, byte0, byte1, byte2, byte3);
 
