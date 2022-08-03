@@ -3,7 +3,7 @@
 
 
 #include "cart.h"
-#include "cpu.h"
+#include "cpu/cpu.h"
 #include "ppu.h"
 #include "emu.h"
 

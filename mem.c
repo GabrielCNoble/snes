@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include "mem.h"
 #include "addr.h"
-#include "cpu.h"
+#include "cpu/cpu.h"
 #include "ppu.h"
 #include "cart.h"
 #include "dma.h"
@@ -120,7 +120,7 @@ uint32_t access_location(uint32_t effective_address)
     return ACCESS_CART;
 }
 
-void write_byte(uint32_t effective_address, uint64_t master_cycle, uint8_t data)
+void write_byte(uint32_t effective_address, uint8_t data)
 {
     uint32_t access = access_location(effective_address);
 
@@ -135,7 +135,7 @@ void write_byte(uint32_t effective_address, uint64_t master_cycle, uint8_t data)
 
         if(reg_writes[offset].write)
         {
-            reg_writes[offset].write(effective_address, master_cycle, data);
+            reg_writes[offset].write(effective_address, data);
         }
         else
         {
@@ -153,7 +153,7 @@ void write_byte(uint32_t effective_address, uint64_t master_cycle, uint8_t data)
     }
 }
 
-uint8_t read_byte(uint32_t effective_address, uint64_t master_cycle)
+uint8_t read_byte(uint32_t effective_address)
 {
     uint32_t access = access_location(effective_address);
     uint8_t data = 0;
@@ -169,7 +169,7 @@ uint8_t read_byte(uint32_t effective_address, uint64_t master_cycle)
 
         if(reg_reads[offset].read)
         {
-            data = reg_reads[offset].read(effective_address, master_cycle);
+            data = reg_reads[offset].read(effective_address);
         }
         else
         {
@@ -189,10 +189,10 @@ uint8_t read_byte(uint32_t effective_address, uint64_t master_cycle)
     return data;
 }
 
-uint16_t read_word(uint32_t effective_address, uint64_t master_cycle)
+uint16_t read_word(uint32_t effective_address)
 {
     uint16_t data;
-    data = (uint16_t)read_byte(effective_address, master_cycle) | ((uint16_t)read_byte(effective_address + 1, master_cycle) << 8);
+    data = (uint16_t)read_byte(effective_address) | ((uint16_t)read_byte(effective_address + 1) << 8);
     return data;
 }
 
@@ -204,35 +204,52 @@ void poke(uint32_t effective_address, uint32_t *value)
 
     // if(memory)
     {
-        uint8_t byte0 = read_byte(effective_address, 0);
-        uint8_t byte1 = read_byte(effective_address + 1, 0);
-        uint8_t byte2 = read_byte(effective_address + 2, 0);
-        uint8_t byte3 = read_byte(effective_address + 3, 0);
+        uint8_t byte0 = read_byte(effective_address);
+        uint8_t byte1 = read_byte(effective_address + 1);
+        uint8_t byte2 = read_byte(effective_address + 2);
+        uint8_t byte3 = read_byte(effective_address + 3);
 
         printf("[%02x:%04x] %02x %02x %02x %02x ", (effective_address >> 16) & 0xff, effective_address & 0xffff, byte0, byte1, byte2, byte3);
 
-        // if(value)
-        // {
-        //     if(*value & 0x00ff0000)
-        //     {
-        //         memcpy(memory, value, 3);
-        //     }
-        //     else if(*value & 0x0000ff00)
-        //     {
-        //         memcpy(memory, value, 2);
-        //     }
-        //     else
-        //     {
-        //         memcpy(memory, value, 1);
-        //     }
+         if(value)
+         {
+             uint32_t write_value = *value;
+             if(write_value & 0xff000000)
+             {
+                 write_byte(effective_address, write_value);
+                 write_value >>= 8;
+                 write_byte(effective_address + 1, write_value);
+                 write_value >>= 8;
+                 write_byte(effective_address + 2, write_value);
+                 write_value >>= 8;
+                 write_byte(effective_address + 3, write_value);
+             }
+             else if(write_value & 0x00ff0000)
+             {
+                 write_byte(effective_address, write_value);
+                 write_value >>= 8;
+                 write_byte(effective_address + 1, write_value);
+                 write_value >>= 8;
+                 write_byte(effective_address + 2, write_value);
+             }
+             else if(write_value & 0x0000ff00)
+             {
+                 write_byte(effective_address, write_value);
+                 write_value >>= 8;
+                 write_byte(effective_address + 1, write_value);
+             }
+             else
+             {
+                 write_byte(effective_address, write_value);
+             }
 
-        //     byte0 = read_byte(effective_address);
-        //     byte1 = read_byte(effective_address + 1);
-        //     byte2 = read_byte(effective_address + 2);
-        //     byte3 = read_byte(effective_address + 3);
+             byte0 = read_byte(effective_address);
+             byte1 = read_byte(effective_address + 1);
+             byte2 = read_byte(effective_address + 2);
+             byte3 = read_byte(effective_address + 3);
 
-        //     printf("-> %02x %02x %02x %02x ", byte0, byte1, byte2, byte3);
-        // }
+             printf("-> %02x %02x %02x %02x ", byte0, byte1, byte2, byte3);
+         }
 
         printf("\n");
     }

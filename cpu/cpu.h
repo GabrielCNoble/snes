@@ -1,7 +1,7 @@
 #ifndef CPU_H
 #define CPU_H
 
-#include "addr.h"
+#include "../addr.h"
 #include <stdint.h>
 
 enum OPCODE_CLASS
@@ -252,6 +252,299 @@ enum ADDRESS_MODES
 
 };
 
+enum INSTRUCTIONS
+{
+    ADC_ABS             = 0x6d,
+    ADC_ABS_X           = 0x7d,
+    ADC_ABS_Y           = 0x79,
+    ADC_ABSL            = 0x6f,
+    ADC_ABSL_X          = 0x7f,
+    ADC_DIR             = 0x65,
+    ADC_S_REL           = 0x63,
+    ADC_DIR_X           = 0x75,
+    ADC_DIR_IND         = 0x72,
+    ADC_DIR_INDL        = 0x67,
+    ADC_S_REL_IND_Y     = 0x73,
+    ADC_DIR_X_IND       = 0x61,
+    ADC_DIR_IND_Y       = 0x71,
+    ADC_DIRL_IND_Y      = 0x77,
+    ADC_IMM             = 0x69,
+
+    AND_ABS             = 0x2d,
+    AND_ABS_X           = 0x3e,
+    AND_ABS_Y           = 0x39,
+    AND_ABSL            = 0x2f,
+    AND_ABSL_X          = 0x3f,
+    AND_DIR             = 0x25,
+    AND_S_REL           = 0x23,
+    AND_DIR_X           = 0x35,
+    AND_DIR_IND         = 0x32,
+    AND_DIR_INDL        = 0x27,
+    AND_S_REL_IND_Y     = 0x33,
+    AND_DIR_X_IND       = 0x21,
+    AND_DIR_IND_Y       = 0x31,
+    AND_DIRL_IND_Y      = 0x37,
+    AND_IMM             = 0x29,
+
+    ASL_ABS             = 0x0e,
+    ASL_ACC             = 0x0a,
+    ASL_ABS_X           = 0x1e,
+
+    BCC_PC_REL          = 0x90,
+
+    BCS_PC_REL          = 0xb0,
+
+    BEQ_PC_REL          = 0xf0,
+
+    BIT_ABS             = 0x2c,
+    BIT_ABS_X           = 0x3c,
+    BIT_DIR             = 0x24,
+    BIT_DIR_X           = 0x34,
+    BIT_IMM             = 0x89,
+
+    BMI_PC_REL          = 0x30,
+
+    BNE_PC_REL          = 0xd0,
+
+    BPL_PC_REL          = 0x10,
+
+    BRA_PC_REL          = 0x80,
+
+    BRK                 = 0x00,
+
+    BRL_PC_RELL         = 0x82,
+
+    BVC_PC_REL          = 0x50,
+
+    BVS_PC_REL          = 0x70,
+
+    CLC_IMP             = 0x18,
+    
+    CLD_IMP             = 0xd8,
+
+    CLI_IMP             = 0x58,
+
+    CLV_IMP             = 0xb8,
+
+    CMP_ABS             = 0xcd,
+    CMP_ABS_X           = 0xdd,
+    CMP_ABS_Y           = 0xd9,
+    CMP_ABSL            = 0xcf, 
+    CMP_ABSL_X          = 0xdf,
+    CMP_DIR             = 0xc5,
+    CMP_S_REL           = 0xc3,
+    CMP_DIR_X           = 0xd5,
+    CMP_DIR_IND         = 0xd2,
+    CMP_DIR_INDL        = 0xc7,
+    CMP_S_REL_IND_Y     = 0xd3,
+    CMP_DIR_X_IND       = 0xc1,
+    CMP_DIR_IND_Y       = 0xd1,
+    CMP_DIR_INDL_Y      = 0xd7,
+    CMP_IMM             = 0xc9,
+
+    CPX_ABS             = 0xec,
+    CPX_DIR             = 0xe4,
+    CPX_IMM             = 0xe0,
+
+    CPY_ABS             = 0xcc,
+    CPY_DIR             = 0xc4,
+    CPY_IMM             = 0xc0,
+
+    DEC_ABS             = 0xce,
+    DEC_ACC             = 0x3a,
+    DEC_ABS_X           = 0xde,
+    DEC_DIR             = 0xc6,
+    DEC_DIR_X           = 0xd6,
+
+    DEX_IMP             = 0xca,
+
+    DEY_IMP             = 0x88,
+
+    EOR_ABS             = 0x4d,
+    EOR_ABS_X           = 0x5d,
+    EOR_ABS_Y           = 0x59,
+    EOR_ABSL            = 0x4f,
+    EOR_ABSL_X          = 0x5f,
+    EOR_ABS_X_IND       = 0x5d,
+    EOR_DIR             = 0x45,
+    EOR_S_REL           = 0x43,
+    EOR_DIR_X           = 0x55,
+    EOR_DIR_IND         = 0x52,
+    EOR_DIR_INDL        = 0x47,
+    EOR_S_REL_IND_Y     = 0x53,
+    EOR_DIR_X_IND       = 0x41,
+    EOR_DIR_IND_Y       = 0x51,
+    EOR_DIR_INDL_Y      = 0x57,
+
+    INC_ABS             = 0xee,
+    INC_ACC             = 0x1a,
+    INC_ABS_X           = 0xfe,
+    INC_DIR             = 0xe6,
+    INC_DIR_X           = 0xf6,
+
+    INX_IMP             = 0xe8,
+
+    INY_IMP             = 0xc8,
+
+    JML_ABS_IND         = 0xdc,
+
+    JMP_ABS             = 0x4c,
+    JMP_ABSL            = 0x5c,
+    JMP_ABS_IND         = 0x6c,
+    JMP_ABS_X_IND       = 0x7c,
+
+    JSL_ABSL            = 0x22,
+
+    JSR_ABS             = 0x20,
+    JSR_ABS_X_IND       = 0xfc,
+
+    LDA_ABS             = 0xad,
+    LDA_ABS_X           = 0xbd,
+    LDA_ABS_Y           = 0xb9,
+    LDA_ABSL            = 0xaf,
+    LDA_ABSL_X          = 0xbf,
+    LDA_DIR             = 0xa5,
+    LDA_S_REL           = 0xa3,
+    LDA_DIR_X           = 0xb5,
+    LDA_DIR_IND         = 0xb2,
+    LDA_DIR_INDL        = 0xa7,
+    LDA_S_REL_IND_Y     = 0xb3,
+    LDA_DIR_X_IND       = 0xa1,
+    LDA_DIR_IND_Y       = 0xb1,
+    LDA_DIR_INDL_Y      = 0xb7,
+    LDA_IMM             = 0xa9,
+
+    LDX_ABS             = 0xae,
+    LDX_ABS_Y           = 0xbe,
+    LDX_DIR             = 0xa6,
+    LDX_DIR_Y           = 0xb6,
+    LDX_IMM             = 0xa2,
+
+    LDY_ABS             = 0xac,
+    LDY_ABS_X           = 0xbc,
+    LDY_DIR             = 0xa4,
+    LDY_DIR_X           = 0xb4,
+    LDY_IMM             = 0xa0,
+
+    LSR_ABS             = 0x4e,
+    LSR_ACC             = 0x4a,
+    LSR_ABS_X           = 0x5e,
+    LSR_DIR             = 0x46,
+    LSR_DIR_X           = 0x56,
+
+    MVN_BLK             = 0x54,
+
+    MVP_BLK             = 0x44,
+
+    NOP_IMP             = 0xea,
+
+    ORA_ABS             = 0x0d,
+    ORA_ABS_X           = 0x1d,
+    ORA_ABS_Y           = 0x19,
+    ORA_ABSL            = 0x0f,
+    ORA_ABSL_X          = 0x1f,
+    ORA_DIR             = 0x05,
+    ORA_S_REL           = 0x03,
+    ORA_DIR_X           = 0x15,
+    ORA_DIR_IND         = 0x12,
+    ORA_DIR_INDL        = 0x07,
+    ORA_S_REL_IND_Y     = 0x13,
+    ORA_DIR_X_IND       = 0x01,
+    ORA_DIR_IND_Y       = 0x11,
+    ORA_DIR_INDL_Y      = 0x17,
+    ORA_IMM             = 0x09,
+
+    PEA_S               = 0xf4,
+
+    PEI_S               = 0xd4,
+
+    PER_S               = 0x62,
+
+    PHA_S               = 0x48,
+
+    PHB_S               = 0x8b,
+
+    PHD_S               = 0x0b,
+
+    PHK_S               = 0x4b,
+
+    PHP_S               = 0x08,
+
+    PHX_S               = 0xda,
+
+    PHY_S               = 0x5a,
+
+    PLA_S               = 0x68,
+
+    PLB_S               = 0xab,
+
+    PLD_S               = 0x2b,
+
+    PLP_S               = 0x28,
+
+    PLX_S               = 0xfa,
+
+    PLY_S               = 0x7a,
+
+    REP_IMM             = 0xc2,
+
+    SEI_IMP             = 0x78,
+    SEP_IMM             = 0xe2,
+
+    STA_ABS             = 0x8d,
+    STA_ABS_X           = 0x9d,
+    STA_ABSL            = 0x8f,
+    STA_ABSL_X          = 0x9f,
+    STA_DIR             = 0x85,
+    STA_S_REL           = 0x83,
+    STA_DIR_X           = 0x95,
+    STA_DIR_IND         = 0x92,
+    STA_DIR_INDL        = 0x87,
+    STA_S_REL_IND_Y     = 0x93,
+    STA_DIR_IND_X       = 0x81,
+    STA_DIR_IND_Y       = 0x91,
+    STA_DIR_INDL_Y      = 0x97,
+
+    STX_ABS             = 0x8e,
+    STX_DIR             = 0x86,
+    STX_DIR_Y           = 0x96,
+
+    STY_ABS             = 0x8c,
+    STY_DIR             = 0x84,
+    STY_DIR_X           = 0x94,
+
+    STZ_ABS             = 0x9c,
+    STZ_ABS_X           = 0x9e,
+    STZ_DIR             = 0x64,
+    STZ_DIR_X           = 0x74,
+
+    TAX_IMP             = 0xaa,
+
+    TAY_IMP             = 0xab,
+
+    TCD_IMP             = 0x5b,
+
+    TCS_IMP             = 0x1b,
+
+    TDC_IMP             = 0x7b,
+
+    TSC_ACC             = 0x3b,
+
+    TSX_ACC             = 0xba,
+
+    TXA_ACC             = 0x8a,
+
+    TXS_ACC             = 0x9a,
+
+    TXY_ACC             = 0x9b,
+
+    TYA_ACC             = 0x98,
+
+    TYX_ACC             = 0xbb,
+
+    XCE_ACC             = 0xfb
+};
+
 enum CPU_REGS
 {
     CPU_REG_NMITIMEN                        = 0x4200,
@@ -424,57 +717,123 @@ struct pop_t
     uint16_t     flag;
 };
 
-struct cpu_state_t
+enum REGS
+{
+    REG_ACCUM,
+    REG_X,
+    REG_Y,
+    REG_D,
+    REG_S,
+    REG_PBR,
+    REG_DBR,
+    REG_INST,
+    REG_PC,
+    // REG_P,
+    REG_ALU_LATCH,
+    REG_TEMP,
+    REG_ADDR,
+    REG_BANK,
+    // REG_DATA_LATCH,
+    REG_ZERO,
+    REG_LAST,
+};
+
+struct reg_t
 {
     union
     {
-        uint16_t reg_accumC;
+        uint16_t        word;
+        uint8_t         byte[2];
+    };
 
-        struct
-        {
-            uint8_t reg_accumA;
-            uint8_t reg_accumB;
-        };
+    uint16_t flag;
+};
 
-    }reg_accum;
+typedef uint32_t (*uop_func_t)(uint32_t arg);
 
-    uint32_t reg_temp0;
-    uint32_t reg_temp1;
+struct uop_t
+{
+    uop_func_t      func;
+    uint32_t        arg;
+};
+
+struct inst_t
+{
+    struct uop_t    uops[12];
+};
+
+enum STATUS_FLAGS
+{
+    STATUS_FLAG_C,
+    STATUS_FLAG_Z,
+    STATUS_FLAG_I,
+    STATUS_FLAG_D,
+    STATUS_FLAG_X,
+    STATUS_FLAG_M,
+    STATUS_FLAG_V,
+    STATUS_FLAG_N,
+    STATUS_FLAG_E,
+    STATUS_FLAG_B,
+    /* extra flag set when address computations cross a bank */
+    STATUS_FLAG_BANK,
+    /* extra flag set when address computations cross a page */
+    STATUS_FLAG_PAGE,
+    /* extra flag set when DL is not zero */
+    STATUS_FLAG_DL,
+    STATUS_FLAG_LAST,
+};
+
+struct cpu_state_t
+{
+    // union
+    // {
+    //     uint16_t reg_accumC;
+
+    //     struct
+    //     {
+    //         uint8_t reg_accumA;
+    //         uint8_t reg_accumB;
+    //     };
+
+    // }reg_accum;
+
+    // uint32_t reg_temp0;
+    // uint32_t reg_temp1;
 
 
-    union
-    {
-        uint16_t reg_x;
+    // union
+    // {
+    //     uint16_t reg_x;
 
-        struct
-        {
-            uint8_t reg_xL;
-            uint8_t reg_xH;
-        };
+    //     struct
+    //     {
+    //         uint8_t reg_xL;
+    //         uint8_t reg_xH;
+    //     };
 
-    }reg_x;
+    // }reg_x;
 
 
-    union
-    {
-        uint16_t reg_y;
+    // union
+    // {
+    //     uint16_t reg_y;
 
-        struct
-        {
-            uint8_t reg_yL;
-            uint8_t reg_yH;
-        };
+    //     struct
+    //     {
+    //         uint8_t reg_yL;
+    //         uint8_t reg_yH;
+    //     };
 
-    }reg_y;
+    // }reg_y;
 
-    uint8_t reg_e;         /* emulation flag */
-    uint16_t reg_d;                                     /* direct register */
-    uint16_t reg_s;                                     /* stack pointer register */
+    // uint8_t reg_e;         /* emulation flag */
+    // uint16_t reg_d;                                     /* direct register */
+    // uint16_t reg_s;                                     /* stack pointer register */
 
-    uint16_t reg_pc;                                    /* program counter register */
-    struct {uint8_t reg_dbr; uint8_t unused;} reg_dbrw; /* data bank register */
-    struct {uint8_t reg_pbr; uint8_t unused;} reg_pbrw; /* program bank register */
-    uint8_t reg_p[2];                                   /* status register, one for emulation, one for native mode */
+    // uint16_t reg_pc;                                    /* program counter register */
+    // struct {uint8_t reg_dbr; uint8_t unused;} reg_dbrw; /* data bank register */
+    // struct {uint8_t reg_pbr; uint8_t unused;} reg_pbrw; /* program bank register */
+    // uint8_t reg_p[2];                                   /* status register, one for emulation, one for native mode */
     uint8_t in_irqb;
     uint8_t in_rdy;
     uint8_t in_resb;
@@ -482,6 +841,57 @@ struct cpu_state_t
     uint8_t in_abortb;
     uint8_t in_nmib;
     uint8_t s_wai;
+
+    union
+    {
+        struct
+        {
+            /* carry */
+            uint8_t c;
+            /* zero */
+            uint8_t z;
+            /* irq disable */
+            uint8_t i;
+            /* decimal */
+            uint8_t d;
+            /* index */
+            uint8_t x;
+            /* memory */
+            uint8_t m;
+            /* overflow */
+            uint8_t v;
+            /* negative */
+            uint8_t n;
+            /* emulation */
+            uint8_t e;
+            /* break */
+            uint8_t b;
+            /* set when address computations cross a bank */
+            uint8_t bank;
+            /* set when address computations cross a page */
+            uint8_t page;
+
+            uint8_t dl;
+        };
+
+        uint8_t     flags[STATUS_FLAG_LAST];
+    }reg_p;
+
+
+    uint8_t             alu_cl;
+    uint8_t             alu_ch;
+    uint8_t             alu_ovl;
+    uint8_t             alu_ovh;
+
+    /* used to set the Z and N flags */
+    // struct reg_t        idata_bus;
+    struct reg_t        regs[REG_LAST];
+    // uint32_t            alu_status;
+    uint32_t            cur_uop;
+    int32_t             uop_cycles;
+    struct inst_t *     instruction;
+    int32_t             instruction_cycles;
+    uint32_t            instruction_address;
 };
 
 enum CPU_HVBJOY_FLAGS
@@ -489,6 +899,8 @@ enum CPU_HVBJOY_FLAGS
     CPU_HVBJOY_FLAG_VBLANK = 1 << 7,
     CPU_HVBJOY_FLAG_HBLANK = 1 << 6,
 };
+
+#define CPU_MASTER_CYCLES 6
 
 
 char *instruction_str(unsigned int effective_address);
@@ -518,6 +930,8 @@ uint16_t alu(uint32_t operand0, uint32_t operand1, uint32_t op, uint32_t width);
 uint32_t check_int();
 
 void reset_cpu();
+
+void step_cpu2(int32_t cycle_count);
 
 void step_cpu(int32_t cycle_count);
 

@@ -156,7 +156,7 @@ enum PPU_BGMODE_CHR_SIZES
 
 struct reg_write_t
 {
-    struct reg_write_t *    next;
+    // struct reg_write_t *    next;
     uint64_t                cycle;
     uint16_t                reg;
     uint8_t                 value;
@@ -178,29 +178,29 @@ void mode0_draw();
 
 void dump_ppu();
 
-void inidisp_write(uint32_t effective_address, uint64_t master_cycle, uint8_t value);
+void inidisp_write(uint32_t effective_address, uint8_t value);
 
-uint8_t slhv_read(uint32_t effective_address, uint64_t master_cycle);
+uint8_t slhv_read(uint32_t effective_address);
 
-uint8_t opct_read(uint32_t effective_address, uint64_t master_cycle);
+uint8_t opct_read(uint32_t effective_address);
 
-void vmadd_write(uint32_t effective_address, uint64_t master_cycle, uint8_t value);
+void vmadd_write(uint32_t effective_address, uint8_t value);
 
-void vmdata_write(uint32_t effective_address, uint64_t master_cycle, uint8_t value);
+void vmdata_write(uint32_t effective_address, uint8_t value);
 
-uint8_t vmdata_read(uint32_t effective_address, uint64_t master_cycle);
+uint8_t vmdata_read(uint32_t effective_address);
 
-void oamadd_write(uint32_t effective_address, uint64_t master_cycle, uint8_t value);
+void oamadd_write(uint32_t effective_address, uint8_t value);
 
-void oamdata_write(uint32_t effective_address, uint64_t master_cycle, uint8_t value);
+void oamdata_write(uint32_t effective_address, uint8_t value);
 
-void bgmode_write(uint32_t effective_address, uint64_t master_cycle, uint8_t value);
+void bgmode_write(uint32_t effective_address, uint8_t value);
 
-void bgsc_write(uint32_t effective_address, uint64_t master_cycle, uint8_t value);
+void bgsc_write(uint32_t effective_address, uint8_t value);
 
-void bgoffs_write(uint32_t effective_address, uint64_t master_cycle, uint8_t value);
+void bgoffs_write(uint32_t effective_address, uint8_t value);
 
-void coldata_write(uint32_t effective_address, uint64_t master_cycle, uint8_t value);
+void coldata_write(uint32_t effective_address, uint8_t value);
 
 
 

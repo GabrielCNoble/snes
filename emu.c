@@ -16,7 +16,7 @@ uint64_t        counter_frequency;
 uint64_t        prev_count = 0;
 SDL_atomic_t    blit_semaphore = {0};
 uint64_t        master_cycles = 0;
-uint32_t        mem_refresh_state = 0;
+ uint32_t        mem_refresh_state = 0;
 //uint32_t        scanline_cycles = 0;
 int32_t         mem_refresh = 0;
 
@@ -114,12 +114,29 @@ int window_thread(void *data)
 
 void blit_backbuffer()
 {
-    SDL_AtomicSet(&blit_semaphore, 1);
+//    SDL_AtomicSet(&blit_semaphore, 1);
+//    while(SDL_AtomicGet(&blit_semaphore) == 1);
+    SDL_UpdateTexture(backbuffer_texture, NULL, framebuffer, sizeof(struct dot_t) * FRAMEBUFFER_WIDTH);
+    SDL_RenderCopy(renderer, backbuffer_texture, NULL, NULL);
+    SDL_RenderPresent(renderer);
 }
 
 void init_emu()
 {
-    SDL_DetachThread(SDL_CreateThread(window_thread, "window thread", NULL));
+//    SDL_DetachThread(SDL_CreateThread(window_thread, "window thread", NULL));
+
+    window = SDL_CreateWindow("snes", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, window_width, window_height, 0);
+    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    SDL_RenderClear(renderer);
+    SDL_RenderPresent(renderer);
+    backbuffer_texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, FRAMEBUFFER_WIDTH, FRAMEBUFFER_HEIGHT);
+
+    SDL_UpdateTexture(backbuffer_texture, NULL, framebuffer, sizeof(struct dot_t) * FRAMEBUFFER_WIDTH);
+    SDL_RenderCopy(renderer, backbuffer_texture, NULL, NULL);
+    SDL_RenderPresent(renderer);
+//    SDL_AtomicSet(&blit_semaphore, 0);
+
     counter_frequency = SDL_GetPerformanceFrequency();
     prev_count = SDL_GetPerformanceCounter();
     init_apu();
@@ -147,14 +164,17 @@ uint32_t step_emu()
     int32_t step_cycles = 0;
     uint32_t hdma_active = ram1_regs[CPU_REG_HDMAEN] && ((ram1_regs[CPU_REG_HVBJOY] & (CPU_HVBJOY_FLAG_HBLANK | CPU_HVBJOY_FLAG_VBLANK)) == CPU_HVBJOY_FLAG_HBLANK);
 
+//    mem_refresh = scanline_cycles >= 536 && scanline_cycles <= 536 + 40;
+    step_cycles = 4;
+
     if((!ram1_regs[CPU_REG_MDMAEN] || !hdma_active) && mem_refresh <= 0)
     {
-        step_cpu(4);
-        step_cycles = cpu_cycle_count;
+        step_cpu2(step_cycles);
+        // step_cycles = cpu_cycle_count;
     }
     else
     {
-        step_cycles = 4;
+        // step_cycles = 4;
     }
 
     step_dma(step_cycles);
@@ -164,32 +184,63 @@ uint32_t step_emu()
     if(step_ppu(step_cycles))
     {
         blit_backbuffer();
+        SDL_Event event;
+        SDL_PollEvent(&event);
     }
 
-    if(mem_refresh_state == 0)
-    {
-        if(scanline_cycles >= 538)
-        {
-            mem_refresh = 40;
-            mem_refresh_state = 1;
-        }
-    }
-    else if(mem_refresh_state == 1)
-    {
-        mem_refresh -= step_cycles;
-        if(mem_refresh <= 0)
-        {
-            mem_refresh_state = 2;
-        }
-    }
+    uint32_t scanline_cycle = vcounter == 0 ? 536 : 538;
 
-    if(mem_refresh_state == 2)
-    {
-        if(scanline_cycles < 538)
-        {
-            mem_refresh_state = 0;
-        }
-    }
+    mem_refresh = scanline_cycles >= scanline_cycle && scanline_cycles < scanline_cycle + 40;
+
+//    switch(mem_refresh_state)
+//    {
+//        case 0:
+//            if(scanline_cycles >= 536)
+//            {
+//                mem_refresh = 40;
+//                mem_refresh_state = 1;
+//            }
+//        break;
+//
+//        case 1:
+//            mem_refresh -= step_cycles;
+//            if(mem_refresh <= 0)
+//            {
+//                mem_refresh_state = 2;
+//            }
+//        break;
+//
+//        case 2:
+//            if(scanline_cycles < 536)
+//            {
+//                mem_refresh_state = 0;
+//            }
+//        break;
+//    }
+//     if(mem_refresh_state == 0)
+//     {
+//         if(scanline_cycles >= 536)
+//         {
+//             mem_refresh = 40;
+//             mem_refresh_state = 1;
+//         }
+//     }
+//     else if(mem_refresh_state == 1)
+//     {
+//         mem_refresh -= step_cycles;
+//         if(mem_refresh <= 0)
+//         {
+//             mem_refresh_state = 2;
+//         }
+//     }
+//
+//     if(mem_refresh_state == 2)
+//     {
+//         if(scanline_cycles < 536)
+//         {
+//             mem_refresh_state = 0;
+//         }
+//     }
 
     master_cycles += step_cycles;
 
@@ -200,7 +251,8 @@ uint32_t step_emu()
         switch(breakpoint->type)
         {
             case BREAKPOINT_TYPE_EXECUTION:
-                if(breakpoint->address == EFFECTIVE_ADDRESS(cpu_state.reg_pbrw.reg_pbr, cpu_state.reg_pc))
+                // if(breakpoint->address == EFFECTIVE_ADDRESS(cpu_state.regs[REG_PBR].byte[0], cpu_state.regs[REG_PC].word))
+                if(breakpoint->address == cpu_state.instruction_address)
                 {
                     return 0;
                 }
@@ -213,19 +265,19 @@ uint32_t step_emu()
                 switch(breakpoint->reg)
                 {
                     case BREAKPOINT_REGISTER_Y:
-                        reg_value = cpu_state.reg_y.reg_y;
+                        reg_value = cpu_state.regs[REG_Y].word;
                     break;
 
                     case BREAKPOINT_REGISTER_YL:
-                        reg_value = cpu_state.reg_y.reg_yL;
+                        reg_value = cpu_state.regs[REG_Y].byte[0];
                     break;
 
                     case BREAKPOINT_REGISTER_YH:
-                        reg_value = cpu_state.reg_y.reg_yH;
+                        reg_value = cpu_state.regs[REG_Y].byte[1];
                     break;
 
                     case BREAKPOINT_REGISTER_X:
-                        reg_value = cpu_state.reg_x.reg_x;
+                        reg_value = cpu_state.regs[REG_X].word;
                     break;
                 }
 
