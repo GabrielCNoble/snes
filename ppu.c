@@ -39,12 +39,7 @@
 #define VMDATAHR_ADDRESS 0x213a
 #define HVBJOY_ADDRESS 0x4212
 
-#define SCANLINE_DOT_LENGTH 340
-#define SCANLINE_COUNT 262
-#define H_BLANK_END_DOT 1
-#define H_BLANK_START_DOT 274
 
-#define V_BLANK_END_LINE 0
 
 /* https://www.raphnet.net/divers/retro_challenge_2019_03/qsnesdoc.html */
 /* https://en.wikibooks.org/wiki/Super_NES_Programming/SNES_Specs */
@@ -282,6 +277,12 @@ uint32_t step_ppu(int32_t cycle_count)
             {
                 uint8_t inidisp = ram1_regs[PPU_REG_INIDISP];
                 float brightness = (float)(inidisp & 0xf) / 15.0;
+
+                if(ram1_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK)
+                {
+                    brightness = 0.0;
+                }
+
                 struct dot_t *dot = framebuffer + vcounter * FRAMEBUFFER_WIDTH + hcounter;
                 dot->r = 255 * brightness;
                 dot->g = 255 * brightness;
@@ -306,13 +307,10 @@ void mode0_draw()
 
 void dump_ppu()
 {
-//    uint32_t hvbjoy = cpu_regs_read(HVBJOY_ADDRESS);
-//    printf("==================================================\n");
-//    printf("======================PPU=========================\n");
-//    printf("current dot: (%d, %d)\n", counters[H_COUNTER].counter, counters[V_COUNTER].counter);
-//    printf("v-blank: %d -- h-blank: %d\n", hvbjoy & V_BLANK_FLAG, hvbjoy & H_BLANK_FLAG);
-//    printf("==================================================\n");
-//    printf("==================================================\n");
+   printf("===================== PPU ========================\n");
+   printf("current dot: (H: %d, V: %d)\n", hcounter, vcounter);
+   printf("v-blank: %d -- h-blank: %d\n", (ram1_regs[CPU_REG_HVBJOY] & CPU_HVBJOY_FLAG_VBLANK) && 1, (ram1_regs[CPU_REG_HVBJOY] & CPU_HVBJOY_FLAG_HBLANK) && 1);
+   printf("==================================================\n");
 }
 
 
@@ -393,8 +391,7 @@ void oamadd_write(uint32_t effective_address, uint8_t value)
 void oamdata_write(uint32_t effective_address, uint8_t value)
 {
     oam[oam_addr] = value;
-//    printf("oamdata: %d (%x)\n", oam_addr, value);
-    oam_addr++;
+    oam_addr = (oam_addr + 1) % PPU_OAM_SIZE;
 }
 
 void bgmode_write(uint32_t effective_address, uint8_t value)

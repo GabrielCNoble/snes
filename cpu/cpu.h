@@ -267,7 +267,7 @@ enum INSTRUCTIONS
     ADC_S_REL_IND_Y     = 0x73,
     ADC_DIR_X_IND       = 0x61,
     ADC_DIR_IND_Y       = 0x71,
-    ADC_DIRL_IND_Y      = 0x77,
+    ADC_DIR_INDL_Y      = 0x77,
     ADC_IMM             = 0x69,
 
     AND_ABS             = 0x2d,
@@ -283,12 +283,14 @@ enum INSTRUCTIONS
     AND_S_REL_IND_Y     = 0x33,
     AND_DIR_X_IND       = 0x21,
     AND_DIR_IND_Y       = 0x31,
-    AND_DIRL_IND_Y      = 0x37,
+    AND_DIR_INDL_Y      = 0x37,
     AND_IMM             = 0x29,
 
     ASL_ABS             = 0x0e,
     ASL_ACC             = 0x0a,
     ASL_ABS_X           = 0x1e,
+    ASL_DIR             = 0x06,
+    ASL_DIR_X           = 0X16,
 
     BCC_PC_REL          = 0x90,
 
@@ -365,7 +367,6 @@ enum INSTRUCTIONS
     EOR_ABS_Y           = 0x59,
     EOR_ABSL            = 0x4f,
     EOR_ABSL_X          = 0x5f,
-    EOR_ABS_X_IND       = 0x5d,
     EOR_DIR             = 0x45,
     EOR_S_REL           = 0x43,
     EOR_DIR_X           = 0x55,
@@ -375,6 +376,7 @@ enum INSTRUCTIONS
     EOR_DIR_X_IND       = 0x41,
     EOR_DIR_IND_Y       = 0x51,
     EOR_DIR_INDL_Y      = 0x57,
+    EOR_IMM             = 0x49,
 
     INC_ABS             = 0xee,
     INC_ACC             = 0x1a,
@@ -488,7 +490,45 @@ enum INSTRUCTIONS
 
     REP_IMM             = 0xc2,
 
+    ROL_ABS             = 0x2e,
+    ROL_ACC             = 0x2a,
+    ROL_ABS_X           = 0x3e,
+    ROL_DIR             = 0x26,
+    ROL_DIR_X           = 0x36,
+
+    ROR_ABS             = 0x6e,
+    ROR_ACC             = 0x6a,
+    ROR_ABS_X           = 0x7e,
+    ROR_DIR             = 0x66,
+    ROR_DIR_X           = 0x76,
+
+    RTI_S               = 0x40,
+
+    RTL_S               = 0x6b,
+
+    RTS_S               = 0x60,
+
+    SBC_ABS             = 0xed,
+    SBC_ABS_X           = 0xfd,
+    SBC_ABS_Y           = 0xf9,
+    SBC_ABSL_X          = 0xff,
+    SBC_DIR             = 0xe5,
+    SBC_S_REL           = 0xe3,
+    SBC_DIR_X           = 0xf5,
+    SBC_DIR_IND         = 0xf2,
+    SBC_DIR_INDL        = 0xe7,
+    SBC_S_REL_IND_Y     = 0xf3,
+    SBC_DIR_X_IND       = 0xe1,
+    SBC_DIR_IND_Y       = 0xf1,
+    SBC_DIR_INDL_Y      = 0xf7,
+    SBC_IMM             = 0xe9,
+
+    SEC_IMP             = 0x38,
+
+    SED_IMP             = 0xf8,
+
     SEI_IMP             = 0x78,
+
     SEP_IMM             = 0xe2,
 
     STA_ABS             = 0x8d,
@@ -528,6 +568,10 @@ enum INSTRUCTIONS
 
     TDC_IMP             = 0x7b,
 
+    TRB_DIR             = 0x14,
+
+    TSB_DIR             = 0x04,
+
     TSC_ACC             = 0x3b,
 
     TSX_ACC             = 0xba,
@@ -542,11 +586,20 @@ enum INSTRUCTIONS
 
     TYX_ACC             = 0xbb,
 
+    WAI_ACC             = 0xcb,
+
+    WDM_ACC             = 0x42,
+
+    XBA_ACC             = 0xeb,
+
     XCE_ACC             = 0xfb
 };
 
 enum CPU_REGS
 {
+    CPU_REG_JOYWR                           = 0x4016,
+    CPU_REG_JOYA                            = 0x4016,
+    CPU_REG_JOYB                            = 0x4017,
     CPU_REG_NMITIMEN                        = 0x4200,
     CPU_REG_WRIO                            = 0x4201,
     CPU_REG_WRMPYA                          = 0x4202,
@@ -638,33 +691,41 @@ enum CPU_REGS
     CPU_REG_HDMA0_CUR_LINE_COUNT            = 0x430a,
 };
 
-enum CPU_STATUS_FLAGS
+enum CPU_NMITIMEN_FLAGS
 {
-    CPU_STATUS_FLAG_CARRY           = 1,           /* (C) */
-    CPU_STATUS_FLAG_IRQ_DISABLE     = 1 << 1,      /* (I) */
-    CPU_STATUS_FLAG_ZERO            = 1 << 2,      /* (Z) */
-    CPU_STATUS_FLAG_DECIMAL         = 1 << 3,      /* (D) */
-    CPU_STATUS_FLAG_INDEX           = 1 << 4,      /* (X) */
-    CPU_STATUS_FLAG_BREAK           = 1 << 5,      /* (B) */
-    CPU_STATUS_FLAG_MEMORY          = 1 << 5,      /* (M) */
-    CPU_STATUS_FLAG_OVERFLOW        = 1 << 6,      /* (V) */
-    CPU_STATUS_FLAG_NEGATIVE        = 1 << 7,      /* (N) */
+    CPU_NMITIMEN_FLAG_STD_CTRL_EN   = 1,
+    CPU_NMITIMEN_FLAG_HTIMER_EN     = 1 << 4,
+    CPU_NMITIMEN_FLAG_VTIMER_EN     = 1 << 5,
+    CPU_NMITIMEN_FLAG_NMI_ENABLE    = 1 << 7,
 };
 
-enum CPU_STORE_RESULT
-{
-    CPU_STORE_RESULT_NO_STORE = 0,          /* result gets used to set some status flags, and then is thrown away */
-    CPU_STORE_RESULT_REGISTER,              /* result is kept in the register */
-    CPU_STORE_RESULT_MEMORY                 /* result gets written back to memory */
-};
+// enum CPU_STATUS_FLAGS
+// {
+//     CPU_STATUS_FLAG_CARRY           = 1,           /* (C) */
+//     CPU_STATUS_FLAG_IRQ_DISABLE     = 1 << 1,      /* (I) */
+//     CPU_STATUS_FLAG_ZERO            = 1 << 2,      /* (Z) */
+//     CPU_STATUS_FLAG_DECIMAL         = 1 << 3,      /* (D) */
+//     CPU_STATUS_FLAG_INDEX           = 1 << 4,      /* (X) */
+//     CPU_STATUS_FLAG_BREAK           = 1 << 5,      /* (B) */
+//     CPU_STATUS_FLAG_MEMORY          = 1 << 5,      /* (M) */
+//     CPU_STATUS_FLAG_OVERFLOW        = 1 << 6,      /* (V) */
+//     CPU_STATUS_FLAG_NEGATIVE        = 1 << 7,      /* (N) */
+// };
 
-enum CPU_INTERRUPT
-{
-    CPU_INTERRUPT_RESET = 0,
-    CPU_INTERRUPT_IRQB,
-    CPU_INTERRUPT_NMIB,
-    CPU_INTERRUPT_ABORTB
-};
+// enum CPU_STORE_RESULT
+// {
+//     CPU_STORE_RESULT_NO_STORE = 0,          /* result gets used to set some status flags, and then is thrown away */
+//     CPU_STORE_RESULT_REGISTER,              /* result is kept in the register */
+//     CPU_STORE_RESULT_MEMORY                 /* result gets written back to memory */
+// };
+
+// enum CPU_INTERRUPT
+// {
+//     CPU_INTERRUPT_RESET = 0,
+//     CPU_INTERRUPT_IRQB,
+//     CPU_INTERRUPT_NMIB,
+//     CPU_INTERRUPT_ABORTB
+// };
 
 struct opcode_t
 {
@@ -673,10 +734,10 @@ struct opcode_t
     uint8_t opcode_class : 3;
 };
 
-struct branch_cond_t
-{
-    uint8_t condition;
-};
+// struct branch_cond_t
+// {
+//     uint8_t condition;
+// };
 
 // #define TPARM_INDEX(opcode) (opcode - OPCODE_TAX)
 // struct transfer_params_t
@@ -686,36 +747,36 @@ struct branch_cond_t
 //     uint8_t     flag;
 // };
 
-struct transfer_t
-{
-    void *      src_reg;
-    void *      dst_reg;
-    uint8_t     flag;
-};
+// struct transfer_t
+// {
+//     void *      src_reg;
+//     void *      dst_reg;
+//     uint8_t     flag;
+// };
 
-struct load_t
-{
-    void *      dst_reg;
-    uint8_t     flag;
-};
+// struct load_t
+// {
+//     void *      dst_reg;
+//     uint8_t     flag;
+// };
 
-struct store_t
-{
-    void *      src_reg;
-    uint8_t     flag;
-};
+// struct store_t
+// {
+//     void *      src_reg;
+//     uint8_t     flag;
+// };
 
-struct push_t
-{
-    void *      src_reg;
-    uint16_t    flag;
-};
+// struct push_t
+// {
+//     void *      src_reg;
+//     uint16_t    flag;
+// };
 
-struct pop_t
-{
-    void *      dst_reg;
-    uint16_t     flag;
-};
+// struct pop_t
+// {
+//     void *      dst_reg;
+//     uint16_t     flag;
+// };
 
 enum REGS
 {
@@ -728,7 +789,7 @@ enum REGS
     REG_DBR,
     REG_INST,
     REG_PC,
-    // REG_P,
+    REG_P,
     REG_ALU_LATCH,
     REG_TEMP,
     REG_ADDR,
@@ -759,8 +820,12 @@ struct uop_t
 
 struct inst_t
 {
-    struct uop_t    uops[12];
+    struct uop_t    uops[24];
 };
+
+#define MEM_SPEED_FAST_CYCLES   6
+#define MEM_SPEED_MED_CYCLES    8
+#define MEM_SPEED_SLOW_CYCLES   12 
 
 enum STATUS_FLAGS
 {
@@ -778,62 +843,13 @@ enum STATUS_FLAGS
     STATUS_FLAG_BANK,
     /* extra flag set when address computations cross a page */
     STATUS_FLAG_PAGE,
-    /* extra flag set when DL is not zero */
+    /* extra flag set when reg D LSB is not zero */
     STATUS_FLAG_DL,
     STATUS_FLAG_LAST,
 };
 
 struct cpu_state_t
 {
-    // union
-    // {
-    //     uint16_t reg_accumC;
-
-    //     struct
-    //     {
-    //         uint8_t reg_accumA;
-    //         uint8_t reg_accumB;
-    //     };
-
-    // }reg_accum;
-
-    // uint32_t reg_temp0;
-    // uint32_t reg_temp1;
-
-
-    // union
-    // {
-    //     uint16_t reg_x;
-
-    //     struct
-    //     {
-    //         uint8_t reg_xL;
-    //         uint8_t reg_xH;
-    //     };
-
-    // }reg_x;
-
-
-    // union
-    // {
-    //     uint16_t reg_y;
-
-    //     struct
-    //     {
-    //         uint8_t reg_yL;
-    //         uint8_t reg_yH;
-    //     };
-
-    // }reg_y;
-
-    // uint8_t reg_e;         /* emulation flag */
-    // uint16_t reg_d;                                     /* direct register */
-    // uint16_t reg_s;                                     /* stack pointer register */
-
-    // uint16_t reg_pc;                                    /* program counter register */
-    // struct {uint8_t reg_dbr; uint8_t unused;} reg_dbrw; /* data bank register */
-    // struct {uint8_t reg_pbr; uint8_t unused;} reg_pbrw; /* program bank register */
-    // uint8_t reg_p[2];                                   /* status register, one for emulation, one for native mode */
     uint8_t in_irqb;
     uint8_t in_rdy;
     uint8_t in_resb;
@@ -870,23 +886,14 @@ struct cpu_state_t
             uint8_t bank;
             /* set when address computations cross a page */
             uint8_t page;
-
+            /* set when the LSB of D register is not zero */
             uint8_t dl;
         };
 
         uint8_t     flags[STATUS_FLAG_LAST];
     }reg_p;
 
-
-    uint8_t             alu_cl;
-    uint8_t             alu_ch;
-    uint8_t             alu_ovl;
-    uint8_t             alu_ovh;
-
-    /* used to set the Z and N flags */
-    // struct reg_t        idata_bus;
     struct reg_t        regs[REG_LAST];
-    // uint32_t            alu_status;
     uint32_t            cur_uop;
     int32_t             uop_cycles;
     struct inst_t *     instruction;
@@ -903,15 +910,11 @@ enum CPU_HVBJOY_FLAGS
 #define CPU_MASTER_CYCLES 6
 
 
-char *instruction_str(unsigned int effective_address);
+char *instruction_str(uint32_t effective_address);
 
 int dump_cpu(int show_registers);
 
 int view_hardware_registers();
-
-//void exec_interrupt();
-
-// void *cpu_pointer(uint32_t effective_address, uint32_t access_location);
 
 uint32_t cpu_mem_cycles(uint32_t effective_address);
 
@@ -931,9 +934,13 @@ uint32_t check_int();
 
 void reset_cpu();
 
-void step_cpu2(int32_t cycle_count);
-
 void step_cpu(int32_t cycle_count);
+
+uint8_t io_read(uint32_t effective_address);
+
+void io_write(uint32_t effective_address, uint8_t value);
+
+// void step_cpu(int32_t cycle_count);
 
 
 

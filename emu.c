@@ -23,6 +23,7 @@ int32_t         mem_refresh = 0;
 uint32_t window_width = 800;
 uint32_t window_height = 600;
 uint32_t interactive_mode = 0;
+uint32_t animated_mode = 0;
 
 char *breakpoint_register_names[] =
 {
@@ -169,7 +170,7 @@ uint32_t step_emu()
 
     if((!ram1_regs[CPU_REG_MDMAEN] || !hdma_active) && mem_refresh <= 0)
     {
-        step_cpu2(step_cycles);
+        step_cpu(step_cycles);
         // step_cycles = cpu_cycle_count;
     }
     else
@@ -180,12 +181,11 @@ uint32_t step_emu()
     step_dma(step_cycles);
     step_hdma(step_cycles);
     step_apu(step_cycles);
+    step_ctrl(step_cycles);
 
-    if(step_ppu(step_cycles))
+    if(step_ppu(step_cycles) || animated_mode)
     {
         blit_backbuffer();
-        SDL_Event event;
-        SDL_PollEvent(&event);
     }
 
     uint32_t scanline_cycle = vcounter == 0 ? 536 : 538;
@@ -297,4 +297,5 @@ void dump_emu()
 {
     dump_cpu(1);
     dump_ppu();
+    printf("\n\n");
 }

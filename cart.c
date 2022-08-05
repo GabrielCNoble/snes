@@ -55,7 +55,7 @@ const char *map_mode_strs[] = {
 
 void *(*map_mode_functions[])(uint32_t effective_address) = {
     [MAP_MODE_20_SLOW] = mode20_cart_pointer,
-    [MAP_MODE_21_SLOW] = mode21_cart_pointer,
+    [MAP_MODE_21_SLOW] = mode20_cart_pointer,
     [MAP_MODE_20_FAST] = mode20_cart_pointer,
     [MAP_MODE_21_FAST] = mode21_cart_pointer,
 };

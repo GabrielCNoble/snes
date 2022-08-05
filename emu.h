@@ -6,6 +6,7 @@
 #include "ppu.h"
 #include "dma.h"
 #include "apu.h"
+#include "ctrl.h"
 
 /*
     Just a small heads-up regarding comments explaining snes aspects. Much of the stuff explained here is explicitly state in many

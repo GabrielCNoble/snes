@@ -10,11 +10,11 @@ uint8_t alu_op_carry_flag[ALU_OP_LAST] =
 {
     [ALU_OP_ADD] = 1,
     [ALU_OP_SUB] = 1,
-    [ALU_OP_SHL] = 1,
-    [ALU_OP_SHR] = 1,
-    [ALU_OP_ROR] = 1,
-    [ALU_OP_ROL] = 1,
-    [ALU_OP_CMP] = 1
+    [ALU_OP_SHL] = 0,
+    [ALU_OP_SHR] = 0,
+    [ALU_OP_ROR] = 0,
+    [ALU_OP_ROL] = 0,
+    [ALU_OP_CMP] = 1,
 };
 
 uint32_t alu_zero_masks[] = {
@@ -121,6 +121,56 @@ uint32_t mov_rr(uint32_t arg)
     return mov_rrw(arg | width << 16);
 }
 
+uint32_t mov_p(uint32_t arg)
+{
+    uint32_t src = (arg >> 8) & 0xff;
+    uint32_t dst = arg & 0xff;
+
+    if(src == REG_P)
+    {
+        struct reg_t *dst_reg = cpu_state.regs + dst;
+        dst_reg->byte[0]  = cpu_state.reg_p.c << STATUS_FLAG_C;
+        dst_reg->byte[0] |= cpu_state.reg_p.z << STATUS_FLAG_Z;
+        dst_reg->byte[0] |= cpu_state.reg_p.i << STATUS_FLAG_I;
+        dst_reg->byte[0] |= cpu_state.reg_p.d << STATUS_FLAG_D;
+        dst_reg->byte[0] |= cpu_state.reg_p.v << STATUS_FLAG_V;
+        dst_reg->byte[0] |= cpu_state.reg_p.n << STATUS_FLAG_N;
+
+        if(cpu_state.reg_p.e)
+        {
+            dst_reg->byte[0] |= cpu_state.reg_p.b << STATUS_FLAG_X;
+            dst_reg->byte[0] |= 1 << STATUS_FLAG_M;
+        }
+        else
+        {
+            dst_reg->byte[0] |= cpu_state.reg_p.x << STATUS_FLAG_X;
+            dst_reg->byte[0] |= cpu_state.reg_p.m << STATUS_FLAG_M;
+        }
+    }
+    else
+    {
+        struct reg_t *src_reg = cpu_state.regs + src;
+        cpu_state.reg_p.c = (src_reg->byte[0] >> STATUS_FLAG_C) & 1;
+        cpu_state.reg_p.z = (src_reg->byte[0] >> STATUS_FLAG_Z) & 1;
+        cpu_state.reg_p.i = (src_reg->byte[0] >> STATUS_FLAG_I) & 1;
+        cpu_state.reg_p.d = (src_reg->byte[0] >> STATUS_FLAG_D) & 1;
+        cpu_state.reg_p.v = (src_reg->byte[0] >> STATUS_FLAG_V) & 1;
+        cpu_state.reg_p.n = (src_reg->byte[0] >> STATUS_FLAG_N) & 1;
+
+        if(cpu_state.reg_p.e)
+        {
+            cpu_state.reg_p.b = (src_reg->byte[0] >> STATUS_FLAG_X) & 1;
+        }
+        else
+        {
+            cpu_state.reg_p.x = (src_reg->byte[0] >> STATUS_FLAG_X) & 1;
+            cpu_state.reg_p.m = (src_reg->byte[0] >> STATUS_FLAG_M) & 1;
+        }
+    }
+
+    return 1;
+}
+
 uint32_t decs(uint32_t arg)
 {
     if(cpu_state.reg_p.e)
@@ -165,60 +215,46 @@ uint32_t sext(uint32_t arg)
 
 uint32_t set_p(uint32_t arg)
 {
-    // if(arg)
-    // {
-    //     cpu_state.regs[REG_P].byte[cpu_state.reg_e] |= (uint8_t)arg;
-    // }
-    // else
-    // {
-    //     cpu_state.regs[REG_P].byte[cpu_state.reg_e] |= cpu_state.regs[REG_DATA_LATCH].byte[0];
-    // }
-
-    uint32_t flags;
-
-    if(arg)
+    if(arg < STATUS_FLAG_LAST)
     {
-        flags = (uint8_t)arg;
+        cpu_state.reg_p.flags[arg] = 1;
     }
     else
     {
-        flags = cpu_state.regs[REG_TEMP].byte[0];
-    }
+        uint32_t flags = cpu_state.regs[REG_TEMP].byte[0];
 
-    cpu_state.reg_p.c = cpu_state.reg_p.c || (flags & (1 << STATUS_FLAG_C));
-    cpu_state.reg_p.z = cpu_state.reg_p.z || (flags & (1 << STATUS_FLAG_Z));
-    cpu_state.reg_p.i = cpu_state.reg_p.i || (flags & (1 << STATUS_FLAG_I));
-    cpu_state.reg_p.d = cpu_state.reg_p.d || (flags & (1 << STATUS_FLAG_D));
-    cpu_state.reg_p.x = cpu_state.reg_p.x || (flags & (1 << STATUS_FLAG_X));
-    cpu_state.reg_p.m = cpu_state.reg_p.m || (flags & (1 << STATUS_FLAG_M));
-    cpu_state.reg_p.v = cpu_state.reg_p.v || (flags & (1 << STATUS_FLAG_V));
-    cpu_state.reg_p.n = cpu_state.reg_p.n || (flags & (1 << STATUS_FLAG_N));
+        cpu_state.reg_p.c = cpu_state.reg_p.c || (flags & (1 << STATUS_FLAG_C));
+        cpu_state.reg_p.z = cpu_state.reg_p.z || (flags & (1 << STATUS_FLAG_Z));
+        cpu_state.reg_p.i = cpu_state.reg_p.i || (flags & (1 << STATUS_FLAG_I));
+        cpu_state.reg_p.d = cpu_state.reg_p.d || (flags & (1 << STATUS_FLAG_D));
+        cpu_state.reg_p.x = cpu_state.reg_p.x || (flags & (1 << STATUS_FLAG_X));
+        cpu_state.reg_p.m = cpu_state.reg_p.m || (flags & (1 << STATUS_FLAG_M));
+        cpu_state.reg_p.v = cpu_state.reg_p.v || (flags & (1 << STATUS_FLAG_V));
+        cpu_state.reg_p.n = cpu_state.reg_p.n || (flags & (1 << STATUS_FLAG_N));
+    }
 
     return 1;
 }
 
 uint32_t clr_p(uint32_t arg)
 {
-    uint32_t flags;
-
-    if(arg)
+    if(arg < STATUS_FLAG_LAST)
     {
-        flags = ~(uint8_t)arg;
+        cpu_state.reg_p.flags[arg] = 0;
     }
     else
     {
-        flags = ~cpu_state.regs[REG_TEMP].byte[0];
+        uint32_t flags = ~cpu_state.regs[REG_TEMP].byte[0];
+
+        cpu_state.reg_p.c = cpu_state.reg_p.c && (flags & (1 << STATUS_FLAG_C));
+        cpu_state.reg_p.z = cpu_state.reg_p.z && (flags & (1 << STATUS_FLAG_Z));
+        cpu_state.reg_p.i = cpu_state.reg_p.i && (flags & (1 << STATUS_FLAG_I));
+        cpu_state.reg_p.d = cpu_state.reg_p.d && (flags & (1 << STATUS_FLAG_D));
+        cpu_state.reg_p.x = cpu_state.reg_p.x && (flags & (1 << STATUS_FLAG_X));
+        cpu_state.reg_p.m = cpu_state.reg_p.m && (flags & (1 << STATUS_FLAG_M));
+        cpu_state.reg_p.v = cpu_state.reg_p.v && (flags & (1 << STATUS_FLAG_V));
+        cpu_state.reg_p.n = cpu_state.reg_p.n && (flags & (1 << STATUS_FLAG_N));
     }
-
-    cpu_state.reg_p.c = cpu_state.reg_p.c && (flags & (1 << STATUS_FLAG_C));
-    cpu_state.reg_p.z = cpu_state.reg_p.z && (flags & (1 << STATUS_FLAG_Z));
-    cpu_state.reg_p.i = cpu_state.reg_p.i && (flags & (1 << STATUS_FLAG_I));
-    cpu_state.reg_p.d = cpu_state.reg_p.d && (flags & (1 << STATUS_FLAG_D));
-    cpu_state.reg_p.x = cpu_state.reg_p.x && (flags & (1 << STATUS_FLAG_X));
-    cpu_state.reg_p.m = cpu_state.reg_p.m && (flags & (1 << STATUS_FLAG_M));
-    cpu_state.reg_p.v = cpu_state.reg_p.v && (flags & (1 << STATUS_FLAG_V));
-    cpu_state.reg_p.n = cpu_state.reg_p.n && (flags & (1 << STATUS_FLAG_N));
-
     return 1;
 }
 
@@ -310,22 +346,23 @@ uint32_t skipc(uint32_t arg)
     return 1;
 }
 
+uint32_t chk_znw(uint32_t arg)
+{
+    uint32_t reg_index = arg & 0xff;
+    uint32_t width = (arg >> 8) & 0xff;
+    struct reg_t *reg = cpu_state.regs + reg_index;
+    cpu_state.reg_p.z = !(reg->word & alu_zero_masks[width]);
+    cpu_state.reg_p.n = (reg->word & alu_sign_masks[width]) && 1;
+    return 1;
+}
+
 uint32_t chk_zn(uint32_t arg)
 {
     uint32_t reg_index = arg & 0xff;
     struct reg_t *reg = cpu_state.regs + reg_index;
     uint32_t width = cpu_state.reg_p.flags[reg->flag];
-    cpu_state.reg_p.z = !(reg->word & alu_zero_masks[width]);
-    cpu_state.reg_p.n = (reg->word & alu_sign_masks[width]) && 1;
-    // uint32_t zero = !(cpu_state.idata_bus.word & alu_zero_masks[width]);
-    // uint32_t sign = cpu_state.idata_bus.word & alu_sign_masks[width];
-
-    // uint8_t flags = cpu_state.regs[REG_P].byte[cpu_state.reg_e] & ~(CPU_STATUS_FLAG_ZERO | CPU_STATUS_FLAG_NEGATIVE);
-    // flags = zero ? (flags | CPU_STATUS_FLAG_ZERO) : (flags & ~CPU_STATUS_FLAG_ZERO);
-    // flags = sign ? (flags | CPU_STATUS_FLAG_NEGATIVE) : (flags & ~CPU_STATUS_FLAG_NEGATIVE);
-    // cpu_state.regs[REG_P].byte[cpu_state.reg_e] = flags;
-
-    return 1;
+    arg |= width << 8;
+    return chk_znw(arg);
 }
 
 uint32_t alu_op(uint32_t arg)
@@ -363,9 +400,6 @@ uint32_t alu_op(uint32_t arg)
             result = operand0 + operand1 + carry;
             /* if operand0 and operand1 have the same sign, and the result have a different
             sign than the operands, then overflow ocurred */
-            // flags = (((~(operand0 ^ operand1)) & (operand1 ^ result)) & sign_mask) ?
-            //         (flags | CPU_STATUS_FLAG_OVERFLOW) : (flags & ~CPU_STATUS_FLAG_OVERFLOW);
-
             cpu_state.reg_p.v = (((~(operand0 ^ operand1)) & (operand1 ^ result)) & sign_mask) && 1;
         break;
 
@@ -414,6 +448,12 @@ uint32_t alu_op(uint32_t arg)
         case ALU_OP_TRB:
 
         break;
+
+        case ALU_OP_BIT:
+            cpu_state.reg_p.n = (operand0 & sign_mask) && 1;
+            cpu_state.reg_p.v = (operand0 & (sign_mask >> 1)) && 1;
+            cpu_state.reg_p.z = ((cpu_state.regs[REG_ACCUM].word & operand0) & zero_mask) && 1;
+        break;
     }
 
     /* every alu op affects negative and zero */
@@ -430,28 +470,4 @@ uint32_t alu_op(uint32_t arg)
     cpu_state.regs[REG_TEMP].word = result;
 
     return 1;
-}
-
-uint32_t abs_fetch(uint32_t arg)
-{
-//    uint32_t read_cycles = cpu_mem_cycles(cpu_state.cur_effective_address);
-//
-//    if(cpu_state.step_cycles >= read_cycles)
-//    {
-//        switch(arg)
-//        {
-//            case ABS_FETCH_LSB:
-//                cpu_state.data_latchl = read_byte(cpu_state.cur_effective_address);
-//            break;
-//
-//            case ABS_FETCH_MSB:
-//                cpu_state.data_latchh |= (uint16_t)read_byte(cpu_state.cur_effective_address) << 8;
-//            break;
-//        }
-//        cpu_state.reg_pc++;
-//        cpu_state.cur_effective_address = EFFECTIVE_ADDRESS(cpu_state.reg_pbrw.reg_pbr, cpu_state.reg_pc);
-//        return 1;
-//    }
-//
-//    return 0;
 }

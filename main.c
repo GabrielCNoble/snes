@@ -8,6 +8,7 @@
 #include "SDL2/SDL.h"
 
 extern uint32_t interactive_mode;
+extern uint32_t animated_mode;
 
 int main(int argc, char *argv[])
 {
@@ -54,7 +55,7 @@ int main(int argc, char *argv[])
                         if(load_cart(param))
                         {
                             reset_emu();
-                            dump_cpu(1);
+                            dump_emu();
                         }
                     }
                     else
@@ -111,9 +112,11 @@ int main(int argc, char *argv[])
                         }
                         else if(!strcmp(param, "-animate"))
                         {
+                            animated_mode = 1;
+
                             while(step_emu())
                             {
-                                dump_cpu(1);
+                                 dump_cpu(1);
                             }
                         }
                         else if(!strcmp(param, "-breakpoint"))

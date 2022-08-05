@@ -5,6 +5,7 @@
 #include "cpu/cpu.h"
 #include "ppu.h"
 #include "cart.h"
+#include "ctrl.h"
 #include "dma.h"
 #include "apu.h"
 
@@ -35,6 +36,11 @@ void init_mem()
 
     reg_writes[CPU_REG_MDMAEN].write = mdmaen_write;
     reg_writes[CPU_REG_HDMAEN].write = hdmaen_write;
+    reg_writes[CPU_REG_JOYA].write = ctrl_write;
+    reg_reads[CPU_REG_JOYA].read = ctrl_read;
+    reg_reads[CPU_REG_JOYB].read = ctrl_read;
+
+//    reg_reads[CPU_REG_JOYB].read = io_read;
 
     reg_writes[PPU_REG_VMADDL].write = vmadd_write;
     reg_writes[PPU_REG_VMADDH].write = vmadd_write;

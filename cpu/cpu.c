@@ -36,6 +36,15 @@ struct cpu_state_t cpu_state = {
     },
 };
 
+uint32_t mem_speed_map[][2] = {
+    {MEM_SPEED_MED_CYCLES,  MEM_SPEED_FAST_CYCLES},
+    {MEM_SPEED_MED_CYCLES,  MEM_SPEED_MED_CYCLES},
+    {MEM_SPEED_FAST_CYCLES, MEM_SPEED_FAST_CYCLES},
+    {MEM_SPEED_SLOW_CYCLES, MEM_SPEED_SLOW_CYCLES},
+    {MEM_SPEED_FAST_CYCLES, MEM_SPEED_FAST_CYCLES},
+    {MEM_SPEED_MED_CYCLES,  MEM_SPEED_MED_CYCLES}
+};
+
 uint32_t cpu_cycle_count = 0;
 extern uint64_t master_cycles;
 extern uint8_t  *ram1_regs;
@@ -53,15 +62,21 @@ struct inst_t fetch_inst = {
 };
 
 struct inst_t instructions[] = {
+
+    /**************************************************************************************/
+    /*                                      ADC                                           */
+    /**************************************************************************************/
+
     [ADC_ABS] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             MOV_LPC     (MOV_MSB, REG_ADDR),
             MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, 0),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
             ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
             CHK_ZN      (REG_ACCUM),
         }
     },
@@ -69,15 +84,17 @@ struct inst_t instructions[] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             MOV_LPC     (MOV_MSB, REG_ADDR),
-            ADDR_OFFR   (REG_X, 1),
-            SKIPS       (2, STATUS_FLAG_PAGE),
-            SKIPC       (1, STATUS_FLAG_X),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
+            SKIPC       (2, STATUS_FLAG_PAGE),
+            SKIPS       (1, STATUS_FLAG_X),
             IO          /* X=0 or page boundary */,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, 0),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
             CHK_ZN      (REG_ACCUM),
         }
     },
@@ -85,15 +102,17 @@ struct inst_t instructions[] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             MOV_LPC     (MOV_MSB, REG_ADDR),
-            ADDR_OFFR   (REG_Y, 1),
-            SKIPS       (2, STATUS_FLAG_PAGE),
-            SKIPC       (1, STATUS_FLAG_X),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
+            SKIPC       (2, STATUS_FLAG_PAGE),
+            SKIPS       (1, STATUS_FLAG_X),
             IO          /* X=0 or page boundary */,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, 0),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
             CHK_ZN      (REG_ACCUM),
         }
     },
@@ -102,11 +121,12 @@ struct inst_t instructions[] = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             MOV_LPC     (MOV_MSB, REG_ADDR),
             MOV_LPC     (MOV_LSB, REG_BANK),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, 0),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
             CHK_ZN      (REG_ACCUM),
         }
     },
@@ -115,12 +135,13 @@ struct inst_t instructions[] = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             MOV_LPC     (MOV_MSB, REG_ADDR),
             MOV_LPC     (MOV_LSB, REG_BANK),
-            ADDR_OFFR   (REG_X, 1),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, 0),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
             CHK_ZN      (REG_ACCUM),
         }
     },
@@ -128,32 +149,588 @@ struct inst_t instructions[] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             ZEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_D, 0),
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
             MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, 0),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
             ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
             CHK_ZN      (REG_ACCUM),
         }
     },
     [ADC_S_REL] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_TEMP),
+            MOV_LPC     (MOV_LSB, REG_ADDR),
             ZEXT        (REG_ADDR),
-            MOV_RRW     (REG_S, REG_ADDR, 0),
-            ADDR_OFFR   (REG_TEMP, 0),
+            ADDR_OFFR   (REG_S, ADDR_OFF_BANK_WRAP),
             IO,
             MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, 0),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
             ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
             CHK_ZN      (REG_ACCUM),
         },
     },
+    [ADC_DIR_X] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
+            IO,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
+    [ADC_DIR_IND] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            ADDR_OFFR   (REG_D, 0),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
+    [ADC_DIR_INDL] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_BANK),
+            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
+    [ADC_S_REL_IND_Y] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            IO,
+            ADDR_OFFR   (REG_S, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            IO,
+            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+
+        }
+    },
+
+    [ADC_DIR_X_IND] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
+            IO,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
+    [ADC_DIR_IND_Y] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            ADDR_OFFR   (REG_D, 0),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
+            SKIPS       (2, STATUS_FLAG_X),
+            SKIPC       (1, STATUS_FLAG_PAGE),
+            IO          /* X = 0 or page crossed */,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
+    [ADC_DIR_INDL_Y] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            ADDR_OFFR   (REG_D, 0),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_BANK),
+            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
+    [ADC_IMM] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_TEMP),
+            SKIPS       (1, STATUS_FLAG_M),
+            MOV_LPC     (MOV_MSB, REG_TEMP),
+            ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
+    /**************************************************************************************/
+    /*                                      AND                                           */
+    /**************************************************************************************/
+
+    [AND_ABS] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ALU_OP      (ALU_OP_AND, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+    [AND_ABS_X] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
+            SKIPC       (2, STATUS_FLAG_PAGE),
+            SKIPS       (1, STATUS_FLAG_X),
+            IO          /* X=0 or page boundary */,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_AND, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+    [AND_ABS_Y] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
+            SKIPC       (2, STATUS_FLAG_PAGE),
+            SKIPS       (1, STATUS_FLAG_X),
+            IO          /* X=0 or page boundary */,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_AND, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+    [AND_ABSL] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_LPC     (MOV_LSB, REG_BANK),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_AND, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+    [AND_ABSL_X] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_LPC     (MOV_LSB, REG_BANK),
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_AND, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+    [AND_DIR] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ALU_OP      (ALU_OP_AND, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+    [AND_S_REL] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            ADDR_OFFR   (REG_S, ADDR_OFF_BANK_WRAP),
+            IO,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ALU_OP      (ALU_OP_AND, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        },
+    },
+    [AND_DIR_X] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
+            IO,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ALU_OP      (ALU_OP_AND, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
+    [AND_DIR_IND] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            ADDR_OFFR   (REG_D, 0),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ALU_OP      (ALU_OP_AND, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
+    [AND_DIR_INDL] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_BANK),
+            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_AND, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
+    [AND_S_REL_IND_Y] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            IO,
+            ADDR_OFFR   (REG_S, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            IO,
+            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_AND, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+
+        }
+    },
+
+    [AND_DIR_X_IND] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
+            IO,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ALU_OP      (ALU_OP_AND, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
+    [AND_DIR_IND_Y] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            ADDR_OFFR   (REG_D, 0),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
+            SKIPS       (2, STATUS_FLAG_X),
+            SKIPC       (1, STATUS_FLAG_PAGE),
+            IO          /* X = 0 or page crossed */,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_AND, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
+    [AND_DIR_INDL_Y] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            ADDR_OFFR   (REG_D, 0),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_BANK),
+            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_AND, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
+    [AND_IMM] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_TEMP),
+            SKIPS       (1, STATUS_FLAG_M),
+            MOV_LPC     (MOV_MSB, REG_TEMP),
+            ALU_OP      (ALU_OP_AND, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
+    /**************************************************************************************/
+    /*                                      ASL                                           */
+    /**************************************************************************************/
+
+    [ASL_ABS] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            IO,
+            ALU_OP      (ALU_OP_SHL, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
+            CHK_ZNW     (REG_TEMP, 0),
+            SKIPS       (2, STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ADDR_OFFI   (0xffff, ADDR_OFF_BANK_WRAP),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+        }
+    },
+
+    [ASL_ACC] = {
+        .uops = {
+            IO,
+            ALU_OP      (ALU_OP_SHL, STATUS_FLAG_M, REG_ACCUM, REG_ZERO),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
+    [ASL_ABS_X] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            IO,
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_SHL, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
+            CHK_ZNW     (REG_TEMP, 0),
+            SKIPS       (2, STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (0xffff, ADDR_OFF_BANK_WRAP),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+        }
+    },
+
+    [ASL_DIR] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            IO,
+            ALU_OP      (ALU_OP_SHL, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
+            CHK_ZNW     (REG_TEMP, 0),
+            SKIPS       (2, STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (0xffff, ADDR_OFF_BANK_WRAP),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+        }
+    },
+
+    [ASL_DIR_X] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            IO,
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            IO,
+            ALU_OP      (ALU_OP_SHL, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
+            CHK_ZNW     (REG_TEMP, 0),
+            SKIPS       (2, STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (0xffff, ADDR_OFF_BANK_WRAP),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+        }
+    },
+
+    /**************************************************************************************/
+    /*                                      BCC                                           */
+    /**************************************************************************************/
 
     [BCC_PC_REL] = {
         .uops = {
@@ -166,6 +743,10 @@ struct inst_t instructions[] = {
         }
     },
 
+    /**************************************************************************************/
+    /*                                      BCS                                           */
+    /**************************************************************************************/
+
     [BCS_PC_REL] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
@@ -176,6 +757,10 @@ struct inst_t instructions[] = {
             MOV_RRW     (REG_ADDR, REG_PC, 0),
         }
     },
+
+    /**************************************************************************************/
+    /*                                      BEQ                                           */
+    /**************************************************************************************/
 
     [BEQ_PC_REL] = {
         .uops = {
@@ -188,6 +773,84 @@ struct inst_t instructions[] = {
         }
     },
 
+    /**************************************************************************************/
+    /*                                      BIT                                           */
+    /**************************************************************************************/
+
+    [BIT_ABS] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ALU_OP      (ALU_OP_BIT, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
+        }
+    },
+
+    [BIT_ABS_X] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
+            SKIPC       (2, STATUS_FLAG_PAGE),
+            SKIPS       (1, STATUS_FLAG_X),
+            IO          /* X=0 or page boundary */,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_BIT, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
+        }
+    },
+
+    [BIT_DIR] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ALU_OP      (ALU_OP_BIT, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
+        }
+    },
+
+    [BIT_DIR_X] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
+            IO,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ALU_OP      (ALU_OP_BIT, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
+        }
+    },
+
+    [BIT_IMM] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_TEMP),
+            SKIPS       (1, STATUS_FLAG_M),
+            MOV_LPC     (MOV_MSB, REG_TEMP),
+            ALU_OP      (ALU_OP_BIT, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
+        }
+    },
+
+    /**************************************************************************************/
+    /*                                      BMI                                           */
+    /**************************************************************************************/
+
     [BMI_PC_REL] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
@@ -199,16 +862,24 @@ struct inst_t instructions[] = {
         }
     },
 
+    /**************************************************************************************/
+    /*                                      BNE                                           */
+    /**************************************************************************************/
+
     [BNE_PC_REL] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             SEXT        (REG_ADDR),
             ADDR_OFFR   (REG_PC, 0),
-            SKIPS       (2, STATUS_FLAG_N),
+            SKIPS       (2, STATUS_FLAG_Z),
             IO          /* branch taken */,
             MOV_RRW     (REG_ADDR, REG_PC, 0),
         }
     },
+
+    /**************************************************************************************/
+    /*                                      BPL                                           */
+    /**************************************************************************************/
 
     [BPL_PC_REL] = {
         .uops = {
@@ -221,6 +892,10 @@ struct inst_t instructions[] = {
         }
     },
 
+    /**************************************************************************************/
+    /*                                      BRA                                           */
+    /**************************************************************************************/
+
     [BRA_PC_REL] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
@@ -230,6 +905,72 @@ struct inst_t instructions[] = {
             MOV_RRW     (REG_ADDR, REG_PC, 0),
         }
     },
+
+    /**************************************************************************************/
+    /*                                      BRK                                           */
+    /**************************************************************************************/
+
+    [BRK] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_TEMP),
+
+            /* when in emulation mode... */
+            SKIPC       (1, STATUS_FLAG_E),
+            /* the B flag gets set */
+            SET_P       (STATUS_FLAG_B),
+
+            SET_P       (STATUS_FLAG_I),
+
+            /* when in native mode... */
+            SKIPS       (3, STATUS_FLAG_E),
+            /* the program bank register gets pushed onto the stack */
+            MOV_S       (MOV_LSB, REG_S, REG_ZERO, REG_PBR),
+            DECS,
+            MOV_RRW     (REG_ZERO, REG_PBR, MOV_RRW_BYTE),
+
+            MOV_S       (MOV_LSB, REG_S, REG_ZERO, REG_PC),
+            DECS,
+            MOV_S       (MOV_MSB, REG_S, REG_ZERO, REG_PC),
+            DECS,
+            MOV_P       (REG_P, REG_TEMP),
+            MOV_S       (MOV_LSB, REG_S, REG_ZERO, REG_TEMP),
+            DECS,
+            MOV_RRW     (REG_ZERO, REG_ADDR, MOV_RRW_WORD),
+
+            /* when in native mode... */
+            SKIPS       (2, STATUS_FLAG_E),
+            /* the D flag gets cleared */
+            CLR_P       (STATUS_FLAG_D),
+            /* the brk vector is at 0xffe6, so we put 0xffe8 here, which
+            will give us 0xffe6 when added to the following offset */
+            ADDR_OFFI   (0xffe8, ADDR_OFF_BANK_WRAP),
+
+            /* emulation mode brk vector */
+            ADDR_OFFI   (0xfffe, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_TEMP, REG_PC, MOV_RRW_WORD),
+        }
+    },
+
+    /**************************************************************************************/
+    /*                                      BRL                                           */
+    /**************************************************************************************/
+
+    [BRL_PC_RELL] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            ADDR_OFFR   (REG_PC, 0),
+            IO          /* branch taken */,
+            MOV_RRW     (REG_ADDR, REG_PC, 0),
+        }
+    },
+
+    /**************************************************************************************/
+    /*                                      BVC                                           */
+    /**************************************************************************************/
 
     [BVC_PC_REL] = {
         .uops = {
@@ -242,6 +983,10 @@ struct inst_t instructions[] = {
         }
     },
 
+    /**************************************************************************************/
+    /*                                      BVS                                           */
+    /**************************************************************************************/
+
     [BVS_PC_REL] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
@@ -253,6 +998,467 @@ struct inst_t instructions[] = {
         }
     },
 
+    /**************************************************************************************/
+    /*                                      CLC                                           */
+    /**************************************************************************************/
+
+    [CLC_IMP] = {
+        .uops = {
+            IO,
+            CLR_P       (STATUS_FLAG_C)
+        }
+    },
+
+    /**************************************************************************************/
+    /*                                      CLD                                           */
+    /**************************************************************************************/
+
+    [CLD_IMP] = {
+        .uops = {
+            IO,
+            CLR_P       (STATUS_FLAG_D)
+        }
+    },
+
+    /**************************************************************************************/
+    /*                                      CLI                                           */
+    /**************************************************************************************/
+
+    [CLI_IMP] = {
+        .uops = {
+            IO,
+            CLR_P       (STATUS_FLAG_I)
+        }
+    },
+
+    /**************************************************************************************/
+    /*                                      CLV                                           */
+    /**************************************************************************************/
+
+    [CLV_IMP] = {
+        .uops = {
+            IO,
+            CLR_P       (STATUS_FLAG_V)
+        }
+    },
+
+    /**************************************************************************************/
+    /*                                      CMP                                           */
+    /**************************************************************************************/
+
+    [CMP_ABS] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ALU_OP      (ALU_OP_CMP, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            CHK_ZNW     (REG_TEMP, 0),
+        }
+    },
+    [CMP_ABS_X] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
+            SKIPC       (2, STATUS_FLAG_PAGE),
+            SKIPS       (1, STATUS_FLAG_X),
+            IO          /* X=0 or page boundary */,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_CMP, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            CHK_ZNW     (REG_TEMP, 0),
+        }
+    },
+    [CMP_ABS_Y] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
+            SKIPC       (2, STATUS_FLAG_PAGE),
+            SKIPS       (1, STATUS_FLAG_X),
+            IO          /* X=0 or page boundary */,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_CMP, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            CHK_ZNW     (REG_TEMP, 0),
+        }
+    },
+    [CMP_ABSL] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_LPC     (MOV_LSB, REG_BANK),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_CMP, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            CHK_ZNW     (REG_TEMP, 0),
+        }
+    },
+    [CMP_ABSL_X] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_LPC     (MOV_LSB, REG_BANK),
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_CMP, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            CHK_ZNW     (REG_TEMP, 0),
+        }
+    },
+    [CMP_DIR] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ALU_OP      (ALU_OP_CMP, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            CHK_ZNW     (REG_TEMP, 0),
+        }
+    },
+    [CMP_S_REL] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            ADDR_OFFR   (REG_S, ADDR_OFF_BANK_WRAP),
+            IO,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ALU_OP      (ALU_OP_CMP, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            CHK_ZNW     (REG_TEMP, 0),
+        },
+    },
+    [CMP_DIR_X] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
+            IO,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ALU_OP      (ALU_OP_CMP, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            CHK_ZNW     (REG_TEMP, 0),
+        }
+    },
+
+    [CMP_DIR_IND] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            ADDR_OFFR   (REG_D, 0),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ALU_OP      (ALU_OP_CMP, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            CHK_ZNW     (REG_TEMP, 0),
+        }
+    },
+
+    [CMP_DIR_INDL] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_BANK),
+            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_CMP, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            CHK_ZNW     (REG_TEMP, 0),
+        }
+    },
+
+    [CMP_S_REL_IND_Y] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            IO,
+            ADDR_OFFR   (REG_S, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            IO,
+            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_CMP, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            CHK_ZNW     (REG_TEMP, 0),
+        }
+    },
+
+    [CMP_DIR_X_IND] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
+            IO,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ALU_OP      (ALU_OP_CMP, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            CHK_ZNW     (REG_TEMP, 0),
+        }
+    },
+
+    [CMP_DIR_IND_Y] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            ADDR_OFFR   (REG_D, 0),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
+            SKIPS       (2, STATUS_FLAG_X),
+            SKIPC       (1, STATUS_FLAG_PAGE),
+            IO          /* X = 0 or page crossed */,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_CMP, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            CHK_ZNW     (REG_TEMP, 0),
+        }
+    },
+
+    [CMP_DIR_INDL_Y] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            ADDR_OFFR   (REG_D, 0),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_BANK),
+            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_CMP, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            CHK_ZNW     (REG_TEMP, 0),
+        }
+    },
+
+    [CMP_IMM] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_TEMP),
+            SKIPS       (1, STATUS_FLAG_M),
+            MOV_LPC     (MOV_MSB, REG_TEMP),
+            ALU_OP      (ALU_OP_CMP, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            CHK_ZNW     (REG_TEMP, 0),
+        }
+    },
+
+    /**************************************************************************************/
+    /*                                      CPX                                           */
+    /**************************************************************************************/
+
+    [CPX_ABS] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_X),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ALU_OP      (ALU_OP_CMP, STATUS_FLAG_X, REG_X, REG_TEMP),
+            CHK_ZNW     (REG_TEMP, 0),
+        }
+    },
+
+    [CPX_DIR] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_X),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ALU_OP      (ALU_OP_CMP, STATUS_FLAG_X, REG_X, REG_TEMP),
+            CHK_ZN      (REG_TEMP),
+        }
+    },
+
+    [CPX_IMM] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_TEMP),
+            SKIPS       (1, STATUS_FLAG_X),
+            MOV_LPC     (MOV_MSB, REG_TEMP),
+            ALU_OP      (ALU_OP_CMP, STATUS_FLAG_X, REG_X, REG_TEMP),
+            CHK_ZNW     (REG_TEMP, 0),
+        }
+    },
+
+    /**************************************************************************************/
+    /*                                      CPY                                           */
+    /**************************************************************************************/
+
+
+
+    /**************************************************************************************/
+    /*                                      DEC                                           */
+    /**************************************************************************************/
+
+    [DEC_ABS] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            IO,
+            ALU_OP      (ALU_OP_DEC, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
+            CHK_ZNW     (REG_TEMP, 0),
+            SKIPS       (2, STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ADDR_OFFI   (0xffff, ADDR_OFF_BANK_WRAP),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+        }
+    },
+
+    [DEC_ACC] = {
+        .uops = {
+            IO,
+            ALU_OP      (ALU_OP_DEC, STATUS_FLAG_M, REG_ACCUM, REG_ZERO),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
+    [DEC_ABS_X] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            IO,
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_DEC, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
+            CHK_ZNW     (REG_TEMP, 0),
+            SKIPS       (2, STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (0xffff, ADDR_OFF_BANK_WRAP),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+        }
+    },
+
+    [DEC_DIR] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            IO,
+            ALU_OP      (ALU_OP_DEC, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
+            CHK_ZNW     (REG_TEMP, 0),
+            SKIPS       (2, STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (0xffff, ADDR_OFF_BANK_WRAP),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+        }
+    },
+
+    [DEC_DIR_X] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            IO,
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            IO,
+            ALU_OP      (ALU_OP_DEC, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
+            CHK_ZNW     (REG_TEMP, 0),
+            SKIPS       (2, STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (0xffff, ADDR_OFF_BANK_WRAP),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+        }
+    },
+
+    /**************************************************************************************/
+    /*                                      DEX                                           */
+    /**************************************************************************************/
+
     [DEX_IMP] = {
         .uops = {
             ALU_OP      (ALU_OP_DEC, STATUS_FLAG_X, REG_X, REG_ZERO),
@@ -262,14 +1468,534 @@ struct inst_t instructions[] = {
         }
     },
 
+    /**************************************************************************************/
+    /*                                      DEY                                           */
+    /**************************************************************************************/
+
     [DEY_IMP] = {
         .uops = {
             ALU_OP      (ALU_OP_DEC, STATUS_FLAG_X, REG_Y, REG_ZERO),
             IO,
-            MOV_RR      (REG_TEMP, REG_X),
+            MOV_RR      (REG_TEMP, REG_Y),
             CHK_ZN      (REG_Y),
         }
     },
+
+    /**************************************************************************************/
+    /*                                      EOR                                           */
+    /**************************************************************************************/
+
+    [EOR_ABS] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ALU_OP      (ALU_OP_XOR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+    [EOR_ABS_X] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
+            SKIPC       (2, STATUS_FLAG_PAGE),
+            SKIPS       (1, STATUS_FLAG_X),
+            IO          /* X=0 or page boundary */,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_XOR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+    [EOR_ABS_Y] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
+            SKIPC       (2, STATUS_FLAG_PAGE),
+            SKIPS       (1, STATUS_FLAG_X),
+            IO          /* X=0 or page boundary */,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_XOR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+    [EOR_ABSL] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_LPC     (MOV_LSB, REG_BANK),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_XOR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+    [EOR_ABSL_X] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_LPC     (MOV_LSB, REG_BANK),
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_XOR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
+    [EOR_DIR] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ALU_OP      (ALU_OP_XOR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+    [EOR_S_REL] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            ADDR_OFFR   (REG_S, ADDR_OFF_BANK_WRAP),
+            IO,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ALU_OP      (ALU_OP_XOR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        },
+    },
+    [EOR_DIR_X] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
+            IO,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ALU_OP      (ALU_OP_XOR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
+    [EOR_DIR_IND] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            ADDR_OFFR   (REG_D, 0),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ALU_OP      (ALU_OP_XOR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
+    [EOR_DIR_INDL] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_BANK),
+            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_XOR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
+    [EOR_S_REL_IND_Y] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            IO,
+            ADDR_OFFR   (REG_S, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            IO,
+            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_XOR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+
+        }
+    },
+
+    [EOR_DIR_X_IND] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
+            IO,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ALU_OP      (ALU_OP_XOR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
+    [EOR_DIR_IND_Y] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            ADDR_OFFR   (REG_D, 0),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
+            SKIPS       (2, STATUS_FLAG_X),
+            SKIPC       (1, STATUS_FLAG_PAGE),
+            IO          /* X = 0 or page crossed */,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_XOR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
+    [EOR_DIR_INDL_Y] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            ADDR_OFFR   (REG_D, 0),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_BANK),
+            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_XOR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
+    [EOR_IMM] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_TEMP),
+            SKIPS       (1, STATUS_FLAG_M),
+            MOV_LPC     (MOV_MSB, REG_TEMP),
+            ALU_OP      (ALU_OP_XOR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
+    /**************************************************************************************/
+    /*                                      INC                                           */
+    /**************************************************************************************/
+
+    [INC_ABS] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            IO,
+            ALU_OP      (ALU_OP_INC, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
+            CHK_ZNW     (REG_TEMP, 0),
+            SKIPS       (2, STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ADDR_OFFI   (0xffff, ADDR_OFF_BANK_WRAP),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+        }
+    },
+
+    [INC_ACC] = {
+        .uops = {
+            IO,
+            ALU_OP      (ALU_OP_INC, STATUS_FLAG_M, REG_ACCUM, REG_ZERO),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
+    [INC_ABS_X] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            IO,
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_INC, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
+            CHK_ZNW     (REG_TEMP, 0),
+            SKIPS       (2, STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (0xffff, ADDR_OFF_BANK_WRAP),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+        }
+    },
+
+    [INC_DIR] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            IO,
+            ALU_OP      (ALU_OP_INC, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
+            CHK_ZNW     (REG_TEMP, 0),
+            SKIPS       (2, STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (0xffff, ADDR_OFF_BANK_WRAP),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+        }
+    },
+
+    [INC_DIR_X] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            IO,
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            IO,
+            ALU_OP      (ALU_OP_INC, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
+            CHK_ZNW     (REG_TEMP, 0),
+            SKIPS       (2, STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (0xffff, ADDR_OFF_BANK_WRAP),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+        }
+    },
+
+    /**************************************************************************************/
+    /*                                      INX                                           */
+    /**************************************************************************************/
+
+    [INX_IMP] = {
+        .uops = {
+            IO,
+            ALU_OP      (ALU_OP_INC, STATUS_FLAG_X, REG_X, REG_ZERO),
+            MOV_RR      (REG_TEMP, REG_X),
+            CHK_ZN      (REG_X),
+        }
+    },
+
+    /**************************************************************************************/
+    /*                                      INY                                           */
+    /**************************************************************************************/
+
+    [INY_IMP] = {
+        .uops = {
+            IO,
+            ALU_OP      (ALU_OP_INC, STATUS_FLAG_X, REG_X, REG_ZERO),
+            MOV_RR      (REG_TEMP, REG_Y),
+            CHK_ZN      (REG_Y),
+        }
+    },
+
+    /**************************************************************************************/
+    /*                                      JML                                           */
+    /**************************************************************************************/
+
+    /**************************************************************************************/
+    /*                                      JMP                                           */
+    /**************************************************************************************/
+
+    [JMP_ABS] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_RRW     (REG_ADDR, REG_PC, MOV_RRW_WORD),
+        }
+    },
+
+    [JMP_ABSL] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_LPC     (MOV_LSB, REG_BANK),
+            MOV_RRW     (REG_ADDR, REG_PC, MOV_RRW_WORD),
+            MOV_RRW     (REG_BANK, REG_PBR, MOV_RRW_BYTE),
+        }
+    },
+
+    [JMP_ABS_IND] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW      (REG_TEMP, REG_PC, MOV_RRW_WORD),
+        }
+    },
+
+    [JMP_ABS_X_IND] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            IO,
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_TEMP, REG_PC, MOV_RRW_WORD),
+        }
+    },
+
+    /**************************************************************************************/
+    /*                                      JSL                                           */
+    /**************************************************************************************/
+
+    [JSL_ABSL] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_S       (MOV_LSB, REG_S, REG_ZERO, REG_PBR),
+            DECS,
+            IO,
+            MOV_LPC     (MOV_LSB, REG_BANK),
+            MOV_S       (MOV_MSB, REG_S, REG_ZERO, REG_PC),
+            DECS,
+            MOV_S       (MOV_LSB, REG_S, REG_ZERO, REG_PC),
+            DECS,
+            MOV_RRW     (REG_ADDR, REG_PC, MOV_RRW_WORD),
+            MOV_RRW     (REG_BANK, REG_PBR, MOV_RRW_BYTE),
+        }
+    },
+
+    /**************************************************************************************/
+    /*                                      JSR                                           */
+    /**************************************************************************************/
+
+    [JSR_ABS] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            IO,
+            MOV_S       (MOV_MSB, REG_S, REG_ZERO, REG_PC),
+            DECS,
+            MOV_S       (MOV_LSB, REG_S, REG_ZERO, REG_PC),
+            DECS,
+            MOV_RRW     (REG_ADDR, REG_PC, MOV_RRW_WORD),
+        }
+    },
+
+    [JSR_ABS_X_IND] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_S       (MOV_MSB, REG_S, REG_ZERO, REG_PC),
+            DECS,
+            MOV_S       (MOV_LSB, REG_S, REG_ZERO, REG_PC),
+            DECS,
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            IO,
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_ADDR, REG_PC, MOV_RRW_WORD),
+        }
+    },
+
+    /**************************************************************************************/
+    /*                                      LDA                                           */
+    /**************************************************************************************/
 
 
     [LDA_ABS] = {
@@ -284,6 +2010,256 @@ struct inst_t instructions[] = {
             CHK_ZN      (REG_ACCUM),
         }
     },
+
+    [LDA_ABS_X] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
+            SKIPC       (2, STATUS_FLAG_PAGE),
+            SKIPS       (1, STATUS_FLAG_X),
+            IO          /* X=0 or page boundary */,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+    [LDA_ABS_Y] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
+            SKIPC       (2, STATUS_FLAG_PAGE),
+            SKIPS       (1, STATUS_FLAG_X),
+            IO          /* X=0 or page boundary */,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
+    [LDA_ABSL] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_LPC     (MOV_LSB, REG_BANK),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
+    [LDA_ABSL_X] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_LPC     (MOV_LSB, REG_BANK),
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
+    [LDA_DIR] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
+    [LDA_S_REL] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            ADDR_OFFR   (REG_S, ADDR_OFF_BANK_WRAP),
+            IO,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        },
+    },
+
+    [LDA_DIR_X] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
+            IO,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
+    [LDA_DIR_IND] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            ADDR_OFFR   (REG_D, 0),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
+    [LDA_DIR_INDL] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_BANK),
+            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
+    [LDA_S_REL_IND_Y] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            IO,
+            ADDR_OFFR   (REG_S, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            IO,
+            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+
+        }
+    },
+
+    [LDA_DIR_X_IND] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
+            IO,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
+    [LDA_DIR_IND_Y] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            ADDR_OFFR   (REG_D, 0),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
+            SKIPS       (2, STATUS_FLAG_X),
+            SKIPC       (1, STATUS_FLAG_PAGE),
+            IO          /* X = 0 or page crossed */,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
+    [LDA_DIR_INDL_Y] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            ADDR_OFFR   (REG_D, 0),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_BANK),
+            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
     [LDA_IMM] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_TEMP),
@@ -291,6 +2267,75 @@ struct inst_t instructions[] = {
             MOV_LPC     (MOV_MSB, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
             CHK_ZN      (REG_ACCUM)
+        }
+    },
+
+    /**************************************************************************************/
+    /*                                      LDX                                           */
+    /**************************************************************************************/
+
+    [LDX_ABS] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_X),
+            ADDR_OFFI   (1, 0),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_X),
+            CHK_ZN      (REG_X),
+        }
+    },
+
+    [LDX_ABS_Y] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
+            SKIPC       (2, STATUS_FLAG_PAGE),
+            SKIPS       (1, STATUS_FLAG_X),
+            IO          /* X=0 or page boundary */,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_X),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_X),
+            CHK_ZN      (REG_X),
+        }
+    },
+
+    [LDX_DIR] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_X),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_X),
+            CHK_ZN      (REG_X),
+        }
+    },
+
+    [LDX_DIR_Y] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_WRAP),
+            IO,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_X),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_X),
+            CHK_ZN      (REG_X),
         }
     },
 
@@ -304,6 +2349,75 @@ struct inst_t instructions[] = {
         }
     },
 
+    /**************************************************************************************/
+    /*                                      LDY                                           */
+    /**************************************************************************************/
+
+    [LDY_ABS] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_X),
+            ADDR_OFFI   (1, 0),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_Y),
+            CHK_ZN      (REG_Y),
+        }
+    },
+
+    [LDY_ABS_X] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
+            SKIPC       (2, STATUS_FLAG_PAGE),
+            SKIPS       (1, STATUS_FLAG_X),
+            IO          /* X=0 or page boundary */,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_X),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_Y),
+            CHK_ZN      (REG_Y),
+        }
+    },
+
+    [LDY_DIR] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_X),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_Y),
+            CHK_ZN      (REG_Y),
+        }
+    },
+
+    [LDY_DIR_X] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
+            IO,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_X),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_Y),
+            CHK_ZN      (REG_Y),
+        }
+    },
+
     [LDY_IMM] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_TEMP),
@@ -314,12 +2428,402 @@ struct inst_t instructions[] = {
         }
     },
 
-    [CLC_IMP] = {
+    /**************************************************************************************/
+    /*                                      LSR                                           */
+    /**************************************************************************************/
+
+    [LSR_ABS] = {
         .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
             IO,
-            CLR_P       (STATUS_FLAG_C)
+            ALU_OP      (ALU_OP_SHR, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
+            CHK_ZNW     (REG_TEMP, 0),
+            SKIPS       (2, STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ADDR_OFFI   (0xffff, ADDR_OFF_BANK_WRAP),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
         }
     },
+
+    [LSR_ACC] = {
+        .uops = {
+            IO,
+            ALU_OP      (ALU_OP_SHR, STATUS_FLAG_M, REG_ACCUM, REG_ZERO),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
+    [LSR_ABS_X] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            IO,
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_SHR, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
+            CHK_ZNW     (REG_TEMP, 0),
+            SKIPS       (2, STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (0xffff, ADDR_OFF_BANK_WRAP),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+        }
+    },
+
+    [LSR_DIR] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            IO,
+            ALU_OP      (ALU_OP_SHR, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
+            CHK_ZNW     (REG_TEMP, 0),
+            SKIPS       (2, STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (0xffff, ADDR_OFF_BANK_WRAP),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+        }
+    },
+
+    [LSR_DIR_X] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            IO,
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            IO,
+            ALU_OP      (ALU_OP_SHR, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
+            CHK_ZNW     (REG_TEMP, 0),
+            SKIPS       (2, STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (0xffff, ADDR_OFF_BANK_WRAP),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+        }
+    },
+
+    /**************************************************************************************/
+    /*                                      MVN                                           */
+    /**************************************************************************************/
+
+    /**************************************************************************************/
+    /*                                      MVP                                           */
+    /**************************************************************************************/
+
+    /**************************************************************************************/
+    /*                                      NOP                                           */
+    /**************************************************************************************/
+
+    /**************************************************************************************/
+    /*                                      ORA                                           */
+    /**************************************************************************************/
+
+    [ORA_ABS] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ALU_OP      (ALU_OP_OR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+    [ORA_ABS_X] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
+            SKIPC       (2, STATUS_FLAG_PAGE),
+            SKIPS       (1, STATUS_FLAG_X),
+            IO          /* X=0 or page boundary */,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_OR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+    [ORA_ABS_Y] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
+            SKIPC       (2, STATUS_FLAG_PAGE),
+            SKIPS       (1, STATUS_FLAG_X),
+            IO          /* X=0 or page boundary */,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_OR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+    [ORA_ABSL] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_LPC     (MOV_LSB, REG_BANK),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_OR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+    [ORA_ABSL_X] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_LPC     (MOV_LSB, REG_BANK),
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_OR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
+    [ORA_DIR] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ALU_OP      (ALU_OP_OR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+    [ORA_S_REL] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            ADDR_OFFR   (REG_S, ADDR_OFF_BANK_WRAP),
+            IO,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ALU_OP      (ALU_OP_OR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        },
+    },
+    [ORA_DIR_X] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
+            IO,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ALU_OP      (ALU_OP_OR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
+    [ORA_DIR_IND] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            ADDR_OFFR   (REG_D, 0),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ALU_OP      (ALU_OP_OR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
+    [ORA_DIR_INDL] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_BANK),
+            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_OR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
+    [ORA_S_REL_IND_Y] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            IO,
+            ADDR_OFFR   (REG_S, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            IO,
+            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_OR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+
+        }
+    },
+
+    [ORA_DIR_X_IND] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
+            IO,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ALU_OP      (ALU_OP_OR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
+    [ORA_DIR_IND_Y] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            ADDR_OFFR   (REG_D, 0),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
+            SKIPS       (2, STATUS_FLAG_X),
+            SKIPC       (1, STATUS_FLAG_PAGE),
+            IO          /* X = 0 or page crossed */,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_OR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
+    [ORA_DIR_INDL_Y] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            ADDR_OFFR   (REG_D, 0),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_BANK),
+            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_OR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
+    [ORA_IMM] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_TEMP),
+            SKIPS       (1, STATUS_FLAG_M),
+            MOV_LPC     (MOV_MSB, REG_TEMP),
+            ALU_OP      (ALU_OP_OR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
+    /**************************************************************************************/
+    /*                                      PEA                                           */
+    /**************************************************************************************/
 
     [PEA_S] = {
         .uops = {
@@ -332,6 +2836,18 @@ struct inst_t instructions[] = {
         }
     },
 
+    /**************************************************************************************/
+    /*                                      PEI                                           */
+    /**************************************************************************************/
+
+    /**************************************************************************************/
+    /*                                      PER                                           */
+    /**************************************************************************************/
+
+    /**************************************************************************************/
+    /*                                      PHA                                           */
+    /**************************************************************************************/
+
     [PHA_S] = {
         .uops = {
             SKIPS       (3, STATUS_FLAG_M),
@@ -343,12 +2859,20 @@ struct inst_t instructions[] = {
         }
     },
 
+    /**************************************************************************************/
+    /*                                      PHB                                           */
+    /**************************************************************************************/
+
     [PHB_S] = {
         .uops = {
             MOV_S       (MOV_LSB, REG_S, REG_ZERO, REG_DBR),
             DECS,
         }
     },
+
+    /**************************************************************************************/
+    /*                                      PHD                                           */
+    /**************************************************************************************/
 
     [PHD_S] = {
         .uops = {
@@ -359,6 +2883,10 @@ struct inst_t instructions[] = {
         }
     },
 
+    /**************************************************************************************/
+    /*                                      PHK                                           */
+    /**************************************************************************************/
+
     [PHK_S] = {
         .uops = {
             MOV_S       (MOV_LSB, REG_S, REG_ZERO, REG_PBR),
@@ -366,12 +2894,21 @@ struct inst_t instructions[] = {
         }
     },
 
-    // [PHP_S] = {
-    //     .uops = {
-    //         MOV_S       (MOV_LSB, REG_S, REG_ZERO, REG_PBR),
-    //         DECS,
-    //     }
-    // },
+    /**************************************************************************************/
+    /*                                      PHP                                           */
+    /**************************************************************************************/
+
+    [PHP_S] = {
+        .uops = {
+            MOV_P       (REG_P, REG_TEMP),
+            MOV_S       (MOV_LSB, REG_S, REG_ZERO, REG_TEMP),
+            DECS,
+        }
+    },
+
+    /**************************************************************************************/
+    /*                                      PHX                                           */
+    /**************************************************************************************/
 
     [PHX_S] = {
         .uops = {
@@ -384,6 +2921,10 @@ struct inst_t instructions[] = {
         }
     },
 
+    /**************************************************************************************/
+    /*                                      PHY                                           */
+    /**************************************************************************************/
+
     [PHY_S] = {
         .uops = {
             SKIPS       (3, STATUS_FLAG_X),
@@ -394,6 +2935,10 @@ struct inst_t instructions[] = {
             DECS,
         }
     },
+
+    /**************************************************************************************/
+    /*                                      PLA                                           */
+    /**************************************************************************************/
 
     [PLA_S] = {
         .uops = {
@@ -408,6 +2953,10 @@ struct inst_t instructions[] = {
         }
     },
 
+    /**************************************************************************************/
+    /*                                      PLB                                           */
+    /**************************************************************************************/
+
     [PLB_S] = {
         .uops = {
             IO,
@@ -417,6 +2966,10 @@ struct inst_t instructions[] = {
             CHK_ZN      (REG_PBR)
         }
     },
+
+    /**************************************************************************************/
+    /*                                      PLD                                           */
+    /**************************************************************************************/
 
     [PLD_S] = {
         .uops = {
@@ -430,14 +2983,23 @@ struct inst_t instructions[] = {
         }
     },
 
-    // [PLP_P] = {
-    //     .uops = {
-    //         IO,
-    //         IO,
-    //         INCS,
-    //         MOV_L       (MOV_LSB, REG_S, REG_ZERO, REG_P),
-    //     }
-    // },
+    /**************************************************************************************/
+    /*                                      PLP                                           */
+    /**************************************************************************************/
+
+    [PLP_S] = {
+        .uops = {
+            IO,
+            IO,
+            INCS,
+            MOV_L       (MOV_LSB, REG_S, REG_ZERO, REG_TEMP),
+            MOV_P       (REG_TEMP, REG_P),
+        }
+    },
+
+    /**************************************************************************************/
+    /*                                      PLX                                           */
+    /**************************************************************************************/
     [PLX_S] = {
         .uops = {
             IO,
@@ -450,6 +3012,10 @@ struct inst_t instructions[] = {
             CHK_ZN      (REG_X)
         }
     },
+
+    /**************************************************************************************/
+    /*                                      PLY                                           */
+    /**************************************************************************************/
 
     [PLY_S] = {
         .uops = {
@@ -464,13 +3030,531 @@ struct inst_t instructions[] = {
         }
     },
 
+    /**************************************************************************************/
+    /*                                      REP                                           */
+    /**************************************************************************************/
+
     [REP_IMM] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_TEMP),
             IO,
-            CLR_P       (0)
+            CLR_P       (STATUS_FLAG_LAST)
         }
     },
+
+    /**************************************************************************************/
+    /*                                      ROL                                           */
+    /**************************************************************************************/
+
+    [ROL_ABS] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            IO,
+            ALU_OP      (ALU_OP_ROL, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
+            CHK_ZNW     (REG_TEMP, 0),
+            SKIPS       (2, STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ADDR_OFFI   (0xffff, ADDR_OFF_BANK_WRAP),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+        }
+    },
+
+    [ROL_ACC] = {
+        .uops = {
+            IO,
+            ALU_OP      (ALU_OP_ROL, STATUS_FLAG_M, REG_ACCUM, REG_ZERO),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
+    [ROL_ABS_X] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            IO,
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_ROL, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
+            CHK_ZNW     (REG_TEMP, 0),
+            SKIPS       (2, STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (0xffff, ADDR_OFF_BANK_WRAP),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+        }
+    },
+
+    [ROL_DIR] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            IO,
+            ALU_OP      (ALU_OP_ROL, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
+            CHK_ZNW     (REG_TEMP, 0),
+            SKIPS       (2, STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (0xffff, ADDR_OFF_BANK_WRAP),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+        }
+    },
+
+    [ROL_DIR_X] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            IO,
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            IO,
+            ALU_OP      (ALU_OP_ROL, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
+            CHK_ZNW     (REG_TEMP, 0),
+            SKIPS       (2, STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (0xffff, ADDR_OFF_BANK_WRAP),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+        }
+    },
+
+    /**************************************************************************************/
+    /*                                      ROR                                           */
+    /**************************************************************************************/
+
+    [ROR_ABS] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            IO,
+            ALU_OP      (ALU_OP_ROL, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
+            CHK_ZNW     (REG_TEMP, 0),
+            SKIPS       (2, STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ADDR_OFFI   (0xffff, ADDR_OFF_BANK_WRAP),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+        }
+    },
+
+    [ROR_ACC] = {
+        .uops = {
+            IO,
+            ALU_OP      (ALU_OP_ROR, STATUS_FLAG_M, REG_ACCUM, REG_ZERO),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
+    [ROR_ABS_X] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            IO,
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_ROL, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
+            CHK_ZNW     (REG_TEMP, 0),
+            SKIPS       (2, STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (0xffff, ADDR_OFF_BANK_WRAP),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+        }
+    },
+
+    [ROR_DIR] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            IO,
+            ALU_OP      (ALU_OP_ROL, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
+            CHK_ZNW     (REG_TEMP, 0),
+            SKIPS       (2, STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (0xffff, ADDR_OFF_BANK_WRAP),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+        }
+    },
+
+    [ROR_DIR_X] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            IO,
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            IO,
+            ALU_OP      (ALU_OP_ROL, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
+            CHK_ZNW     (REG_TEMP, 0),
+            SKIPS       (2, STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (0xffff, ADDR_OFF_BANK_WRAP),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+        }
+    },
+
+    /**************************************************************************************/
+    /*                                      RTI                                           */
+    /**************************************************************************************/
+
+    /**************************************************************************************/
+    /*                                      RTL                                           */
+    /**************************************************************************************/
+
+    [RTL_S] = {
+        .uops = {
+            IO,
+            IO,
+            INCS,
+            MOV_L       (MOV_LSB, REG_S, REG_ZERO, REG_ADDR),
+            INCS,
+            MOV_L       (MOV_LSB, REG_S, REG_ZERO, REG_ADDR),
+            INCS,
+            MOV_L       (MOV_LSB, REG_S, REG_ZERO, REG_BANK),
+            IO,
+            MOV_RRW     (REG_ADDR, REG_PC, MOV_RRW_WORD),
+            MOV_RRW     (REG_BANK, REG_PBR, MOV_RRW_BYTE),
+        }
+    },
+
+    /**************************************************************************************/
+    /*                                      RTS                                           */
+    /**************************************************************************************/
+
+    [RTS_S] = {
+        .uops = {
+            IO,
+            IO,
+            INCS,
+            MOV_L       (MOV_LSB, REG_S, REG_ZERO, REG_ADDR),
+            INCS,
+            MOV_L       (MOV_MSB, REG_S, REG_ZERO, REG_ADDR),
+            IO,
+            MOV_RRW     (REG_ADDR, REG_PC, MOV_RRW_WORD),
+        }
+    },
+
+    /**************************************************************************************/
+    /*                                      SBC                                           */
+    /**************************************************************************************/
+
+    [SBC_ABS] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+    [SBC_ABS_X] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
+            SKIPC       (2, STATUS_FLAG_PAGE),
+            SKIPS       (1, STATUS_FLAG_X),
+            IO          /* X=0 or page boundary */,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+    [SBC_ABS_Y] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
+            SKIPC       (2, STATUS_FLAG_PAGE),
+            SKIPS       (1, STATUS_FLAG_X),
+            IO          /* X=0 or page boundary */,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_SUB, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+    [SBC_ABSL_X] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_LPC     (MOV_LSB, REG_BANK),
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_SUB, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+    [SBC_DIR] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ALU_OP      (ALU_OP_SUB, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+    [SBC_S_REL] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            ADDR_OFFR   (REG_S, ADDR_OFF_BANK_WRAP),
+            IO,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ALU_OP      (ALU_OP_SUB, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        },
+    },
+    [SBC_DIR_X] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
+            IO,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ALU_OP      (ALU_OP_SUB, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
+    [SBC_DIR_IND] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            ADDR_OFFR   (REG_D, 0),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ALU_OP      (ALU_OP_SUB, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
+    [SBC_DIR_INDL] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_BANK),
+            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_SUB, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
+    [SBC_S_REL_IND_Y] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            IO,
+            ADDR_OFFR   (REG_S, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            IO,
+            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_SUB, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+
+        }
+    },
+
+    [SBC_DIR_X_IND] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
+            IO,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ALU_OP      (ALU_OP_SUB, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
+    [SBC_DIR_IND_Y] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            ADDR_OFFR   (REG_D, 0),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
+            SKIPS       (2, STATUS_FLAG_X),
+            SKIPC       (1, STATUS_FLAG_PAGE),
+            IO          /* X = 0 or page crossed */,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_SUB, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
+    [SBC_DIR_INDL_Y] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            ADDR_OFFR   (REG_D, 0),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_BANK),
+            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_SUB, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
+    [SBC_IMM] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_TEMP),
+            SKIPS       (1, STATUS_FLAG_M),
+            MOV_LPC     (MOV_MSB, REG_TEMP),
+            ALU_OP      (ALU_OP_SUB, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+            CHK_ZN      (REG_ACCUM),
+        }
+    },
+
+    /**************************************************************************************/
+    /*                                      SEC                                           */
+    /**************************************************************************************/
+
+    /**************************************************************************************/
+    /*                                      SED                                           */
+    /**************************************************************************************/
+
+    /**************************************************************************************/
+    /*                                      SEI                                           */
+    /**************************************************************************************/
 
     [SEI_IMP] = {
         .uops = {
@@ -479,13 +3563,21 @@ struct inst_t instructions[] = {
         },
     },
 
+    /**************************************************************************************/
+    /*                                      SEP                                           */
+    /**************************************************************************************/
+
     [SEP_IMM] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_TEMP),
             IO,
-            SET_P       (0)
+            SET_P       (STATUS_FLAG_LAST)
         }
     },
+
+    /**************************************************************************************/
+    /*                                      STA                                           */
+    /**************************************************************************************/
 
     [STA_ABS] = {
         .uops = {
@@ -494,7 +3586,7 @@ struct inst_t instructions[] = {
             MOV_S       (MOV_LSB, REG_ADDR, REG_DBR, REG_ACCUM),
             SKIPS       (2, STATUS_FLAG_M),
             ADDR_OFFI   (1, 0),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_DBR, REG_ACCUM),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_DBR, REG_ACCUM),
         }
     },
     [STA_ABS_X] = {
@@ -503,11 +3595,11 @@ struct inst_t instructions[] = {
             MOV_LPC     (MOV_MSB, REG_ADDR),
             MOV_RRW     (REG_DBR, REG_BANK, 1),
             ADDR_OFFR   (REG_X, 1),
-            IO /* extra cycle due to write */,
+            IO          /* extra cycle due to write */,
             MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_X),
             SKIPS       (2, STATUS_FLAG_X),
             ADDR_OFFI   (1, 0),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_X),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_X),
         }
     },
     [STA_ABSL] = {
@@ -546,6 +3638,11 @@ struct inst_t instructions[] = {
             MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_ACCUM),
         }
     },
+
+    /**************************************************************************************/
+    /*                                      STX                                           */
+    /**************************************************************************************/
+
     [STX_ABS] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
@@ -553,7 +3650,7 @@ struct inst_t instructions[] = {
             MOV_S       (MOV_LSB, REG_ADDR, REG_DBR, REG_X),
             SKIPS       (2, STATUS_FLAG_X),
             ADDR_OFFI   (1, 0),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_DBR, REG_X),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_DBR, REG_X),
         }
     },
     [STX_DIR] = {
@@ -585,6 +3682,10 @@ struct inst_t instructions[] = {
         }
     },
 
+    /**************************************************************************************/
+    /*                                      STY                                           */
+    /**************************************************************************************/
+
     [STY_ABS] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
@@ -592,7 +3693,7 @@ struct inst_t instructions[] = {
             MOV_S       (MOV_LSB, REG_ADDR, REG_DBR, REG_Y),
             SKIPS       (2, STATUS_FLAG_X),
             ADDR_OFFI   (1, 0),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_DBR, REG_Y),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_DBR, REG_Y),
         }
     },
     [STY_DIR] = {
@@ -624,6 +3725,10 @@ struct inst_t instructions[] = {
         }
     },
 
+    /**************************************************************************************/
+    /*                                      STZ                                           */
+    /**************************************************************************************/
+
     [STZ_ABS] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
@@ -631,9 +3736,57 @@ struct inst_t instructions[] = {
             MOV_S       (MOV_LSB, REG_ADDR, REG_DBR, REG_ZERO),
             SKIPS       (2, STATUS_FLAG_M),
             ADDR_OFFI   (1, 0),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_DBR, REG_ZERO),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_DBR, REG_ZERO),
         }
     },
+
+    [STZ_ABS_X] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_RRW     (REG_DBR, REG_BANK, 1),
+            ADDR_OFFR   (REG_X, 1),
+            IO          /* extra cycle due to write */,
+            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_ZERO),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, 0),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_ZERO),
+        }
+    },
+
+    [STZ_DIR] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            ADDR_OFFR   (REG_D, 0),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL !=0  */,
+            MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_ZERO),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, 0),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_ZERO),
+        }
+    },
+
+    [STZ_DIR_X] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            ADDR_OFFR   (REG_D, 0),
+            ADDR_OFFR   (REG_X, 0),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            IO,
+            MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_ZERO),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, 0),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_ZERO),
+        }
+    },
+
+    /**************************************************************************************/
+    /*                                      TAX                                           */
+    /**************************************************************************************/
 
 
     [TAX_IMP] = {
@@ -644,6 +3797,10 @@ struct inst_t instructions[] = {
         }
     },
 
+    /**************************************************************************************/
+    /*                                      TAY                                           */
+    /**************************************************************************************/
+
     [TAY_IMP] = {
         .uops = {
             IO,
@@ -651,6 +3808,10 @@ struct inst_t instructions[] = {
             CHK_ZN      (REG_Y),
         }
     },
+
+    /**************************************************************************************/
+    /*                                      TCD                                           */
+    /**************************************************************************************/
 
     [TCD_IMP] = {
         .uops = {
@@ -660,12 +3821,20 @@ struct inst_t instructions[] = {
         }
     },
 
+    /**************************************************************************************/
+    /*                                      TCS                                           */
+    /**************************************************************************************/
+
     [TCS_IMP] = {
         .uops = {
             IO,
             MOV_RRW     (REG_ACCUM, REG_S, 0),
         }
     },
+
+    /**************************************************************************************/
+    /*                                      TDC                                           */
+    /**************************************************************************************/
 
     [TDC_IMP] = {
         .uops = {
@@ -675,6 +3844,10 @@ struct inst_t instructions[] = {
         }
     },
 
+    /**************************************************************************************/
+    /*                                      TSC                                           */
+    /**************************************************************************************/
+
     [TSC_ACC] = {
         .uops = {
             IO,
@@ -682,6 +3855,10 @@ struct inst_t instructions[] = {
             CHK_ZN      (REG_ACCUM),
         }
     },
+
+    /**************************************************************************************/
+    /*                                      TSX                                           */
+    /**************************************************************************************/
 
     [TSX_ACC] = {
         .uops = {
@@ -691,6 +3868,10 @@ struct inst_t instructions[] = {
         }
     },
 
+    /**************************************************************************************/
+    /*                                      TXA                                           */
+    /**************************************************************************************/
+
     [TXA_ACC] = {
         .uops = {
             IO,
@@ -699,12 +3880,20 @@ struct inst_t instructions[] = {
         }
     },
 
+    /**************************************************************************************/
+    /*                                      TXS                                           */
+    /**************************************************************************************/
+
     [TXS_ACC] = {
         .uops = {
             IO,
             MOV_RR      (REG_X, REG_S),
         }
     },
+
+    /**************************************************************************************/
+    /*                                      TXY                                           */
+    /**************************************************************************************/
 
     [TXY_ACC] = {
         .uops = {
@@ -714,6 +3903,10 @@ struct inst_t instructions[] = {
         }
     },
 
+    /**************************************************************************************/
+    /*                                      TYA                                           */
+    /**************************************************************************************/
+
     [TYA_ACC] = {
         .uops = {
             IO,
@@ -722,6 +3915,10 @@ struct inst_t instructions[] = {
         }
     },
 
+    /**************************************************************************************/
+    /*                                      TYX                                           */
+    /**************************************************************************************/
+
     [TYX_ACC] = {
         .uops = {
             IO,
@@ -729,6 +3926,22 @@ struct inst_t instructions[] = {
             CHK_ZN      (REG_X),
         }
     },
+
+    /**************************************************************************************/
+    /*                                      WAI                                           */
+    /**************************************************************************************/
+
+    /**************************************************************************************/
+    /*                                      WDM                                           */
+    /**************************************************************************************/
+
+    /**************************************************************************************/
+    /*                                      XBA                                           */
+    /**************************************************************************************/
+
+    /**************************************************************************************/
+    /*                                      XCE                                           */
+    /**************************************************************************************/
 
     [XCE_ACC] = {
         .uops = {
@@ -1139,14 +4352,14 @@ const char *opcode_strs[] = {
 //     // [CPU_REG_]
 // };
 
-struct branch_cond_t branch_conds[5] =
-{
-    [0] = {CPU_STATUS_FLAG_CARRY},
-    [1] = {CPU_STATUS_FLAG_ZERO},
-    [2] = {CPU_STATUS_FLAG_NEGATIVE},
-    [3] = {CPU_STATUS_FLAG_OVERFLOW},
-    [4] = {0xff}
-};
+// struct branch_cond_t branch_conds[5] =
+// {
+//     [0] = {CPU_STATUS_FLAG_CARRY},
+//     [1] = {CPU_STATUS_FLAG_ZERO},
+//     [2] = {CPU_STATUS_FLAG_NEGATIVE},
+//     [3] = {CPU_STATUS_FLAG_OVERFLOW},
+//     [4] = {0xff}
+// };
 
 //struct transfer_params_t transfer_params[] =
 //{
@@ -1179,7 +4392,7 @@ struct branch_cond_t branch_conds[5] =
 //    [OPCODE_TYX - OPCODE_TAX] = {.src_reg = &cpu_state.reg_y.reg_y,          .dst_reg = &cpu_state.reg_x.reg_x,          .flag = CPU_STATUS_FLAG_INDEX},
 //};
 
-uint32_t zero_reg = 0;
+// uint32_t zero_reg = 0;
 
 //struct store_t stores[] = {
 //    [OPCODE_STA - OPCODE_STA] = {.src_reg = &cpu_state.reg_accum.reg_accumC, .flag = CPU_STATUS_FLAG_MEMORY},
@@ -1194,16 +4407,16 @@ uint32_t zero_reg = 0;
 //    [OPCODE_LDY - OPCODE_LDA] = {.dst_reg = &cpu_state.reg_y.reg_y,          .flag = CPU_STATUS_FLAG_INDEX},
 //};
 
- uint8_t carry_flag_alu_op[ALU_OP_LAST] =
- {
-     [ALU_OP_ADD] = 1,
-     [ALU_OP_SUB] = 1,
-     [ALU_OP_SHL] = 1,
-     [ALU_OP_SHR] = 1,
-     [ALU_OP_ROR] = 1,
-     [ALU_OP_ROL] = 1,
-     [ALU_OP_CMP] = 1
- };
+//  uint8_t carry_flag_alu_op[ALU_OP_LAST] =
+//  {
+//      [ALU_OP_ADD] = 1,
+//      [ALU_OP_SUB] = 1,
+//      [ALU_OP_SHL] = 1,
+//      [ALU_OP_SHR] = 1,
+//      [ALU_OP_ROR] = 1,
+//      [ALU_OP_ROL] = 1,
+//      [ALU_OP_CMP] = 1
+//  };
 
 //struct push_t pushes[] = {
 //    [OPCODE_PEA - OPCODE_PEA] = {NULL},
@@ -1529,132 +4742,138 @@ uint32_t opcode_width(struct opcode_t *opcode)
 
 char instruction_str_buffer[512];
 
-char *instruction_str(unsigned int effective_address)
+char *instruction_str(uint32_t effective_address)
 {
 //    char *opcode_str;
-    char *mem_str;
-    // unsigned char *opcode_address;
     const char *opcode_str;
-    char *mem_address;
     char addr_mode_str[128];
     char temp_str[64];
     int32_t width = 0;
-    uint32_t address = 0;
-    struct opcode_t op_code;
+    struct opcode_t opcode;
 
-    // opcode_address = memory_pointer(effective_address);
-    // op_code = opcode_matrix[opcode_address[0]];
-//    uint64_t elapsed_cycles = master_cycles;
-    op_code = opcode_matrix[read_byte(effective_address)];
-    width = opcode_width(&op_code);
+    opcode = opcode_matrix[read_byte(effective_address)];
+    width = opcode_width(&opcode);
 
-    switch(op_code.address_mode)
+    switch(opcode.address_mode)
     {
         case ADDRESS_MODE_ABSOLUTE:
-            strcpy(addr_mode_str, "absolute addr(");
-//            sprintf(temp_str, "%02x", cpu_state.reg_dbrw.reg_dbr);
-            sprintf(temp_str, "%02x", cpu_state.regs[REG_DBR].word);
+            strcpy(addr_mode_str, "absolute addr (");
+            sprintf(temp_str, "DBR(%02x):", cpu_state.regs[REG_DBR].word);
             strcat(addr_mode_str, temp_str);
-            for(int32_t i = width - 1; i > 0; i--)
-            {
-                // sprintf(temp_str, "%02x", opcode_address[i]);
-                sprintf(temp_str, "%02x", read_byte(effective_address + i));
-                strcat(addr_mode_str, temp_str);
-            }
+            // for(int32_t index = width - 1; index > 0; index--)
+            // {
+            sprintf(temp_str, "%04x", read_word(effective_address + 1));
+            strcat(addr_mode_str, temp_str);
+            // }
             strcat(addr_mode_str, ")");
         break;
 
         case ADDRESS_MODE_ABSOLUTE_INDEXED_INDIRECT:
-            strcpy(addr_mode_str, "absolute addr( pointer (");
-            for(int32_t i = width - 1; i > 0; i--)
-            {
-                // sprintf(temp_str, "%02x", opcode_address[i]);
-                sprintf(temp_str, "%02x", read_byte(effective_address + i));
-                strcat(addr_mode_str, temp_str);
-            }
+        {
+            strcpy(addr_mode_str, "absolute addr ( pointer (");
+            strcat(addr_mode_str, "00:");
+            uint32_t pointer = read_word(effective_address + 1);
+            // for(int32_t index = width - 1; index > 0; index--)
+            // {
+                // sprintf(temp_str, "%02x", read_byte(effective_address + index));
+            sprintf(temp_str, "%04x", pointer);
+            strcat(addr_mode_str, temp_str);
+            // }
 
             strcat(addr_mode_str, ") + ");
-            // sprintf(temp_str, "X(%04x) )", cpu_state.reg_x.reg_x);
-            sprintf(temp_str, "X(%04x) )", cpu_state.regs[REG_X].word);
+            sprintf(temp_str, "X(%04x) ) = ", cpu_state.regs[REG_X].word);
             strcat(addr_mode_str, temp_str);
+            sprintf(temp_str, "(%04x)", read_word(pointer));
+            strcat(addr_mode_str, temp_str);
+        }
         break;
 
         case ADDRESS_MODE_ABSOLUTE_INDEXED_X:
-            strcpy(addr_mode_str, "absolute addr(");
-            for(int32_t i = width - 1; i > 0; i--)
-            {
-                // sprintf(temp_str, "%02x", opcode_address[i]);
-                sprintf(temp_str, "%02x", read_byte(effective_address + i));
-                strcat(addr_mode_str, temp_str);
-            }
+            strcpy(addr_mode_str, "absolute addr (");
+            sprintf(temp_str, "DBR(%02x):", cpu_state.regs[REG_DBR].word);
+            strcat(addr_mode_str, temp_str);
+            // for(int32_t index = width - 1; index > 0; index--)
+            // {
+            sprintf(temp_str, "%04x", read_word(effective_address + 1));
+            strcat(addr_mode_str, temp_str);
+            // }
 
             strcat(addr_mode_str, ") + ");
-            // sprintf(temp_str, "X(%04x)", cpu_state.reg_x.reg_x);
             sprintf(temp_str, "X(%04x) )", cpu_state.regs[REG_X].word);
             strcat(addr_mode_str, temp_str);
         break;
 
         case ADDRESS_MODE_ABSOLUTE_INDEXED_Y:
-            strcpy(addr_mode_str, "absolute addr(");
-            for(int32_t i = width - 1; i > 0; i--)
-            {
-                // sprintf(temp_str, "%02x", opcode_address[i]);
-                sprintf(temp_str, "%02x", read_byte(effective_address + i));
-                strcat(addr_mode_str, temp_str);
-            }
+            strcpy(addr_mode_str, "absolute addr (");
+            sprintf(temp_str, "DBR(%02x):", cpu_state.regs[REG_DBR].word);
+            strcat(addr_mode_str, temp_str);
+            // for(int32_t index = width - 1; index > 0; index--)
+            // {
+            sprintf(temp_str, "%04x", read_word(effective_address + 1));
+            strcat(addr_mode_str, temp_str);
+            // }
 
             strcat(addr_mode_str, ") + ");
-            // sprintf(temp_str, "Y(%04x)", cpu_state.reg_y.reg_y);
             sprintf(temp_str, "Y(%04x)", cpu_state.regs[REG_Y].word);
             strcat(addr_mode_str, temp_str);
         break;
 
         case ADDRESS_MODE_ABSOLUTE_INDIRECT:
-            strcpy(addr_mode_str, "absolute addr( pointer (");
-            for(int32_t i = width - 1; i > 0; i--)
-            {
-                // sprintf(temp_str, "%02x", opcode_address[i]);
-                sprintf(temp_str, "%02x", read_byte(effective_address + i));
-                strcat(addr_mode_str, temp_str);
-            }
-            strcat(addr_mode_str, ") )");
+        {
+            strcpy(addr_mode_str, "absolute addr ( pointer (");
+            uint32_t pointer = read_word(effective_address + 1);
+            // for(int32_t index = width - 1; index > 0; index--)
+            // {
+            sprintf(temp_str, "%04x", pointer);
+            strcat(addr_mode_str, temp_str);
+            // }
+            strcat(addr_mode_str, ") ) = ");
+            sprintf(temp_str, "(%04x)", read_word(pointer));
+            strcat(addr_mode_str, temp_str);
+        }
         break;
 
         case ADDRESS_MODE_ABSOLUTE_LONG_INDEXED_X:
-            strcpy(addr_mode_str, "absolute long addr(");
-            for(int32_t i = width - 1; i > 0; i--)
-            {
-                // sprintf(temp_str, "%02x", opcode_address[i]);
-                sprintf(temp_str, "%02x", read_byte(effective_address + i));
-                strcat(addr_mode_str, temp_str);
-            }
+        {
+            strcpy(addr_mode_str, "absolute long addr (");
+            uint32_t pointer = read_word(effective_address + 1);
+            pointer |= (uint32_t)read_byte(effective_address + 3) << 16;
+            // for(int32_t index = width - 1; index > 0; index--)
+            // {
+            sprintf(temp_str, "%06x", pointer);
+            strcat(addr_mode_str, temp_str);
+            // }
 
             strcat(addr_mode_str, ") + ");
-            // sprintf(temp_str, "X(%04x)", cpu_state.reg_x.reg_x);
             sprintf(temp_str, "X(%04x)", cpu_state.regs[REG_X].word);
             strcat(addr_mode_str, temp_str);
+        }
         break;
 
         case ADDRESS_MODE_ABSOLUTE_LONG:
-            strcpy(addr_mode_str, "absolute long addr(");
-            for(int32_t i = width - 1; i > 0; i--)
-            {
-                // sprintf(temp_str, "%02x", opcode_address[i]);
-                sprintf(temp_str, "%02x", read_byte(effective_address + i));
-                strcat(addr_mode_str, temp_str);
-            }
+        {
+            strcpy(addr_mode_str, "absolute long addr (");
+            uint32_t pointer = read_word(effective_address + 1);
+            pointer |= (uint32_t)read_byte(effective_address + 3) << 16;
+
+            // for(int32_t index = width - 1; index > 0; index--)
+            // {
+            sprintf(temp_str, "%06x", pointer);
+            strcat(addr_mode_str, temp_str);
+            // }
 
             strcat(addr_mode_str, ")");
+        }
         break;
 
         case ADDRESS_MODE_ACCUMULATOR:
-            // sprintf(addr_mode_str, "accumulator(%04x)", cpu_state.reg_accum.reg_accumC);
-            sprintf(addr_mode_str, "accumulator(%04x)", cpu_state.regs[REG_ACCUM].word);
+            if(opcode.opcode != OPCODE_XCE && opcode.opcode != OPCODE_TXS && opcode.opcode != OPCODE_WDM)
+            {
+                sprintf(addr_mode_str, "accumulator(%04x)", cpu_state.regs[REG_ACCUM].word);
+            }
         break;
 
         case ADDRESS_MODE_BLOCK_MOVE:
-            // sprintf(addr_mode_str, "dst addr(%02x:%04x), src addr(%02x:%04x)", opcode_address[1], cpu_state.reg_y.reg_y,
-            //                                                                    opcode_address[2], cpu_state.reg_x.reg_x);
             sprintf(addr_mode_str, "dst addr(%02x:%04x), src addr(%02x:%04x)", read_byte(effective_address + 1), cpu_state.regs[REG_Y].word,
                                                                                read_byte(effective_address + 2), cpu_state.regs[REG_X].word);
         break;
@@ -1672,12 +4891,10 @@ char *instruction_str(unsigned int effective_address)
         break;
 
         case ADDRESS_MODE_DIRECT_INDIRECT_INDEXED:
-            // mem_address = memory_pointer(cpu_state.reg_d + opcode_address[1]);
             uint8_t offset = read_byte(effective_address + 1);
             uint16_t mem_address = read_word(cpu_state.regs[REG_D].word + offset);
-            // sprintf(addr_mode_str, "[pointer(D(%04x) + offset(%02x))](%04x) + Y(%04x)", cpu_state.reg_d, opcode_address[1],
-            //                                                                                 *(unsigned short *)mem_address, cpu_state.reg_y.reg_y);
-            sprintf(addr_mode_str, "[pointer(D(%04x) + offset(%02x))](%04x) + Y(%04x)", cpu_state.regs[REG_D].word, offset, mem_address, cpu_state.regs[REG_Y].word);
+            sprintf(addr_mode_str, "[pointer(D(%04x) + offset(%02x))](%04x) + Y(%04x)", cpu_state.regs[REG_D].word, offset,
+                                                                                        mem_address, cpu_state.regs[REG_Y].word);
         break;
 
         case ADDRESS_MODE_DIRECT_INDIRECT_LONG_INDEXED:
@@ -1689,22 +4906,19 @@ char *instruction_str(unsigned int effective_address)
         break;
 
         case ADDRESS_MODE_DIRECT_INDIRECT:
-            // sprintf(addr_mode_str, "pointer(D(%04x) + offset(%02x))", cpu_state.reg_d, opcode_address[1]);
             sprintf(addr_mode_str, "pointer(D(%04x) + offset(%02x))", cpu_state.regs[REG_D].word, read_byte(effective_address + 1));
         break;
 
         case ADDRESS_MODE_DIRECT:
-            // sprintf(addr_mode_str, "D(%04x) + offset(%02x)", cpu_state.reg_d, opcode_address[1]);
             sprintf(addr_mode_str, "D(%04x) + offset(%02x)", cpu_state.regs[REG_D].word, read_byte(effective_address + 1));
         break;
 
         case ADDRESS_MODE_IMMEDIATE:
             strcpy(addr_mode_str, "immediate (");
 
-            for(int32_t i = width - 1; i > 0; i--)
+            for(int32_t index = width - 1; index > 0; index--)
             {
-                // sprintf(temp_str, "%02x", opcode_address[i]);
-                sprintf(temp_str, "%02x", read_byte(effective_address + i));
+                sprintf(temp_str, "%02x", read_byte(effective_address + index));
                 strcat(addr_mode_str, temp_str);
             }
             strcat(addr_mode_str, ")");
@@ -1719,17 +4933,19 @@ char *instruction_str(unsigned int effective_address)
         break;
 
         case ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE:
-            // sprintf(addr_mode_str, "pc(%04x) + offset(%02x)", cpu_state.reg_pc, opcode_address[1]);
             sprintf(addr_mode_str, "pc(%04x) + offset(%02x)", cpu_state.regs[REG_PC].word, read_byte(effective_address + 1));
         break;
 
         case ADDRESS_MODE_STACK:
             addr_mode_str[0] = '\0';
-            //strcpy(addr_mode_str, "stack - s");
+            if(opcode.opcode == OPCODE_PEA)
+            {
+                sprintf(temp_str, "immediate (%04x)", read_word(effective_address + 1));
+                strcat(addr_mode_str, temp_str);
+            }
         break;
 
         case ADDRESS_MODE_STACK_RELATIVE:
-            // sprintf(addr_mode_str, "S(%04x) + offset(%02x)", cpu_state.reg_s, opcode_address[1]);
             sprintf(addr_mode_str, "S(%04x) + offset(%02x)", cpu_state.regs[REG_S].word, read_byte(effective_address + 1));
         break;
 
@@ -1743,13 +4959,12 @@ char *instruction_str(unsigned int effective_address)
         break;
     }
 
-    opcode_str = opcode_strs[op_code.opcode];
+    opcode_str = opcode_strs[opcode.opcode];
 
     sprintf(instruction_str_buffer, "[%02x:%04x]: ", (effective_address >> 16) & 0xff, effective_address & 0xffff);
 
     for(int32_t i = 0; i < width; i++)
     {
-        // sprintf(temp_str, "%02x ", opcode_address[i]);
         sprintf(temp_str, "%02x", read_byte(effective_address + i));
         strcat(instruction_str_buffer, temp_str);
     }
@@ -1782,9 +4997,11 @@ int dump_cpu(int show_registers)
 //    opcode = opcode_matrix[opcode_address[0]];
     op_str = instruction_str(address);
 
+    printf("===================== CPU ========================\n");
+
     // printf("cycles elapsed: %d\n\n", cpu_cycle_count);
 
-    printf("cycle: %d\n\n", cpu_state.instruction_cycles);
+    // printf("cycle: %d\n\n", cpu_state.instruction_cycles);
 //    printf("cpu step: %lu\n", step_count);
     if(show_registers)
     {
@@ -1809,11 +5026,13 @@ int dump_cpu(int show_registers)
         }
 
         printf("D:%d Z:%d I:%d C:%d]\n", cpu_state.reg_p.d, cpu_state.reg_p.z, cpu_state.reg_p.i, cpu_state.reg_p.c);
-        printf("[E: %02x] | [PC: %04x]\n", cpu_state.reg_p.e, cpu_state.regs[REG_PC].word);
+        printf("  [E: %02x] | [PC: %04x]\n", cpu_state.reg_p.e, cpu_state.regs[REG_PC].word);
         printf("=========== REGISTERS ===========\n");
     }
 
     printf("%s\n", op_str);
+
+    printf("==================================================\n");
 
     return 0;
 }
@@ -1827,15 +5046,6 @@ int view_hardware_registers()
     //     printf("<0x%04x>: 0x%02x\n", CPU_REGS_START_ADDRESS + i, hardware_regs.hardware_regs[i]);
     // }
 }
-
-uint32_t mem_speed_map[][2] = {
-    {8, 6},
-    {8, 8},
-    {6, 6},
-    {12, 12},
-    {6, 6},
-    {8, 8}
-};
 
 uint32_t cpu_mem_cycles(uint32_t effective_address)
 {
@@ -1858,17 +5068,17 @@ uint32_t cpu_mem_cycles(uint32_t effective_address)
     }
     else if(ram1_regs[CPU_REG_MEMSEL] & 1)
     {
-        return 6;
+        return MEM_SPEED_FAST_CYCLES;
     }
 
 
-    return 8;
+    return MEM_SPEED_MED_CYCLES;
 }
 
 void cpu_write_byte(uint32_t effective_address, uint8_t data)
 {
 //    cpu_cycle_count += ACCESS_CYCLES(effective_address);
-    cpu_cycle_count += cpu_mem_cycles(effective_address);
+    // cpu_cycle_count += cpu_mem_cycles(effective_address);
     write_byte(effective_address, data);
 }
 
@@ -1881,7 +5091,7 @@ void cpu_write_word(uint32_t effective_address, uint16_t data)
 uint8_t cpu_read_byte(uint32_t effective_address)
 {
 //    cpu_cycle_count += ACCESS_CYCLES(effective_address);
-    cpu_cycle_count += cpu_mem_cycles(effective_address);
+    // cpu_cycle_count += cpu_mem_cycles(effective_address);
     return read_byte(effective_address);
 }
 
@@ -2036,9 +5246,11 @@ void reset_cpu()
     cpu_state.instruction_address = EFFECTIVE_ADDRESS(cpu_state.regs[REG_PBR].byte[0], cpu_state.regs[REG_PC].word);
     cpu_state.instruction = &fetch_inst;
     cpu_state.cur_uop = 0;
+
+    ram1_regs[CPU_REG_MEMSEL] = 0;
 }
 
-void step_cpu2(int32_t cycle_count)
+void step_cpu(int32_t cycle_count)
 {
     cpu_state.uop_cycles += cycle_count;
     cpu_state.instruction_cycles += cycle_count;
@@ -2077,6 +5289,16 @@ void step_cpu2(int32_t cycle_count)
         cpu_state.instruction_cycles = cpu_state.uop_cycles;
 //        cpu_state.idata_bus.word = 0;
     }
+}
+
+uint8_t io_read(uint32_t effective_address)
+{
+    printf("io read\n");
+}
+
+void io_write(uint32_t effective_address, uint8_t value)
+{
+    printf("io write\n");
 }
 
 // void step_cpu(int32_t cycle_count)
