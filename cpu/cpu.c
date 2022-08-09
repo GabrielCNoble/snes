@@ -12,11 +12,11 @@
 unsigned long step_count = 0;
 
 struct cpu_state_t cpu_state = {
-    .in_irqb = 1,
-    .in_rdy = 1,
-    .in_resb = 1,
-    .in_abortb = 1,
-    .in_nmib = 1,
+//    .in_irqb = 1,
+//    .in_rdy = 1,
+//    .in_resb = 1,
+//    .in_abortb = 1,
+//    .in_nmib = 1,
     .regs = (struct reg_t []) {
         [REG_ACCUM]         = { .flag = STATUS_FLAG_M },
         [REG_X]             = { .flag = STATUS_FLAG_X },
@@ -28,10 +28,8 @@ struct cpu_state_t cpu_state = {
         [REG_INST]          = { },
         [REG_PC]            = { },
         // [REG_P]             = { .flag = 0x0000},
-        [REG_ALU_LATCH]     = { },
         [REG_ADDR]          = { },
         [REG_BANK]          = { },
-        // [REG_DATA]    = { .flag = 0xffff},
         [REG_ZERO]          = { },
     },
 };
@@ -43,6 +41,12 @@ uint32_t mem_speed_map[][2] = {
     {MEM_SPEED_SLOW_CYCLES, MEM_SPEED_SLOW_CYCLES},
     {MEM_SPEED_FAST_CYCLES, MEM_SPEED_FAST_CYCLES},
     {MEM_SPEED_MED_CYCLES,  MEM_SPEED_MED_CYCLES}
+};
+
+uint16_t interrupt_vectors[][2] = {
+    [CPU_INT_BRK] = {0xffe6, 0xfffe},
+    [CPU_INT_IRQ] = {0xffee, 0xfffe},
+    [CPU_INT_NMI] = {0xffea, 0xfffa},
 };
 
 uint32_t cpu_cycle_count = 0;
@@ -910,47 +914,41 @@ struct inst_t instructions[] = {
     /*                                      BRK                                           */
     /**************************************************************************************/
 
-    [BRK] = {
+    [BRK_S] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_TEMP),
-
-            /* when in emulation mode... */
-            SKIPC       (1, STATUS_FLAG_E),
-            /* the B flag gets set */
-            SET_P       (STATUS_FLAG_B),
-
-            SET_P       (STATUS_FLAG_I),
+            /* this sets the B flag in the status register (when in emulation
+            mode) and also loads the appropriate interrupt vector into REG_ADDR */
+            BRK,
 
             /* when in native mode... */
-            SKIPS       (3, STATUS_FLAG_E),
+            SKIPS       (2, STATUS_FLAG_E),
             /* the program bank register gets pushed onto the stack */
             MOV_S       (MOV_LSB, REG_S, REG_ZERO, REG_PBR),
             DECS,
-            MOV_RRW     (REG_ZERO, REG_PBR, MOV_RRW_BYTE),
 
-            MOV_S       (MOV_LSB, REG_S, REG_ZERO, REG_PC),
-            DECS,
             MOV_S       (MOV_MSB, REG_S, REG_ZERO, REG_PC),
+            DECS,
+            MOV_S       (MOV_LSB, REG_S, REG_ZERO, REG_PC),
             DECS,
             MOV_P       (REG_P, REG_TEMP),
             MOV_S       (MOV_LSB, REG_S, REG_ZERO, REG_TEMP),
             DECS,
-            MOV_RRW     (REG_ZERO, REG_ADDR, MOV_RRW_WORD),
+
+            SET_P       (STATUS_FLAG_I),
 
             /* when in native mode... */
-            SKIPS       (2, STATUS_FLAG_E),
+            SKIPS       (1, STATUS_FLAG_E),
             /* the D flag gets cleared */
             CLR_P       (STATUS_FLAG_D),
-            /* the brk vector is at 0xffe6, so we put 0xffe8 here, which
-            will give us 0xffe6 when added to the following offset */
-            ADDR_OFFI   (0xffe8, ADDR_OFF_BANK_WRAP),
 
-            /* emulation mode brk vector */
-            ADDR_OFFI   (0xfffe, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
             MOV_RRW     (REG_TEMP, REG_PC, MOV_RRW_WORD),
+            MOV_RRW     (REG_ZERO, REG_PBR, MOV_RRW_BYTE),
+            // MOV_LPC     (MOV_LSB, REG_INST),
+            // DECODE
         }
     },
 
@@ -1358,7 +1356,44 @@ struct inst_t instructions[] = {
     /*                                      CPY                                           */
     /**************************************************************************************/
 
+    [CPY_ABS] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_X),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ALU_OP      (ALU_OP_CMP, STATUS_FLAG_X, REG_Y, REG_TEMP),
+            CHK_ZNW     (REG_TEMP, 0),
+        }
+    },
 
+    [CPY_DIR] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_X),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ALU_OP      (ALU_OP_CMP, STATUS_FLAG_X, REG_Y, REG_TEMP),
+            CHK_ZN      (REG_TEMP),
+        }
+    },
+
+    [CPY_IMM] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_TEMP),
+            SKIPS       (1, STATUS_FLAG_X),
+            MOV_LPC     (MOV_MSB, REG_TEMP),
+            ALU_OP      (ALU_OP_CMP, STATUS_FLAG_X, REG_Y, REG_TEMP),
+            CHK_ZNW     (REG_TEMP, 0),
+        }
+    },
 
     /**************************************************************************************/
     /*                                      DEC                                           */
@@ -1882,7 +1917,7 @@ struct inst_t instructions[] = {
     [INY_IMP] = {
         .uops = {
             IO,
-            ALU_OP      (ALU_OP_INC, STATUS_FLAG_X, REG_X, REG_ZERO),
+            ALU_OP      (ALU_OP_INC, STATUS_FLAG_X, REG_Y, REG_ZERO),
             MOV_RR      (REG_TEMP, REG_Y),
             CHK_ZN      (REG_Y),
         }
@@ -1891,6 +1926,19 @@ struct inst_t instructions[] = {
     /**************************************************************************************/
     /*                                      JML                                           */
     /**************************************************************************************/
+
+    [JML_ABS_IND] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_PBR),
+            MOV_RRW     (REG_TEMP, REG_PC, MOV_RRW_WORD),
+        }
+    },
 
     /**************************************************************************************/
     /*                                      JMP                                           */
@@ -2527,6 +2575,27 @@ struct inst_t instructions[] = {
     /*                                      MVN                                           */
     /**************************************************************************************/
 
+    [MVN_BLK] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_BANK),
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_L       (MOV_LSB, REG_X, REG_ADDR, REG_TEMP),
+            MOV_S       (MOV_LSB, REG_Y, REG_BANK, REG_TEMP),
+            IO,
+            MOV_RRW     (REG_X, REG_ADDR, MOV_RRW_WORD),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_RRW     (REG_ADDR, REG_X, MOV_RRW_WORD),
+            IO,
+            MOV_RRW     (REG_Y, REG_ADDR, MOV_RRW_WORD),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_RRW     (REG_ADDR, REG_Y, MOV_RRW_WORD),
+
+            MOV_RRW     (REG_PC, REG_ADDR, MOV_RRW_WORD),
+            ADDR_OFFI   (0xfffe, ADDR_OFF_BANK_WRAP),
+            MOV_RRW     (REG_ADDR, REG_PC, MOV_RRW_WORD),
+        }
+    },
+
     /**************************************************************************************/
     /*                                      MVP                                           */
     /**************************************************************************************/
@@ -2534,6 +2603,10 @@ struct inst_t instructions[] = {
     /**************************************************************************************/
     /*                                      NOP                                           */
     /**************************************************************************************/
+
+    [NOP_IMP] = {
+
+    },
 
     /**************************************************************************************/
     /*                                      ORA                                           */
@@ -2963,7 +3036,7 @@ struct inst_t instructions[] = {
             IO,
             INCS,
             MOV_L       (MOV_LSB, REG_S, REG_ZERO, REG_DBR),
-            CHK_ZN      (REG_PBR)
+            CHK_ZN      (REG_DBR)
         }
     },
 
@@ -3236,6 +3309,24 @@ struct inst_t instructions[] = {
     /*                                      RTI                                           */
     /**************************************************************************************/
 
+    [RTI_S] = {
+        .uops = {
+            IO,
+            IO,
+            INCS,
+            MOV_L       (MOV_LSB, REG_S, REG_ZERO, REG_TEMP),
+            MOV_P       (REG_TEMP, REG_P),
+            INCS,
+            MOV_L       (MOV_LSB, REG_S, REG_ZERO, REG_TEMP),
+            INCS,
+            MOV_L       (MOV_MSB, REG_S, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_TEMP, REG_PC, MOV_RRW_WORD),
+            SKIPS       (2, STATUS_FLAG_E),
+            INCS,
+            MOV_L       (MOV_MSB, REG_S, REG_ZERO, REG_PBR),
+        }
+    },
+
     /**************************************************************************************/
     /*                                      RTL                                           */
     /**************************************************************************************/
@@ -3247,7 +3338,7 @@ struct inst_t instructions[] = {
             INCS,
             MOV_L       (MOV_LSB, REG_S, REG_ZERO, REG_ADDR),
             INCS,
-            MOV_L       (MOV_LSB, REG_S, REG_ZERO, REG_ADDR),
+            MOV_L       (MOV_MSB, REG_S, REG_ZERO, REG_ADDR),
             INCS,
             MOV_L       (MOV_LSB, REG_S, REG_ZERO, REG_BANK),
             IO,
@@ -3548,9 +3639,23 @@ struct inst_t instructions[] = {
     /*                                      SEC                                           */
     /**************************************************************************************/
 
+    [SEC_IMP] = {
+        .uops = {
+            IO,
+            SET_P       (STATUS_FLAG_C)
+        },
+    },
+
     /**************************************************************************************/
     /*                                      SED                                           */
     /**************************************************************************************/
+
+    [SED_IMP] = {
+        .uops = {
+            IO,
+            SET_P       (STATUS_FLAG_D)
+        },
+    },
 
     /**************************************************************************************/
     /*                                      SEI                                           */
@@ -3636,6 +3741,157 @@ struct inst_t instructions[] = {
             SKIPS       (2, STATUS_FLAG_M),
             ADDR_OFFI   (1, 0),
             MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_ACCUM),
+        }
+    },
+    [STA_S_REL] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            ADDR_OFFR   (REG_S, ADDR_OFF_BANK_WRAP),
+            IO,
+            MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_ACCUM),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_ACCUM),
+        },
+    },
+
+    [STA_DIR_X] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
+            IO,
+            MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_ACCUM),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_ACCUM),
+        }
+    },
+
+    [STA_DIR_IND] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            ADDR_OFFR   (REG_D, 0),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_DBR, REG_ACCUM),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_DBR, REG_ACCUM),
+        }
+    },
+
+    [STA_DIR_INDL] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_BANK),
+            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_ACCUM),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_ACCUM),
+        }
+    },
+
+    [STA_S_REL_IND_Y] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            IO,
+            ADDR_OFFR   (REG_S, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            IO,
+            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_ACCUM),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_ACCUM),
+        }
+    },
+
+    [STA_DIR_X_IND] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
+            IO,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_DBR, REG_ACCUM),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_DBR, REG_ACCUM),
+        }
+    },
+
+    [STA_DIR_IND_Y] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            ADDR_OFFR   (REG_D, 0),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
+            SKIPS       (2, STATUS_FLAG_X),
+            SKIPC       (1, STATUS_FLAG_PAGE),
+            IO          /* X = 0 or page crossed */,
+            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_ACCUM),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_ACCUM),
+        }
+    },
+
+    [STA_DIR_INDL_Y] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            ADDR_OFFR   (REG_D, 0), 
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO          /* DL != 0 */,
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_BANK),
+            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_ACCUM),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_ACCUM),
         }
     },
 
@@ -3931,13 +4187,36 @@ struct inst_t instructions[] = {
     /*                                      WAI                                           */
     /**************************************************************************************/
 
+    [WAI_ACC] = {
+        .uops = {
+            IO,
+            IO,
+            WAI
+        }
+    },
+
     /**************************************************************************************/
     /*                                      WDM                                           */
     /**************************************************************************************/
 
+    [WDM_ACC] = {
+        .uops = {
+
+        }
+    },
+
     /**************************************************************************************/
     /*                                      XBA                                           */
     /**************************************************************************************/
+
+    [XBA_ACC] = {
+        .uops = {
+            IO,
+            IO,
+            XBA,
+            CHK_ZNW     (REG_ACCUM, CHK_ZW_WORD)
+        }
+    },
 
     /**************************************************************************************/
     /*                                      XCE                                           */
@@ -3947,6 +4226,14 @@ struct inst_t instructions[] = {
         .uops = {
             IO,
             XCE
+        }
+    },
+
+
+    [FETCH] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_INST),
+            DECODE
         }
     }
 };
@@ -4706,6 +4993,7 @@ uint32_t opcode_width(struct opcode_t *opcode)
                 case OPCODE_AND:
                 case OPCODE_EOR:
                 case OPCODE_ORA:
+                case OPCODE_ADC:
                     if(cpu_state.reg_p.m)
                     {
                         width = 2;
@@ -4867,6 +5155,7 @@ char *instruction_str(uint32_t effective_address)
         break;
 
         case ADDRESS_MODE_ACCUMULATOR:
+            addr_mode_str[0] = '\0';
             if(opcode.opcode != OPCODE_XCE && opcode.opcode != OPCODE_TXS && opcode.opcode != OPCODE_WDM)
             {
                 sprintf(addr_mode_str, "accumulator(%04x)", cpu_state.regs[REG_ACCUM].word);
@@ -4999,13 +5288,9 @@ int dump_cpu(int show_registers)
 
     printf("===================== CPU ========================\n");
 
-    // printf("cycles elapsed: %d\n\n", cpu_cycle_count);
-
-    // printf("cycle: %d\n\n", cpu_state.instruction_cycles);
-//    printf("cpu step: %lu\n", step_count);
     if(show_registers)
     {
-        printf("=========== REGISTERS ===========\n");
+        // printf("=========== REGISTERS ===========\n");
         printf("[A: %04x] | ", cpu_state.regs[REG_ACCUM].word);
         printf("[X: %04x] | ", cpu_state.regs[REG_X].word);
         printf("[Y: %04x] | ", cpu_state.regs[REG_Y].word);
@@ -5026,13 +5311,37 @@ int dump_cpu(int show_registers)
         }
 
         printf("D:%d Z:%d I:%d C:%d]\n", cpu_state.reg_p.d, cpu_state.reg_p.z, cpu_state.reg_p.i, cpu_state.reg_p.c);
-        printf("  [E: %02x] | [PC: %04x]\n", cpu_state.reg_p.e, cpu_state.regs[REG_PC].word);
-        printf("=========== REGISTERS ===========\n");
+        printf("  [E: %02x] | [PC: %04x]", cpu_state.reg_p.e, cpu_state.regs[REG_PC].word);
+
+        if(cpu_state.regs[REG_INST].byte[0] == BRK_S)
+        {
+            char *interrupt_str = "";
+            switch(cpu_state.cur_interrupt)
+            {
+                case CPU_INT_BRK:
+                    interrupt_str = "BRK";
+                break;
+
+                case CPU_INT_IRQ:
+                    interrupt_str = "IRQ";
+                break;
+
+                case CPU_INT_NMI:
+                    interrupt_str = "NMI";
+                break;
+            }
+
+            printf(" | handling %s", interrupt_str);
+        }
+        printf("\n");
+
+        // printf("=========== REGISTERS ===========\n");
+        printf("-------------------------------------\n");
     }
 
     printf("%s\n", op_str);
 
-    printf("==================================================\n");
+    printf("\n");
 
     return 0;
 }
@@ -5105,128 +5414,6 @@ uint32_t cpu_read_wordbyte(uint32_t effective_address)
     return (uint32_t)cpu_read_word(effective_address) | ((uint32_t)cpu_read_byte(effective_address + 2) << 16);
 }
 
-// uint32_t cpu_regs_read(uint32_t effective_address)
-// {
-//     uint32_t *pointer = (void *)(hardware_regs.hardware_regs + (effective_address & 0xffff) - CPU_REGS_START_ADDRESS);
-//     return *pointer;
-// }
-
-// uint32_t cpu_wram1_read(uint32_t effective_address)
-// {
-//     uint32_t *pointer = (void *)(wram1 + (effective_address & 0xffff) - RAM1_START_ADDRESS);
-//     return *pointer;
-// }
-
-// uint32_t cpu_wram2_read(uint32_t effective_address)
-// {
-//     return 0;
-// }
-
-uint16_t alu(uint32_t operand0, uint32_t operand1, uint32_t op, uint32_t width)
-{
-//    uint32_t sign_mask = width ? 0x00000080 : 0x00008000;
-//    uint32_t carry_mask = width ? 0x00000100 : 0x00010000;
-//    uint32_t zero_mask = width ? 0x000000ff : 0x0000ffff;
-////    uint8_t flags = cpu_state.reg_p[cpu_state.reg_e];
-//    uint32_t result;
-////    uint32_t flags = 0;
-//
-//    // if(op == ALU_OP_CMP)
-//    // {
-//    //     flags |= CPU_STATUS_FLAG_CARRY;
-//    // }
-//
-//    // uint32_t carry = flags & CPU_STATUS_FLAG_CARRY;
-//    operand0 &= zero_mask;
-//    // operand1 &= zero_mask;
-//
-//    /* if it's a subtraction or a comparison, invert the second operand for the subtraction */
-//    // operand1 = ((op == ALU_OP_SUB || op == ALU_OP_CMP) ? -operand1 : operand1);
-//    // carry = (op == ALU_OP_SUB ? (carry ^ 1) : carry);
-//    uint32_t carry = flags & CPU_STATUS_FLAG_CARRY;
-//
-//    switch(op)
-//    {
-//        case ALU_OP_CMP:
-//            carry = 1;
-//        case ALU_OP_SUB:
-//            operand1 = ((~operand1) & zero_mask) + 1;
-//            operand1 -= (!carry);
-//            result = operand0 + operand1;
-//        break;
-//
-//        case ALU_OP_ADD:
-//            result = operand0 + operand1 + carry;
-//        break;
-//
-//        case ALU_OP_AND:
-//            result = operand0 & operand1;
-//        break;
-//
-//        case ALU_OP_OR:
-//            result = operand0 | operand1;
-//        break;
-//
-//        case ALU_OP_XOR:
-//            result = operand0 ^ operand1;
-//        break;
-//
-//        case ALU_OP_INC:
-//            result = operand0 + 1;
-//        break;
-//
-//        case ALU_OP_DEC:
-//            result = operand0 - 1;
-//        break;
-//
-//        case ALU_OP_ROL:
-//        case ALU_OP_SHL:
-//            /* shift left shifts msb into the carry */
-//            flags = (operand0 & sign_mask) ? (flags | CPU_STATUS_FLAG_CARRY) : (flags & (~CPU_STATUS_FLAG_CARRY));
-//            /* rotate left shifts the carry into the lsb */
-//            result = (operand0 << 1) | (op == ALU_OP_ROL && (flags & CPU_STATUS_FLAG_CARRY));
-//        break;
-//
-//
-//        case ALU_OP_ROR:
-//            /* rotate right shifts the carry into the msb */
-//            operand0 = carry ? (operand0 | carry_mask) : operand0;
-//        case ALU_OP_SHR:
-//            /* shift right shifts lsb into the carry */
-//            flags = (operand0 & 1) ? (flags | CPU_STATUS_FLAG_CARRY) : (flags & (~CPU_STATUS_FLAG_CARRY));
-//            result = operand0 >> 1;
-//        break;
-//
-//        case ALU_OP_TSB:
-//
-//        break;
-//
-//        case ALU_OP_TRB:
-//
-//        break;
-//    }
-//
-//    /* every alu op affects negative and zero */
-//    flags = (result & sign_mask) ? (flags | CPU_STATUS_FLAG_NEGATIVE) : (flags & (~CPU_STATUS_FLAG_NEGATIVE));
-//    flags = (result & zero_mask) ? (flags & (~CPU_STATUS_FLAG_ZERO)) : (flags | CPU_STATUS_FLAG_ZERO);
-//
-//    if(carry_flag_alu_op[op])
-//    {
-//        flags = (result & carry_mask) ? (flags | CPU_STATUS_FLAG_CARRY) : (flags & (~CPU_STATUS_FLAG_CARRY));
-//    }
-//
-//    if(op == ALU_OP_ADD)
-//    {
-//        /* if operand0 and operand1 have the same sign, and the result have a different
-//        sign than the operands, then overflow ocurred */
-//        flags = (((~(operand0 ^ operand1)) & (operand1 ^ result)) & sign_mask) ? (flags | CPU_STATUS_FLAG_OVERFLOW) : (flags & (~CPU_STATUS_FLAG_OVERFLOW));
-//    }
-//
-//    cpu_state.reg_p[cpu_state.reg_e] = flags;
-//
-//    return result & zero_mask;
-}
-
 void reset_cpu()
 {
     cpu_state.regs[REG_PC].word = read_word(0xfffc);
@@ -5243,1061 +5430,190 @@ void reset_cpu()
     cpu_state.reg_p.x = 1;
     cpu_state.reg_p.m = 1;
 
+    // cpu_state.in_rdy = 1;
+    // cpu_state.in_irqb = 1;
+    // cpu_state.in_nmib = 1;
+    // cpu_state.in
+
+    cpu_state.pins[CPU_PIN_IRQ] = 1;
+    cpu_state.pins[CPU_PIN_NMI] = 1;
+    cpu_state.pins[CPU_PIN_RDY] = 1;
+
+    cpu_state.interrupts[CPU_INT_BRK] = 0;
+    cpu_state.interrupts[CPU_INT_IRQ] = 0;
+    cpu_state.interrupts[CPU_INT_NMI] = 0;
+
+    cpu_state.cur_interrupt = CPU_INT_BRK;
+
     cpu_state.instruction_address = EFFECTIVE_ADDRESS(cpu_state.regs[REG_PBR].byte[0], cpu_state.regs[REG_PC].word);
-    cpu_state.instruction = &fetch_inst;
-    cpu_state.cur_uop = 0;
+    cpu_state.regs[REG_INST].byte[0] = FETCH;
+    load_instruction();
+//    cpu_state.instruction = instructions + FETCH;
+//    cpu_state.cur_uop_index = 0;
+//    cpu_state.cur_uop = cpu_state.instruction->uops + cpu_state.cur_uop_index;
 
     ram1_regs[CPU_REG_MEMSEL] = 0;
+    ram1_regs[CPU_REG_TIMEUP] = 0;
+    ram1_regs[CPU_REG_HTIMEL] = 0xff;
+    ram1_regs[CPU_REG_HTIMEH] = 0x01;
+    ram1_regs[CPU_REG_VTIMEL] = 0xff;
+    ram1_regs[CPU_REG_VTIMEH] = 0x01;
+}
+
+void assert_pin(uint32_t pin)
+{
+    cpu_state.pins[pin] = 0;
+
+    switch(pin)
+    {
+//        case CPU_PIN_IRQ:
+//            cpu_state.interrupts[CPU_INT_IRQ] = 1;
+//        break;
+
+        case CPU_PIN_NMI:
+            cpu_state.interrupts[CPU_INT_NMI] = 1;
+        break;
+    }
+}
+
+void deassert_pin(uint32_t pin)
+{
+    if(pin == CPU_PIN_RDY && cpu_state.wai)
+    {
+        return;
+    }
+
+    cpu_state.pins[pin] = 1;
+}
+
+void load_instruction()
+{
+    cpu_state.instruction = instructions + cpu_state.regs[REG_INST].byte[0];
+    cpu_state.uop_index = 0;
+    load_uop();
+}
+
+void load_uop()
+{
+    cpu_state.uop = cpu_state.instruction->uops + cpu_state.uop_index;
+    cpu_state.last_uop = cpu_state.instruction->uops[cpu_state.uop_index + 1].func == NULL;
+}
+
+void next_uop()
+{
+    cpu_state.uop_index++;
+    load_uop();
 }
 
 void step_cpu(int32_t cycle_count)
 {
-    cpu_state.uop_cycles += cycle_count;
-    cpu_state.instruction_cycles += cycle_count;
-    while(cpu_state.instruction->uops[cpu_state.cur_uop].func)
+    if(cpu_state.pins[CPU_PIN_RDY])
     {
-        struct uop_t *uop = cpu_state.instruction->uops + cpu_state.cur_uop;
+        cpu_state.uop_cycles += cycle_count;
+        cpu_state.instruction_cycles += cycle_count;
 
-        if(!uop->func(uop->arg))
+        while(cpu_state.uop->func)
         {
-            break;
+            if(!cpu_state.uop->func(cpu_state.uop->arg))
+            {
+                break;
+            }
+
+            if(cpu_state.reg_p.e)
+            {
+                cpu_state.reg_p.m = 1;
+                cpu_state.reg_p.x = 1;
+                cpu_state.regs[REG_S].byte[1] = 0x01;
+            }
+
+            if(cpu_state.reg_p.x)
+            {
+                cpu_state.regs[REG_X].byte[1] = 0;
+                cpu_state.regs[REG_Y].byte[1] = 0;
+            }
+
+            if(cpu_state.last_uop)
+            {
+
+            }
+
+            cpu_state.reg_p.dl = cpu_state.regs[REG_D].byte[0];
+            next_uop();
         }
-
-        if(cpu_state.reg_p.e)
-        {
-            cpu_state.reg_p.m = 1;
-            cpu_state.reg_p.x = 1;
-            cpu_state.regs[REG_S].byte[1] = 0x01;
-        }
-
-        if(cpu_state.reg_p.x)
-        {
-            cpu_state.regs[REG_X].byte[1] = 0;
-            cpu_state.regs[REG_Y].byte[1] = 0;
-        }
-
-        cpu_state.reg_p.dl = cpu_state.regs[REG_D].byte[0];
-
-        cpu_state.cur_uop++;
     }
 
-    if(!cpu_state.instruction->uops[cpu_state.cur_uop].func)
+    if(!cpu_state.uop->func)
     {
-        cpu_state.instruction_address = EFFECTIVE_ADDRESS(cpu_state.regs[REG_PBR].byte[0], cpu_state.regs[REG_PC].word);
-        cpu_state.instruction = &fetch_inst;
-        cpu_state.cur_uop = 0;
+       if(cpu_state.interrupts[CPU_INT_NMI])
+       {
+           cpu_state.pins[CPU_PIN_RDY] = 1;
+           cpu_state.regs[REG_INST].byte[0] = BRK_S;
+           cpu_state.cur_interrupt = CPU_INT_NMI;
+       }
+       else if(!cpu_state.pins[CPU_PIN_IRQ] && (!cpu_state.reg_p.i))
+       {
+           if(cpu_state.wai)
+           {
+               cpu_state.pins[CPU_PIN_RDY] = 1;
+               cpu_state.interrupts[cpu_state.cur_interrupt] = 0;
+               cpu_state.regs[REG_INST].byte[0] = FETCH;
+               cpu_state.cur_interrupt = CPU_INT_BRK;
+           }
+           else
+           {
+               cpu_state.regs[REG_INST].byte[0] = BRK_S;
+               cpu_state.cur_interrupt = CPU_INT_IRQ;
+           }
+       }
+       else
+        {
+            cpu_state.interrupts[cpu_state.cur_interrupt] = 0;
+            cpu_state.regs[REG_INST].byte[0] = FETCH;
+            cpu_state.cur_interrupt = CPU_INT_BRK;
+        }
+
         cpu_state.instruction_cycles = cpu_state.uop_cycles;
-//        cpu_state.idata_bus.word = 0;
+        cpu_state.instruction_address = EFFECTIVE_ADDRESS(cpu_state.regs[REG_PBR].byte[0], cpu_state.regs[REG_PC].word);
+        cpu_state.uop_index = 0;
+
+        load_instruction();
+
+        // cpu_state.instruction = instructions + cpu_state.regs[REG_INST].byte[0];
+
+        // cpu_state.cur_uop = cpu_state.instruction->uops + cpu_state.cur_uop_index;
     }
 }
 
 uint8_t io_read(uint32_t effective_address)
 {
-    printf("io read\n");
+    // printf("io read\n");
 }
 
 void io_write(uint32_t effective_address, uint8_t value)
 {
-    printf("io write\n");
+    // printf("io write\n");
 }
 
-// void step_cpu(int32_t cycle_count)
-// {
-//     struct opcode_t opcode;
-//     uint32_t effective_address;
-//     // uint32_t old_effective_address;
-//     uint16_t handler = 0;
-//     uint32_t pc_increment = 0;
-//     // int temp;
-//     // int temp2;
-//     // int temp3;
-//     // int byte_write;
-
-//     cpu_cycle_count = 0;
-
-//     step_count++;
-
-//     if(cpu_state.s_wai)
-//     {
-//         cpu_state.in_rdy = 0;
-//     }
-
-//     // if(hardware_regs.nmitimen)
-//     // {
-
-//     // }
-
-//     if(!cpu_state.in_abortb)
-//     {
-//         /* abort */
-//         handler = 0xfff8;
-//     }
-//     else if(!cpu_state.in_nmib)
-//     {
-//         /* non-mask-able interrupt */
-//         handler = 0xfffa;
-//     }
-//     else if(!cpu_state.in_irqb && (!(cpu_state.reg_p[cpu_state.reg_e] & CPU_STATUS_FLAG_IRQ_DISABLE)))
-//     {
-//         /* mask-able interrupt, will only be noticed if the I flag is
-//         clear */
-//         handler = 0xfffe;
-//     }
-
-//     if((!handler && cpu_state.s_wai) || !cpu_state.in_rdy)
-//     {
-//         /* WAI condition is active, and no interrupt happened, or rdy pin is being held
-//         low, so we do nothing */
-//         return;
-//     }
-
-//     /* if we got here, either we weren't waiting for an interrupt, or we were waiting
-//     and an interrupt has happened. Either way, we clear the WAI condition */
-//     cpu_state.s_wai = 0;
-
-//     _brk_interrupt:
-
-//     if(handler)
-//     {
-//         /* handle an interrupt. Push the program bank register (if in native mode),
-//         the program counter register, and the cpu status register, and then load
-//         the interrupt handler address */
-//         if(!cpu_state.reg_e)
-//         {
-//             /* when in emulation mode, the program bank register doesn't get saved
-//             onto the stack automatically. This means interrupts should always return
-//             in the same mode they were entered, otherwise junk may be popped out of
-//             the stack when it shouldn't, or important data might be left in the stack,
-//             when it shouldn't. */
-//             cpu_write_byte(cpu_state.reg_s, cpu_state.reg_pbrw.reg_pbr);
-//             cpu_state.reg_s--;
-//         }
-
-//         cpu_state.reg_pbrw.reg_pbr = 0;
-
-//         cpu_write_byte(cpu_state.reg_s, cpu_state.reg_pc >> 8);
-//         cpu_state.reg_s--;
-//         cpu_write_byte(cpu_state.reg_s, cpu_state.reg_pc);
-//         cpu_state.reg_s--;
-//         cpu_write_byte(cpu_state.reg_s, cpu_state.reg_p[cpu_state.reg_e]);
-//         cpu_state.reg_s--;
-
-//         cpu_state.reg_pc = cpu_read_word(handler);
-
-//         return;
-//     }
-
-//     uint16_t opcode_pc = cpu_state.reg_pc;
-//     effective_address = EFFECTIVE_ADDRESS(cpu_state.reg_pbrw.reg_pbr, cpu_state.reg_pc);
-//     opcode = opcode_matrix[cpu_read_byte(effective_address)];
-//     cpu_state.reg_pc++;
-//     effective_address = EFFECTIVE_ADDRESS(cpu_state.reg_pbrw.reg_pbr, cpu_state.reg_pc);
-
-//     /* instruction processing happens in two phases here:
-
-//         First, the operand phase: in this phase the operand is handled (if there's any). This phase will output the
-//         effective address to the. If an instruction uses absolute indexed indirect addressing, for example, the
-//         effective address will point to the next byte after the current instruction.
-
-//         Then, the opcode phase: in this phase the effective address returned by phase one will be used. If the
-//         instruction is a load instruction, then a real pointer is acquired from the effective address.
-//         If it's a store instruction, a real pointer will also be acquired from the effective address, and will be
-//         used to write the value back to ram. For branch instructions, the effective address will be used directly.
-//         For jumps using absolute long addressing, the effective address contains the value of PC on the lower
-//         16 bits, and the value of PBR on the upper 8 bits. In the case of conditional jumps, where the only
-//         addressing mode is an offset relative to the current PC, the effective address will reference the
-//         byte right after the current instruction. A real pointer to the value will be acquired if the branch
-//         is taken, and the value will be added to PC.
-//     */
-
-//     switch(opcode.address_mode)
-//     {
-//         case ADDRESS_MODE_ABSOLUTE:
-//             /* the second and third bytes of the instruction form the low-order 16 bits of the
-//             effective address. The Data Bank Register contains the high-order 8 bits of the
-//             operand address... */
-//             effective_address = EFFECTIVE_ADDRESS(cpu_state.reg_dbrw.reg_dbr, cpu_read_word(effective_address));
-//             cpu_state.reg_pc += 2;
-//         break;
-
-//         case ADDRESS_MODE_ABSOLUTE_INDEXED_INDIRECT:
-//             /* the second and third bytes of the instruction are added to the X Index Register
-//             to form a 16-bit pointer in Bank 0. The contents of this pointer is loaded in the
-//             Program Counter for the JMP instruction... */
-
-//             /* only used by JMP, JSR and EOR... */
-//             effective_address = EFFECTIVE_ADDRESS(0, cpu_read_word(effective_address) + cpu_state.reg_x.reg_x);
-//             effective_address = (uint16_t)cpu_read_word(effective_address);
-//             cpu_state.reg_pc += 2;
-//         break;
-
-//         case ADDRESS_MODE_ABSOLUTE_INDEXED_X:
-//         {
-//             /* the second and third bytes of the instruction are added to the X Index Register to
-//             form the low-order 16-bits of the effective address.  The Data Bank Register contains
-//             the high-order 8 bits of the effective address... */
-//             uint32_t offset = (uint32_t)cpu_read_word(effective_address) + (uint32_t)cpu_state.reg_x.reg_x;
-//             effective_address = EFFECTIVE_ADDRESS(cpu_state.reg_dbrw.reg_dbr, 0) + offset;
-//             cpu_state.reg_pc += 2;
-//         }
-//         break;
-
-//         case ADDRESS_MODE_ABSOLUTE_INDEXED_Y:
-//         {
-//             /* the second and third bytes of the instruction are added to the Y Index Register to
-//             form the low-order 16-bits of the effective address.  The Data Bank Register contains
-//             the high-order 8 bits of the effective address... */
-//             uint32_t offset = (uint32_t)cpu_read_word(effective_address) + (uint32_t)cpu_state.reg_y.reg_y;
-//             effective_address = EFFECTIVE_ADDRESS(cpu_state.reg_dbrw.reg_dbr, 0) + offset;
-//             cpu_state.reg_pc += 2;
-//         }
-//         break;
-
-//         case ADDRESS_MODE_ABSOLUTE_INDIRECT:
-//             /* the second and third bytes of the instruction form an address to a pointer in Bank 0.
-//             The Program Counter is loaded with the first and second bytes at this pointer.
-//             With the Jump Long (JML) instruction, the Program Bank Register is loaded with the
-//             third byte at the pointer...  */
-
-//             effective_address = cpu_read_word(effective_address & 0x0000ffff);
-
-//             if(opcode.opcode == OPCODE_JML)
-//             {
-//                 effective_address = cpu_read_wordbyte(effective_address);
-//                 cpu_state.reg_pc += 3;
-//             }
-//             else
-//             {
-//                 effective_address = cpu_read_word(effective_address);
-//                 cpu_state.reg_pc += 2;
-//             }
-//         break;
-
-//         case ADDRESS_MODE_ABSOLUTE_LONG_INDEXED_X:
-//             /* the second, third and fourth bytes of the instruction form a 24-bit base address.
-//             The effective address is the sum of this 24-bit address and the X Index Register... */
-//             effective_address = (cpu_read_wordbyte(effective_address) + cpu_state.reg_x.reg_x) & 0x00ffffff;
-//             cpu_state.reg_pc += 3;
-//         break;
-
-//         case ADDRESS_MODE_ABSOLUTE_LONG:
-//             /* the second, third and fourth byte of the instruction form the 24-bit effective address... */
-//             effective_address = cpu_read_wordbyte(effective_address);
-//             cpu_state.reg_pc += 3;
-//         break;
-
-//         case ADDRESS_MODE_ACCUMULATOR:
-//             /* nothing to really do here. */
-//         break;
-
-//         case ADDRESS_MODE_BLOCK_MOVE:
-//             /* the second byte of the instruction contains the high-order 8 bits of the
-//             destination address and the Y Index Register contains the low-order 16 bits of
-//             the destination address.  The third byte of the instruction contains the
-//             high-order 8 bits of the source address and the X Index Register contains
-//             the low-order bits of the source address.  The C Accumulator contains one less
-//             than the number of bytes to move.  The second byte of the block move instructions
-//             is also loaded into the Data Bank Register... */
-//             effective_address = cpu_read_word(effective_address);
-//             cpu_state.reg_pc += 2;
-//             cpu_state.reg_dbrw.reg_dbr = effective_address & 0x000000ff;
-//         break;
-
-//         case ADDRESS_MODE_DIRECT_INDEXED_INDIRECT:
-//             /* the second byte of the instruction is added to the sum of the
-//             Direct Register and the X Index Register. The result points to the
-//             low-order 16 bits of the effective address. The Data Bank Register
-//             contains the high-order 8 bits of the effective address...  */
-//             effective_address = (uint16_t)(cpu_read_byte(effective_address) + cpu_state.reg_d + cpu_state.reg_x.reg_x);
-//             effective_address = EFFECTIVE_ADDRESS(cpu_state.reg_pbrw.reg_pbr, cpu_read_word(effective_address));
-//             cpu_state.reg_pc++;
-//         break;
-
-//         case ADDRESS_MODE_DIRECT_INDEXED_X:
-//             /* the second byte of the instruction is added to the sum of the
-//             Direct Register and the X Index Register to form the 16-bit effective address.
-//             The operand is always in Bank 0...  */
-
-//             /* TOOO: in emulation mode, indexing past the end of the direct page wraps back to its start, which needs to be
-//             handled here. Only the low 8 bits of the reg_x + reg_d + array_base sum are used as the direct page offset.*/
-//             effective_address = (uint16_t)(cpu_read_byte(effective_address) + cpu_state.reg_d + cpu_state.reg_x.reg_x);
-//             cpu_state.reg_pc++;
-//         break;
-
-//         case ADDRESS_MODE_DIRECT_INDEXED_Y:
-//             /* the second byte of the instruction is added to the sum of the
-//             Direct Register and the Y Index Register to form the 16-bit effective address.
-//             The operand is always in Bank 0...  */
-
-//             /* TOOO: in emulation mode, indexing past the end of the direct page wraps back to its start, which needs to be
-//             handled here. Only the low 8 bits of the reg_x + reg_d + array_base sum are used as the direct page offset.*/
-//             effective_address = (uint16_t)(cpu_read_byte(effective_address) + cpu_state.reg_d + cpu_state.reg_y.reg_y);
-//             cpu_state.reg_pc++;
-//         break;
-
-//         case ADDRESS_MODE_DIRECT_INDIRECT_INDEXED:
-//             /* the second byte of the instruction is added to the Direct Register (D).
-//             The 16-bit content of this memory location is then combined with the
-//             Data Bank register to form a 24-bit base address.  The Y Index Register
-//             is added to the base address to form the effective address... */
-//             effective_address = (uint16_t)(cpu_read_byte(effective_address) + cpu_state.reg_d);
-//             effective_address = (EFFECTIVE_ADDRESS(cpu_state.reg_dbrw.reg_dbr, cpu_read_word(effective_address)) + cpu_state.reg_y.reg_y) & 0x00ffffff;
-//             cpu_state.reg_pc++;
-//         break;
-
-//         case ADDRESS_MODE_DIRECT_INDIRECT_LONG_INDEXED:
-//             /* the 24-bit base address is pointed to by the sum of the second byte of
-//             the instruction and the Direct Register.  The effective address is this
-//             24-bit base address plus the Y Index Register... */
-//             effective_address = (uint16_t)(cpu_read_byte(effective_address) + cpu_state.reg_d);
-//             effective_address = (cpu_read_wordbyte(effective_address) + cpu_state.reg_y.reg_y) & 0x00ffffff;
-//             cpu_state.reg_pc++;
-//         break;
-
-//         case ADDRESS_MODE_DIRECT_INDIRECT_LONG:
-//             /* the second byte of the instruction is added to the Direct Register
-//             to form a pointer to the 24-bit effective address... */
-//             effective_address = (uint16_t)(cpu_read_byte(effective_address) + cpu_state.reg_d);
-//             effective_address = cpu_read_wordbyte(effective_address) & 0x00ffffff;
-//             cpu_state.reg_pc++;
-//         break;
-
-//         case ADDRESS_MODE_DIRECT_INDIRECT:
-//             /* the second byte of the instruction is added to the Direct Register to
-//             form a pointer to the low-order 16 bits of the effective address.
-//             The Data Bank Register contains the high-order 8 bits of the effective address... */
-//             effective_address = (uint16_t)(cpu_read_byte(effective_address) + cpu_state.reg_d);
-//             effective_address = EFFECTIVE_ADDRESS(cpu_state.reg_dbrw.reg_dbr, cpu_read_word(effective_address));
-//             cpu_state.reg_pc++;
-//         break;
-
-//         case ADDRESS_MODE_DIRECT:
-//             /* the second byte of the instruction is added to the Direct Register (D)
-//             to form the effective address. */
-//             effective_address = (uint16_t)(cpu_read_byte(effective_address) + cpu_state.reg_d);
-//             cpu_state.reg_pc++;
-//         break;
-
-//         case ADDRESS_MODE_IMMEDIATE:
-//         {
-//             /* the operand is the second byte (second and third bytes when in the 16-bit mode)
-//             of the instruction... */
-//             uint32_t take_third = 0;
-
-//             switch(opcode.opcode)
-//             {
-//                 case OPCODE_LDA: case OPCODE_CMP: case OPCODE_AND: case OPCODE_BIT:
-//                 case OPCODE_EOR: case OPCODE_ORA: case OPCODE_ADC: case OPCODE_SBC:
-//                     /* if the M flag is 0, the accumulator is in 16 bit mode,
-//                     which means we'll be taking the next two bytes after the opcode */
-//                     cpu_state.reg_pc += (cpu_state.reg_p[cpu_state.reg_e] & CPU_STATUS_FLAG_MEMORY) == 0;
-//                 break;
-
-//                 case OPCODE_LDX: case OPCODE_LDY:
-//                 case OPCODE_CPX: case OPCODE_CPY:
-//                     /* if the X flag is 0, the index registers are be in 16 bit mode,
-//                     which means we'll be taking the next two bytes after the opcode */
-//                     cpu_state.reg_pc += (cpu_state.reg_p[cpu_state.reg_e] & CPU_STATUS_FLAG_INDEX) == 0;
-//                 break;
-//             }
-
-//             cpu_state.reg_pc++;
-//         }
-//         break;
-
-//         case ADDRESS_MODE_IMPLIED:
-//             /* :) */
-//         break;
-
-//         case ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE_LONG:
-//             /* the second and third bytes of the instruction are added to the Program Counter,
-//             which has been updated to point to the OpCode of the next instruction.
-//             With the branch instruction, the Program Counter is loaded with the result.
-//             With the Push Effective Relative instruction, the result is stored on the stack.
-//             The offset is a signed 16-bit quantity in the range from -32768 to 32767.
-//             The Program Bank Register is not affected...  */
-//             cpu_state.reg_pc += 2;
-//             /* the cast for int32_t is necessary to not have reg_pc be seen as a negative number in
-//             case it's value is above 0x7fff */
-//             effective_address = EFFECTIVE_ADDRESS(cpu_state.reg_pbrw.reg_pbr, ((int32_t)cpu_state.reg_pc + (int16_t)cpu_read_word(effective_address)));
-//         break;
-
-//         case ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE:
-//             /* used only with the branch instructions. If the condition being tested is met,
-//             the second byte of the instruction is added to the Program Counter, which
-//             has been updated to point to the OpCode of the next instruction. The offset
-//             is a signed 8-bit quantity in the range from -128 to 127.  The Program Bank
-//             Register is not affected... */
-//             cpu_state.reg_pc++;
-//             /* the cast for int32_t is necessary to not have reg_pc be seen as a negative number in
-//             case it's value is above 0x7fff */
-//             effective_address = EFFECTIVE_ADDRESS(cpu_state.reg_pbrw.reg_pbr, ((int32_t)cpu_state.reg_pc + (int8_t)cpu_read_byte(effective_address)));
-//         break;
-
-//         case ADDRESS_MODE_STACK:
-//             if(opcode.opcode == OPCODE_PEA)
-//             {
-//                 effective_address = cpu_read_word(effective_address);
-//                 pushes[OPCODE_PEA - OPCODE_PEA].src_reg = &effective_address;
-//                 pushes[OPCODE_PEA - OPCODE_PEA].flag = 0xffff;
-//                 cpu_state.reg_pc += 2;
-//             }
-//             else if(opcode.opcode == OPCODE_PER)
-//             {
-//                 effective_address = cpu_read_word(effective_address);
-//                 cpu_state.reg_pc += 2;
-//                 effective_address += cpu_state.reg_pc;
-//                 pushes[OPCODE_PER - OPCODE_PEA].src_reg = &effective_address;
-//                 pushes[OPCODE_PER - OPCODE_PEA].flag = 0xffff;
-//             }
-//             else if(opcode.opcode == OPCODE_PEI)
-//             {
-//                 effective_address = EFFECTIVE_ADDRESS(0, (uint16_t)cpu_read_byte(effective_address) + cpu_state.reg_d);
-//                 effective_address = cpu_read_word(effective_address);
-//                 pushes[OPCODE_PEI - OPCODE_PEA].src_reg = &effective_address;
-//                 pushes[OPCODE_PEI - OPCODE_PEA].flag = 0xffff;
-//                 cpu_state.reg_pc++;
-//             }
-//             /* :) */
-//         break;
-
-//         case ADDRESS_MODE_STACK_RELATIVE:
-//             /* the low-order 16 bits of the effective address is formed from the
-//             sum of the second byte of the instruction and the stack pointer.
-//             The high-order 8 bits of the effective address are always zero.
-//             The relative offset is an unsigned 8-bit quantity in the range of 0 to 255. */
-//             effective_address = (uint16_t)((uint8_t)cpu_read_byte(effective_address) + cpu_state.reg_s);
-//             cpu_state.reg_pc++;
-//         break;
-
-//         case ADDRESS_MODE_STACK_RELATIVE_INDIRECT_INDEXED:
-//             /* the second byte of the instruction is added to the Stack Pointer to
-//             form a pointer to the low-order 16-bit base address in Bank 0.
-//             The Data Bank Register contains the high-order 8 bits of the base address.
-//             The effective address is the sum of the 24-bit base address and the Y
-//             Index Register... */
-//             effective_address = (uint16_t)((uint8_t)cpu_read_byte(effective_address) + cpu_state.reg_s);
-//             effective_address = (EFFECTIVE_ADDRESS(cpu_state.reg_dbrw.reg_dbr, cpu_read_word(effective_address)) + cpu_state.reg_y.reg_y) & 0x00ffffff;
-//             cpu_state.reg_pc++;
-//         break;
-
-//         default:
-//         case ADDRESS_MODE_UNKNOWN:
-//            /* :( */
-//         break;
-//     }
-
-//     switch(opcode.opcode_class)
-//     {
-//         case OPCODE_CLASS_ALU:
-//         {
-//             uint32_t alu_op = 0;
-//             uint32_t alu_width = 0;
-//             uint32_t operand0 = 0;
-//             uint32_t operand1;
-//             void *store_address;
-//             uint8_t prev_p;
-//             uint32_t store_result = CPU_STORE_RESULT_REGISTER;
-
-//             switch(opcode.opcode)
-//             {
-//                 case OPCODE_ADC: case OPCODE_AND: case OPCODE_SBC: case OPCODE_EOR: case OPCODE_ORA:
-//                     /* those 5 instructions will load something from memory, and the result will always
-//                     be stored in the accumulator */
-//                     alu_op = (uint32_t []){ALU_OP_ADD, ALU_OP_AND, ALU_OP_SUB, ALU_OP_XOR, ALU_OP_OR}[opcode.opcode - OPCODE_ADC];
-//                     alu_width = cpu_state.reg_p[0] & CPU_STATUS_FLAG_MEMORY;
-//                     operand0 = cpu_state.reg_accum.reg_accumC;
-//                     store_address = &cpu_state.reg_accum.reg_accumC;
-//                 break;
-
-//                 case OPCODE_CMP:
-//                     alu_op = ALU_OP_CMP;
-//                     alu_width = cpu_state.reg_p[0] & CPU_STATUS_FLAG_MEMORY;
-//                     operand0 = cpu_state.reg_accum.reg_accumC;
-//                     store_result = CPU_STORE_RESULT_NO_STORE;
-//                 break;
-
-//                 case OPCODE_CPX:
-//                     alu_op = ALU_OP_CMP;
-//                     alu_width = cpu_state.reg_p[0] & CPU_STATUS_FLAG_INDEX;
-//                     operand0 = cpu_state.reg_x.reg_x;
-//                     store_result = CPU_STORE_RESULT_NO_STORE;
-//                 break;
-
-//                 case OPCODE_CPY:
-//                     alu_op = ALU_OP_CMP;
-//                     alu_width = cpu_state.reg_p[0] & CPU_STATUS_FLAG_INDEX;
-//                     operand0 = cpu_state.reg_y.reg_y;
-//                     store_result = CPU_STORE_RESULT_NO_STORE;
-//                 break;
-
-//                 case OPCODE_ROL: case OPCODE_ROR: case OPCODE_DEC: case OPCODE_INC: case OPCODE_ASL: case OPCODE_LSR:
-//                     alu_op = (uint32_t []){ALU_OP_ROL, ALU_OP_ROR, ALU_OP_DEC, ALU_OP_INC, ALU_OP_SHL, ALU_OP_SHR}[opcode.opcode - OPCODE_ROL];
-//                     alu_width = cpu_state.reg_p[0] & CPU_STATUS_FLAG_MEMORY;
-//                     if(opcode.address_mode != ADDRESS_MODE_ACCUMULATOR)
-//                     {
-//                         store_result = CPU_STORE_RESULT_MEMORY;
-//                         store_address = (void *)effective_address;
-//                         operand0 = 0xffffffff;
-//                     }
-//                     else
-//                     {
-//                         store_address = &cpu_state.reg_accum.reg_accumC;
-//                         operand0 = cpu_state.reg_accum.reg_accumC;
-//                     }
-//                 break;
-
-//                 case OPCODE_DEX: case OPCODE_INX:
-//                     /* OPCODE_INX lsb = 1, OPCODE_DEX lsb = 0 */
-//                     alu_op = (uint32_t []){ALU_OP_DEC, ALU_OP_INC}[opcode.opcode & 1];
-//                     alu_width = cpu_state.reg_p[0] & CPU_STATUS_FLAG_INDEX;
-//                     operand0 = cpu_state.reg_x.reg_x;
-//                     store_address = &cpu_state.reg_x.reg_x;
-//                 break;
-
-//                 case OPCODE_DEY: case OPCODE_INY:
-//                     /* OPCODE_INY lsb = 1, OPCODE_DEY = 0 */
-//                     alu_op = (uint32_t []){ALU_OP_DEC, ALU_OP_INC}[opcode.opcode & 1];
-//                     alu_width = cpu_state.reg_p[0] & CPU_STATUS_FLAG_INDEX;
-//                     operand0 = cpu_state.reg_y.reg_y;
-//                     store_address = &cpu_state.reg_y.reg_y;
-//                 break;
-
-//                 case OPCODE_TRB: case OPCODE_TSB:
-//                     /* OPCODE_TSB lsb = 1, OPCODE_TRB lsb = 0 */
-//                     alu_op = (uint32_t []){ALU_OP_TRB, ALU_OP_TSB}[opcode.opcode & 1];
-//                     alu_width = 1;
-//                     store_result = CPU_STORE_RESULT_NO_STORE;
-//                 break;
-
-//                 case OPCODE_BIT:
-//                     alu_op = ALU_OP_AND;
-//                     alu_width = cpu_state.reg_p[0] & CPU_STATUS_FLAG_MEMORY;
-//                     store_result = CPU_STORE_RESULT_NO_STORE;
-//                     operand0 = cpu_state.reg_accum.reg_accumC;
-//                     prev_p = cpu_state.reg_p[cpu_state.reg_e];
-//                 break;
-//             }
-
-//             if(opcode.address_mode != ADDRESS_MODE_ACCUMULATOR && opcode.address_mode != ADDRESS_MODE_IMPLIED)
-//             {
-//                 if(alu_width)
-//                 {
-//                     operand1 = cpu_read_byte(effective_address);
-//                 }
-//                 else
-//                 {
-//                     operand1 = cpu_read_word(effective_address);
-//                 }
-
-//                 if(operand0 == 0xffffffff)
-//                 {
-//                     /* it's not possible to have an operand with the value 0xffffffff, so it
-//                     works nicely to signal that we'll be treating a value from memory as the
-//                     operand0 */
-//                     operand0 = operand1;
-//                 }
-//             }
-
-//             uint16_t result = alu(operand0, operand1, alu_op, alu_width);
-
-//             if(opcode.opcode == OPCODE_BIT)
-//             {
-//                 if(opcode.address_mode != ADDRESS_MODE_IMMEDIATE)
-//                 {
-//                     /* if the addressing mode is not immediate, BIT will copy the msb and the next
-//                     bit to it to the negative and overflow bits, respectively, in the status register.
-//                     The alu took care of doing the AND and setting the Z flag, so we just need to assign
-//                     the bits to the status register here */
-//                     if(!alu_width)
-//                     {
-//                         operand1 >>= 8;
-//                     }
-//                 }
-//                 else
-//                 {
-//                     /* when using immediate addressing mode, the N and V flags are not affected,
-//                     so restore N and V to the values they had before the alu op took place. */
-//                     operand1 = prev_p;
-//                 }
-
-//                 /* corresponding bits with different values will produce a 1, and corresponding bits
-//                 with the same value will produce a 0. Bits 1 are the bits that have to be changed,
-//                 and whenever there's a xor between 1 and something else, the value is flipped. So
-//                 we just take the result of the first xor, mask out all but bit 7 and 6, and then
-//                 xor this with the status register. This will flip only the bits that are different. */
-//                 operand1 = (cpu_state.reg_p[cpu_state.reg_e] ^ operand1) & 0xc0;
-//                 cpu_state.reg_p[cpu_state.reg_e] ^= operand1;
-//             }
-
-//             switch(store_result)
-//             {
-//                 case CPU_STORE_RESULT_REGISTER:
-//                     if(alu_width)
-//                     {
-//                         *(uint8_t* )store_address = result;
-//                     }
-//                     else
-//                     {
-//                         *(uint16_t* )store_address = result;
-//                     }
-//                 break;
-
-//                 case CPU_STORE_RESULT_MEMORY:
-//                     if(alu_width)
-//                     {
-//                         cpu_write_byte(effective_address, result);
-//                     }
-//                     else
-//                     {
-//                         cpu_write_word(effective_address, result);
-//                     }
-//                 break;
-//             }
-//         }
-//         break;
-
-//         case OPCODE_CLASS_BRANCH:
-//         {
-//             /*
-//                 https://wiki.superfamicom.org/uploads/assembly-programming-manual-for-w65c816.pdf, pg.361, pg.362
-
-//                 the return address of jump to subroutines instructions is the address of the last byte of the instrunction,
-//                 not the address of the first byte of the next. That's why pc gets decremented before being pushed onto the
-//                 stack when we're executing a JSR or JSL. This means that the popped value gets incremented by one before
-//                 being loaded into pc.
-//             */
-
-//             /*
-//                 https://wiki.superfamicom.org/uploads/assembly-programming-manual-for-w65c816.pdf, pg.391
-
-//                 differently from JSR and JSL, the return address pushed onto the stack when an interrupt
-//                 happens is the address of the next instruction, instead of being the address of the last
-//                 byte of the instruction.
-//             */
-//             uint8_t *stack_address;
-//             switch(opcode.opcode)
-//             {
-//                 case OPCODE_JML:
-//                     cpu_state.reg_pc = (uint16_t )effective_address;
-//                     cpu_state.reg_pbrw.reg_pbr = (uint8_t )(effective_address >> 16);
-//                 break;
-
-//                 case OPCODE_JMP:
-//                     cpu_state.reg_pc = (uint16_t )effective_address;
-
-//                     if(opcode.address_mode == ADDRESS_MODE_ABSOLUTE_LONG)
-//                     {
-//                         cpu_state.reg_pbrw.reg_pbr = (uint8_t )(effective_address >> 16);
-//                     }
-//                 break;
-
-//                 case OPCODE_JSL:
-//                     cpu_state.reg_pc--;
-
-//                     cpu_write_byte(cpu_state.reg_s, cpu_state.reg_pbrw.reg_pbr);
-//                     cpu_state.reg_s--;
-//                     cpu_write_byte(cpu_state.reg_s, cpu_state.reg_pc >> 8);
-//                     cpu_state.reg_s--;
-//                     cpu_write_byte(cpu_state.reg_s, cpu_state.reg_pc);
-//                     cpu_state.reg_s--;
-
-//                     cpu_state.reg_pc = (uint16_t )effective_address;
-//                     cpu_state.reg_pbrw.reg_pbr = (uint8_t )(effective_address >> 16);
-//                 break;
-
-//                 case OPCODE_JSR:
-//                     cpu_state.reg_pc--;
-
-//                     cpu_write_byte(cpu_state.reg_s, cpu_state.reg_pc >> 8);
-//                     cpu_state.reg_s--;
-//                     cpu_write_byte(cpu_state.reg_s, cpu_state.reg_pc);
-//                     cpu_state.reg_s--;
-
-//                     cpu_state.reg_pc = (uint16_t )effective_address;
-//                 break;
-
-//                 case OPCODE_RTI:
-//                     cpu_state.reg_s++;
-//                     cpu_state.reg_p[cpu_state.reg_e] = cpu_read_byte(cpu_state.reg_s);
-//                     cpu_state.reg_s++;
-//                     cpu_state.reg_pc = (uint16_t)cpu_read_byte(cpu_state.reg_s);
-//                     cpu_state.reg_s++;
-//                     cpu_state.reg_pc |= (uint16_t)cpu_read_byte(cpu_state.reg_s) << 8;
-
-//                     if(!cpu_state.reg_e)
-//                     {
-//                         cpu_state.reg_s++;
-//                         cpu_state.reg_pbrw.reg_pbr = (uint8_t)cpu_read_byte(cpu_state.reg_s);
-//                     }
-//                 break;
-
-//                 case OPCODE_RTL:
-//                     cpu_state.reg_s++;
-//                     cpu_state.reg_pc = (uint16_t)cpu_read_byte(cpu_state.reg_s);
-//                     cpu_state.reg_s++;
-//                     cpu_state.reg_pc |= (uint16_t)cpu_read_byte(cpu_state.reg_s) << 8;
-//                     cpu_state.reg_pc++;
-//                     cpu_state.reg_s++;
-//                     cpu_state.reg_pbrw.reg_pbr = cpu_read_byte(cpu_state.reg_s);
-//                 break;
-
-//                 case OPCODE_RTS:
-//                     cpu_state.reg_s++;
-//                     cpu_state.reg_pc = (uint16_t)cpu_read_byte(cpu_state.reg_s);
-//                     cpu_state.reg_s++;
-//                     cpu_state.reg_pc |= (uint16_t)cpu_read_byte(cpu_state.reg_s) << 8;
-//                     cpu_state.reg_pc++;
-//                 break;
-
-//                 case OPCODE_BRL:
-//                     cpu_state.reg_pbrw.reg_pbr = (uint8_t)(effective_address >> 16);
-//                 case OPCODE_BRA:
-//                     cpu_state.reg_pc = (uint16_t)effective_address;
-//                     cpu_cycle_count += CPU_MASTER_CYCLES;
-//                 break;
-
-//                 default:
-//                 {
-//                     /* All conditional branch instructions use the program counter relative addressing
-//                     mode. */
-
-//                     uint32_t execute_branch;
-//                     uint32_t cond_index = (opcode.opcode - OPCODE_BCC);
-
-//                     /* "opposite" branch instructions - instructions that use the same flag
-//                     to decide whether the branch is taken or not - have numeric values that
-//                     come one after another, and the instruction that takes the branch if
-//                     the flag is cleared has its LSB equal to 0, while the one that takes
-//                     if the flag is set has its LSB equal to 1. The branch condition table
-//                     is indexed by right shifting the branch instruction index by one, thus
-//                     getting rid of the different LSB. The condition value then is bitwise
-//                     AND'ed with the status register, and then logically AND'ed with one.
-//                     This returns 1 if the flag is set, 0 otherwise. After that, this value
-//                     is compared to the condition index's lsb. If the value is 1, and the
-//                     condition index lsb is one, the branch is taken. If the value is 0,
-//                     and the condition index lsb is 0, the branch is taken. The branch is
-//                     not taken otherwise. */
-//                     execute_branch = (cpu_state.reg_p[cpu_state.reg_e] & branch_conds[cond_index >> 1].condition) && 1;
-//                     execute_branch = execute_branch == (cond_index & 1);
-
-//                     if(execute_branch)
-//                     {
-//                         cpu_state.reg_pc = (uint16_t)effective_address;
-//                         cpu_cycle_count += CPU_MASTER_CYCLES;
-//                     }
-//                 }
-//                 break;
-//             }
-//         }
-//         break;
-
-//         case OPCODE_CLASS_LOAD:
-//         {
-//             uint32_t src_value;
-//             uint32_t zero;
-//             uint32_t sign;
-
-//             struct load_t *load = loads + (opcode.opcode - OPCODE_LDA);
-
-//             if(cpu_state.reg_p[0] & load->flag)
-//             {
-//                 src_value = cpu_read_byte(effective_address);
-//                 *(uint8_t *)load->dst_reg = src_value;
-//                 sign = (int8_t)src_value < 0;
-//                 zero = (int8_t)src_value == 0;
-//             }
-//             else
-//             {
-//                 src_value = cpu_read_word(effective_address);
-//                 *(uint16_t *)load->dst_reg = src_value;
-//                 sign = (int16_t)src_value < 0;
-//                 zero = (int16_t)src_value == 0;
-//             }
-//             uint8_t flags = cpu_state.reg_p[cpu_state.reg_e];
-//             flags = zero ? (flags | CPU_STATUS_FLAG_ZERO) : (flags & ~CPU_STATUS_FLAG_ZERO);
-//             flags = sign ? (flags | CPU_STATUS_FLAG_NEGATIVE) : (flags & ~CPU_STATUS_FLAG_NEGATIVE);
-//             cpu_state.reg_p[cpu_state.reg_e] = flags;
-//         }
-//         break;
-
-//         case OPCODE_CLASS_STORE:
-//         {
-//             struct store_t *store = stores + (opcode.opcode - OPCODE_STA);
-
-//             if(cpu_state.reg_p[0] & store->flag)
-//             {
-//                 cpu_write_byte(effective_address, *(uint8_t *)store->src_reg);
-//             }
-//             else
-//             {
-//                 cpu_write_word(effective_address, *(uint16_t *)store->src_reg);
-//             }
-//         }
-//         break;
-
-//         case OPCODE_CLASS_STACK:
-//         {
-//             if(opcode.opcode <= OPCODE_PHY)
-//             {
-//                 struct push_t *push = pushes + (opcode.opcode - OPCODE_PEA);
-
-//                 if((uint16_t)(cpu_state.reg_p[cpu_state.reg_e] & push->flag) != push->flag)
-//                 {
-//                     /* this test is mainly here for the accumulator and index registers.
-//                     When the M or X flags are set, the register is in 8 bit mode, otherwise
-//                     it's in 16 bit mode. The push_t item specifies which flag to test. If we
-//                     AND the flag mask with the flag register, and the flag turns out to be
-//                     set, we don't write this byte to the stack, because it means the involved
-//                     register is in byte mode.
-
-//                     However, there are some registers that are always 8 bits wide, and some
-//                     that are always 16 bit wide. For those that are 8 bits wide, we use 0
-//                     as the flag mask to be tested, because that will always fail the above
-//                     condition. For registers that are always 16 but, we use 0xffff as the
-//                     flag mask, which makes the above condition always pass. */
-//                     cpu_write_byte(cpu_state.reg_s, *((uint8_t *)push->src_reg + 1));
-//                     cpu_state.reg_s--;
-//                 }
-
-//                 cpu_write_byte(cpu_state.reg_s, *(uint8_t *)push->src_reg);
-//                 cpu_state.reg_s--;
-//             }
-//             else
-//             {
-//                 struct pop_t *pop = pops + (opcode.opcode - OPCODE_PLA);
-//                 uint32_t zero = 0;
-//                 uint32_t sign = 0;
-
-//                 cpu_state.reg_s++;
-//                 *(uint8_t *)pop->dst_reg = cpu_read_byte(cpu_state.reg_s);
-
-//                 if((uint16_t)(cpu_state.reg_p[cpu_state.reg_e] & pop->flag) != pop->flag)
-//                 {
-//                     /* same explanation as for the push code above */
-//                     cpu_state.reg_s++;
-//                     *((uint8_t *)pop->dst_reg + 1) = cpu_read_byte(cpu_state.reg_s);
-
-//                     zero = !((*(uint16_t *)pop->dst_reg) & 0xffff);
-//                     sign = (*(uint16_t *)pop->dst_reg) & 0x8000;
-//                 }
-//                 else
-//                 {
-//                     zero = !((*(uint8_t *)pop->dst_reg) & 0xff);
-//                     sign = (*(uint8_t *)pop->dst_reg) & 0x80;
-//                 }
-
-//                 if(opcode.opcode != OPCODE_PLP)
-//                 {
-//                     /* all push instructions (with the exception of plp, which affects all flags), affect the
-//                     N and Z flags. */
-//                     uint8_t flags = cpu_state.reg_p[cpu_state.reg_e];
-//                     flags = zero ? (flags | CPU_STATUS_FLAG_ZERO) : (flags & ~CPU_STATUS_FLAG_ZERO);
-//                     flags = sign ? (flags | CPU_STATUS_FLAG_NEGATIVE) : (flags & ~CPU_STATUS_FLAG_NEGATIVE);
-//                     cpu_state.reg_p[cpu_state.reg_e] = flags;
-//                 }
-//             }
-//         }
-//         break;
-
-//         case OPCODE_CLASS_STANDALONE:
-//             switch(opcode.opcode)
-//             {
-//                 case OPCODE_REP:
-//                     cpu_state.reg_p[cpu_state.reg_e] &= ~cpu_read_byte(effective_address);
-//                 break;
-
-//                 case OPCODE_CLC:
-//                     cpu_state.reg_p[cpu_state.reg_e] &= ~CPU_STATUS_FLAG_CARRY;
-//                 break;
-
-//                 case OPCODE_CLD:
-//                     cpu_state.reg_p[cpu_state.reg_e] &= ~CPU_STATUS_FLAG_DECIMAL;
-//                 break;
-
-//                 case OPCODE_CLV:
-//                     cpu_state.reg_p[cpu_state.reg_e] &= ~CPU_STATUS_FLAG_OVERFLOW;
-//                 break;
-
-//                 case OPCODE_CLI:
-//                     cpu_state.reg_p[cpu_state.reg_e] &= ~CPU_STATUS_FLAG_IRQ_DISABLE;
-//                 break;
-
-//                 case OPCODE_SEP:
-//                     cpu_state.reg_p[cpu_state.reg_e] |= cpu_read_byte(effective_address);
-//                 break;
-
-//                 case OPCODE_SEC:
-//                     cpu_state.reg_p[cpu_state.reg_e] |= CPU_STATUS_FLAG_CARRY;
-//                 break;
-
-//                 case OPCODE_SED:
-//                     cpu_state.reg_p[cpu_state.reg_e] |= CPU_STATUS_FLAG_DECIMAL;
-//                 break;
-
-//                 case OPCODE_SEI:
-//                     cpu_state.reg_p[cpu_state.reg_e] |= CPU_STATUS_FLAG_IRQ_DISABLE;
-//                 break;
-
-//                 case OPCODE_WAI:
-//                     cpu_state.s_wai = 1;
-//                 break;
-
-//                 case OPCODE_WDM:
-//         //            op_code_str = "WDM";
-//                 break;
-
-//                 case OPCODE_XBA:
-//                 {
-//                     cpu_state.reg_accum.reg_accumC = ((cpu_state.reg_accum.reg_accumC >> 8) & 0xff) | ((cpu_state.reg_accum.reg_accumC << 8) & 0xff00);
-//                     uint8_t flags = cpu_state.reg_p[cpu_state.reg_e];
-//                     cpu_state.reg_p[cpu_state.reg_e] = (cpu_state.reg_accum.reg_accumA & 0x80) ? (flags | CPU_STATUS_FLAG_NEGATIVE) : (flags & ~CPU_STATUS_FLAG_NEGATIVE);
-//                 }
-//                 break;
-
-//                 case OPCODE_NOP:
-//             //            op_code_str = "NOP";
-//                 break;
-
-//                 case OPCODE_XCE:
-//                 {
-//                     uint32_t emulation = cpu_state.reg_p[cpu_state.reg_e] & CPU_STATUS_FLAG_CARRY;
-
-//                     if(emulation != cpu_state.reg_e)
-//                     {
-//                         if(emulation && !cpu_state.reg_e)
-//                         {
-//                             /* we'll be entering emulation mode, which means the index and accumulator
-//                             registers will be always 8 bits. To simplify things a bit, we set those
-//                             flags in the native mode flags register, so all the code that tests them
-//                             always see them set when in emulation mode. Also, when switching from
-//                             emulation to native mode, the cpu forces those flags to be set, so this
-//                             also gets us the correct behavior in this case. */
-//                             cpu_state.reg_p[0] |= CPU_STATUS_FLAG_MEMORY | CPU_STATUS_FLAG_INDEX;
-//                         }
-
-//                         uint32_t flags = CPU_STATUS_FLAG_DECIMAL | CPU_STATUS_FLAG_NEGATIVE | CPU_STATUS_FLAG_ZERO | CPU_STATUS_FLAG_DECIMAL | CPU_STATUS_FLAG_IRQ_DISABLE;
-//                         cpu_state.reg_p[emulation] &= ~(flags | CPU_STATUS_FLAG_CARRY);
-//                         cpu_state.reg_p[emulation] |= (cpu_state.reg_p[emulation ^ 1] & flags) | cpu_state.reg_e;
-//                         cpu_state.reg_e = emulation;
-//                     }
-//                 }
-//                 break;
-
-//                 case OPCODE_BRK:
-//                     if(cpu_state.reg_e)
-//                     {
-//                         handler = 0xfffe;
-//                     }
-//                     else
-//                     {
-//                         handler = 0xfff6;
-//                     }
-//                     goto _brk_interrupt;
-//                 break;
-
-//                 /* apparently MVN and MVP operate similar to rep stos* x86 instructions, although it refetches the
-//                 opcode every time. I'm not sure if that's the case for x86. Regardless, we restore PC to point at the
-//                 opcode as long as there's stuff to move */
-//                 case OPCODE_MVN:
-//                 {
-//                     uint32_t dst_effective_address = EFFECTIVE_ADDRESS((uint8_t)effective_address, cpu_state.reg_y.reg_y);
-//                     uint32_t src_effective_address = EFFECTIVE_ADDRESS((uint8_t)(effective_address >> 8), cpu_state.reg_x.reg_x);
-//                     cpu_state.reg_y.reg_y++;
-//                     cpu_state.reg_x.reg_x++;
-//                     cpu_state.reg_accum.reg_accumC--;
-//                     cpu_write_byte(dst_effective_address, cpu_read_byte(src_effective_address));
-
-//                     if(cpu_state.reg_accum.reg_accumC != 0xffff)
-//                     {
-//                         cpu_state.reg_pc = opcode_pc;
-//                     }
-//                 }
-//                 break;
-
-//                 case OPCODE_MVP:
-//                     {
-//                         uint32_t dst_effective_address = EFFECTIVE_ADDRESS((uint8_t)effective_address, cpu_state.reg_y.reg_y);
-//                         uint32_t src_effective_address = EFFECTIVE_ADDRESS((uint8_t)(effective_address >> 8), cpu_state.reg_x.reg_x);
-//                         cpu_state.reg_y.reg_y--;
-//                         cpu_state.reg_x.reg_x--;
-//                         cpu_state.reg_accum.reg_accumC--;
-//                         cpu_write_byte(dst_effective_address, cpu_read_byte(src_effective_address));
-
-//                         if(cpu_state.reg_accum.reg_accumC != 0xffff)
-//                         {
-//                             cpu_state.reg_pc = opcode_pc;
-//                         }
-//                     }
-//                 break;
-
-//                 case OPCODE_STP:
-
-//                 break;
-
-//                 case OPCODE_COP:
-
-//                 break;
-
-//                 case OPCODE_UNKNOWN:
-
-//                 break;
-//             }
-//         break;
-
-//         case OPCODE_CLASS_TRANSFER:
-//         {
-//             struct transfer_t *transfer = transfers + (opcode.opcode - OPCODE_TAX);
-//             uint32_t zero;
-//             uint32_t sign;
-
-//             if(cpu_state.reg_p[cpu_state.reg_e] & transfer->flag)
-//             {
-//                 *(uint8_t *)transfer->dst_reg = *(uint8_t *)transfer->src_reg;
-//                 zero = !(*(uint8_t *)transfer->dst_reg & 0xff);
-//                 sign = *(uint8_t *)transfer->dst_reg & 0x80;
-//             }
-//             else
-//             {
-//                 *(uint16_t *)transfer->dst_reg = *(uint16_t *)transfer->src_reg;
-//                 zero = !(*(uint16_t *)transfer->dst_reg & 0xffff);
-//                 sign = *(uint16_t *)transfer->dst_reg & 0x8000;
-//             }
-
-//             if(opcode.opcode != OPCODE_TXS)
-//             {
-//                 /* TXS is the only opcode in the transfer calls that doesn't affect the Z and N flags.*/
-//                 uint8_t flags = cpu_state.reg_p[cpu_state.reg_e];
-//                 flags = zero ? (flags | CPU_STATUS_FLAG_ZERO) : (flags & ~CPU_STATUS_FLAG_ZERO);
-//                 flags = sign ? (flags | CPU_STATUS_FLAG_NEGATIVE) : (flags & ~CPU_STATUS_FLAG_NEGATIVE);
-//                 cpu_state.reg_p[cpu_state.reg_e] = flags;
-//             }
-//         }
-//         break;
-//     }
-
-//     if(cpu_state.reg_e)
-//     {
-//         /* some conditions that have to be enforced when in emulation mode */
-
-//         /* it's possible to push a value onto the stack, and pop it into
-//         the status register. When in emulation mode, M and X flags are
-//         forced to 1, so here we enforce this behavior */
-//         // cpu_state.reg_p |= CPU_STATUS_FLAG_MEMORY | CPU_STATUS_FLAG_INDEX;
-
-//         /* in emulation mode, the upper byte of the stack pointer is forced
-//         to 1, so here we enforce it to. */
-//         cpu_state.reg_s = (cpu_state.reg_s & 0xff) | 0x0100;
-//     }
-
-//     if(cpu_state.reg_p[0] & CPU_STATUS_FLAG_INDEX)
-//     {
-//         cpu_state.reg_x.reg_xH = 0;
-//         cpu_state.reg_y.reg_yH = 0;
-//     }
-// }
-
-
+void nmitimen_write(uint32_t effective_address, uint8_t value)
+{
+    ram1_regs[CPU_REG_NMITIMEN] = value;
+
+    if(value & (CPU_NMITIMEN_FLAG_HTIMER_EN | CPU_NMITIMEN_FLAG_VTIMER_EN))
+    {
+        update_irq_counter();
+    }
+    else
+    {
+        ram1_regs[CPU_REG_TIMEUP] = 0;
+    }
+}
+
+uint8_t timeup_read(uint32_t effective_address)
+{
+    uint8_t value = ram1_regs[CPU_REG_TIMEUP];
+    ram1_regs[CPU_REG_TIMEUP] = 0;
+    return value;
+}
 
 
 

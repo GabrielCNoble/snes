@@ -55,8 +55,13 @@ uint8_t  sub_dot = 0;
 uint8_t  dot_length = 4;
 uint16_t latched_counters[2];
 uint32_t scanline_cycles = 0;
+uint64_t irq_cycle = 0xffffffffffffffff;
+uint32_t cur_irq_counter = 0;
+uint32_t irq_count = 0;
 
 struct dot_t *framebuffer;
+
+
 
 
 // #define PPU_REG_OFFSET(reg) (reg-PPU_REGS_START_ADDRESS)
@@ -79,24 +84,32 @@ union
     uint16_t word;
 }oamdata_buffer;
 
-uint32_t            vram_addr;
-uint32_t            last_vmdata_reg;
-extern uint8_t *    vram;
 extern uint8_t *    ram1_regs;
 extern uint64_t     master_cycles;
 uint32_t            cur_field = 0;
 int32_t             ppu_cycle_count = 0;
 
-struct reg_write_t *    free_writes = NULL;
-struct reg_write_t *    pending_writes = NULL;
-struct reg_write_t *    last_pending_write = NULL;
+//struct reg_write_t *    free_writes = NULL;
+//struct reg_write_t *    pending_writes = NULL;
+//struct reg_write_t *    last_pending_write = NULL;
 
-uint16_t oam_addr = 0;
-uint16_t draw_oam_addr = 0;
-uint8_t oam_byte = 0;
-uint8_t oam[544];
+uint16_t            oam_addr = 0;
+uint16_t            draw_oam_addr = 0;
+uint8_t             oam_byte = 0;
+uint8_t             oam[544];
 
-// uint8_t cgram[];
+uint16_t            cgram_addr = 0;
+uint8_t *           cgram = NULL;
+
+uint32_t            last_vmdata_reg = 0;
+uint32_t            vram_addr = 0;
+uint8_t *           vram = NULL;
+
+struct background_t backgrounds[4];
+
+// uint32_t
+
+// uint8_t cgram[512];
 
 uint32_t vmadd_increment_shifts[] = {
     [PPU_VMADD_INC1]    = 0,
@@ -114,16 +127,33 @@ uint32_t objsel_size_sel_sizes[][2] = {
     [PPU_OBJSEL_SIZE_SEL_32_64]     = {32, 64},
 };
 
-struct bg_offset_t bg_offsets[4];
+// struct bg_offset_t bg_offsets[4];
+
+void (*bg_mode_funcs[])(struct dot_t *dot, uint32_t dot_h, uint32_t dot_v) = {
+    [PPU_BGMODE_MODE0] = bg_mode0_draw,
+    [PPU_BGMODE_MODE1] = bg_mode1_draw,
+    [PPU_BGMODE_MODE2] = bg_mode2_draw,
+    [PPU_BGMODE_MODE3] = bg_mode3_draw,
+    [PPU_BGMODE_MODE4] = bg_mode4_draw,
+    [PPU_BGMODE_MODE5] = bg_mode5_draw,
+    [PPU_BGMODE_MODE6] = bg_mode6_draw,
+    [PPU_BGMODE_MODE7] = bg_mode7_draw,
+};
+
+void (*bg_draw)(struct dot_t *dot, uint32_t dot_h, uint32_t dot_v) = NULL;
 
 void init_ppu()
 {
     framebuffer = calloc(FRAMEBUFFER_WIDTH * FRAMEBUFFER_HEIGHT, sizeof(struct dot_t));
+    cgram = calloc(1, PPU_CGRAM_SIZE);
+    vram = calloc(PPU_VRAM_SIZE, 1);
 }
 
 void shutdown_ppu()
 {
     free(framebuffer);
+    free(cgram);
+    free(vram);
 }
 
 void reset_ppu()
@@ -131,93 +161,124 @@ void reset_ppu()
     vcounter = 0;
     hcounter = 0;
 
-    bg_offsets[0] = (struct bg_offset_t){};
-    bg_offsets[1] = (struct bg_offset_t){};
-    bg_offsets[2] = (struct bg_offset_t){};
-    bg_offsets[3] = (struct bg_offset_t){};
+    backgrounds[0] = (struct background_t){.chr_base = vram, .data_base = vram, .chr_bits = 2};
+    backgrounds[1] = (struct background_t){.chr_base = vram, .data_base = vram, .chr_bits = 2};
+    backgrounds[2] = (struct background_t){.chr_base = vram, .data_base = vram, .chr_bits = 2};
+    backgrounds[3] = (struct background_t){.chr_base = vram, .data_base = vram, .chr_bits = 2};
+
+    bg_draw = bg_mode0_draw;
 }
 
-struct reg_write_t *queue_write(uint16_t reg, uint64_t cycle, uint8_t value)
+
+void bg_mode0_draw(struct dot_t *dot, uint32_t dot_h, uint32_t dot_v)
 {
-    struct reg_write_t *write = NULL;
+    struct mode0_cgram_t *mode_cgram = (struct mode0_cgram_t *)cgram;
 
-//    if(free_writes)
-//    {
-//        write = free_writes;
-//        free_writes = free_writes->next;
-//        write->next = NULL;
-//    }
-//    else
-//    {
-//        write = calloc(1, sizeof(struct reg_write_t));
-//    }
+    for(uint32_t background_index = 0; background_index < 1; background_index++)
+    {
+        struct background_t *background = backgrounds + background_index;
+        uint32_t index_shift = 3 + background->chr_size;
+        uint32_t data_index = (dot_h >> index_shift) + (dot_v >> index_shift) * 32;
+        struct bg_sc_data_t *bg_data = background->data_base + data_index;
+        struct chr2_t *chr = (struct chr2_t *)background->chr_base + (bg_data->data & BG_SC_DATA_NAME_MASK);
+        struct pal4_t *pallete = (struct pal4_t *)cgram + ((bg_data->data >> BG_SC_DATA_PAL_SHIFT) & BG_SC_DATA_PAL_MASK);
+        uint32_t chr_dot_h = dot_h % (1 << index_shift);
+        uint32_t chr_dot_v = dot_v % (1 << index_shift);
 
-//    write->reg = reg;
-//    write->cycle = cycle;
-//    write->value = value;
-//
-//    if(!pending_writes)
-//    {
-//        pending_writes = write;
-//    }
-//    else
-//    {
-//        last_pending_write->next = write;
-//    }
-//    last_pending_write = write;
+        uint32_t color_index = (chr->p01[chr_dot_v] & (0x01 << chr_dot_h)) && 1;
+        color_index |= ((chr->p01[chr_dot_v] & (0x100 << chr_dot_h)) && 1) << 1;
 
-    return write;
+        dot->r = 255 * ((float)((pallete->colors[color_index] >> COL_DATA_R_SHIFT) & COL_DATA_MASK) / 32.0);
+        dot->g = 255 * ((float)((pallete->colors[color_index] >> COL_DATA_G_SHIFT) & COL_DATA_MASK) / 32.0);
+        dot->b = 255 * ((float)((pallete->colors[color_index] >> COL_DATA_B_SHIFT) & COL_DATA_MASK) / 32.0);
+    }
+
+    dot->a = 255;
 }
 
-void apply_writes()
+void bg_mode1_draw(struct dot_t *dot, uint32_t dot_h, uint32_t dot_v)
 {
-//    if(pending_writes)
-//    {
-//        uint64_t ppu_master_cycle = master_cycles + ppu_cycle_count;
-//        while(pending_writes && pending_writes->cycle < ppu_master_cycle)
-//        {
-//            ram1_regs[pending_writes->reg] = pending_writes->value;
-//            struct reg_write_t *next_write = pending_writes->next;
-//            pending_writes->next = free_writes;
-//            free_writes = pending_writes;
-//            pending_writes = next_write;
-//        }
-//    }
+    dot->r = 255;
+    dot->g = 0;
+    dot->b = 0;
+    dot->a = 255;
+}
+
+void bg_mode2_draw(struct dot_t *dot, uint32_t dot_h, uint32_t dot_v)
+{
+    dot->r = 0;
+    dot->g = 255;
+    dot->b = 0;
+    dot->a = 255;
+}
+
+void bg_mode3_draw(struct dot_t *dot, uint32_t dot_h, uint32_t dot_v)
+{
+    dot->r = 0;
+    dot->g = 0;
+    dot->b = 255;
+    dot->a = 255;
+}
+
+void bg_mode4_draw(struct dot_t *dot, uint32_t dot_h, uint32_t dot_v)
+{
+    dot->r = 0;
+    dot->g = 255;
+    dot->b = 255;
+    dot->a = 255;
+}
+
+void bg_mode5_draw(struct dot_t *dot, uint32_t dot_h, uint32_t dot_v)
+{
+    dot->r = 255;
+    dot->g = 255;
+    dot->b = 0;
+    dot->a = 255;
+}
+
+void bg_mode6_draw(struct dot_t *dot, uint32_t dot_h, uint32_t dot_v)
+{
+    dot->r = 255;
+    dot->g = 255;
+    dot->b = 255;
+    dot->a = 255;
+}
+
+void bg_mode7_draw(struct dot_t *dot, uint32_t dot_h, uint32_t dot_v)
+{
+    dot->r = 50;
+    dot->g = 255;
+    dot->b = 127;
+    dot->a = 255;
 }
 
 uint32_t step_ppu(int32_t cycle_count)
 {
-    /* TODO: handle 6 cycle dots */
     ppu_cycle_count += cycle_count;
-    uint64_t ppu_master_cycles = master_cycles;
-    int32_t dot_count = ppu_cycle_count / PPU_CYCLES_PER_DOT;
-    uint8_t value;
     uint32_t vblank = 0;
 
     struct obj_attr_t *obj_tab1 = (struct obj_attr_t *)oam;
     uint16_t *obj_tab2 = (uint16_t *)(oam + 512);
-//    uint32_t dot_length;
 
     while(ppu_cycle_count)
     {
-//        while(pending_writes && pending_writes->cycle <= ppu_master_cycles)
-//        {
-//            struct reg_write_t *next_write = pending_writes->next;
-//            ram1_regs[pending_writes->reg] = pending_writes->value;
-//            pending_writes->next = free_writes;
-//            free_writes = pending_writes;
-//            pending_writes = next_write;
-//        }
-
         sub_dot++;
         scanline_cycles++;
 
         if(sub_dot == dot_length)
         {
             sub_dot = 0;
-
             uint32_t *obj_sizes = objsel_size_sel_sizes[ram1_regs[PPU_REG_OBJSEL] >> 5];
             hcounter++;
+            cur_irq_counter--;
+
+            if(hcounter == SCANLINE_DOT_LENGTH)
+            {
+                vcounter = (vcounter + 1) % SCANLINE_COUNT;
+                hcounter = 0;
+                scanline_cycles = 0;
+            }
+
             if(hcounter == H_BLANK_END_DOT)
             {
                 ram1_regs[CPU_REG_HVBJOY] &= ~CPU_HVBJOY_FLAG_HBLANK;
@@ -226,12 +287,7 @@ uint32_t step_ppu(int32_t cycle_count)
             {
                 ram1_regs[CPU_REG_HVBJOY] |= CPU_HVBJOY_FLAG_HBLANK;
             }
-            if(hcounter == SCANLINE_DOT_LENGTH)
-            {
-                vcounter++;
-                hcounter = 0;
-                scanline_cycles = 0;
-            }
+
 
             if(hcounter == 322 || hcounter == 326)
             {
@@ -241,6 +297,7 @@ uint32_t step_ppu(int32_t cycle_count)
             {
                 dot_length = 4;
             }
+
 
             if(vcounter == V_BLANK_END_LINE)
             {
@@ -270,9 +327,23 @@ uint32_t step_ppu(int32_t cycle_count)
                 }
             }
 
-            vcounter %= SCANLINE_COUNT;
+            if(!cur_irq_counter)
+            {
+                if(ram1_regs[CPU_REG_NMITIMEN] & (CPU_NMITIMEN_FLAG_HTIMER_EN | CPU_NMITIMEN_FLAG_VTIMER_EN))
+                {
+                    irq_cycle = master_cycles;
+                }
+
+                cur_irq_counter = irq_count;
+            }
+
+            if(master_cycles - irq_cycle < 8)
+            {
+                ram1_regs[CPU_REG_TIMEUP] |= 1 << 7;
+            }
 
             uint8_t hvbjoy = ram1_regs[CPU_REG_HVBJOY];
+
             if(!(hvbjoy & CPU_HVBJOY_FLAG_VBLANK) && !(hvbjoy & CPU_HVBJOY_FLAG_HBLANK))
             {
                 uint8_t inidisp = ram1_regs[PPU_REG_INIDISP];
@@ -284,14 +355,15 @@ uint32_t step_ppu(int32_t cycle_count)
                 }
 
                 struct dot_t *dot = framebuffer + vcounter * FRAMEBUFFER_WIDTH + hcounter;
-                dot->r = 255 * brightness;
-                dot->g = 255 * brightness;
-                dot->b = 255 * brightness;
-                dot->a = 255;
+                bg_draw(dot, hcounter - 1, vcounter);
+
+                dot->r *= brightness;
+                dot->g *= brightness;
+                dot->b *= brightness;
             }
         }
 
-        ppu_master_cycles++;
+//        ppu_master_cycles++;
         ppu_cycle_count--;
     }
 
@@ -310,14 +382,15 @@ void dump_ppu()
    printf("===================== PPU ========================\n");
    printf("current dot: (H: %d, V: %d)\n", hcounter, vcounter);
    printf("v-blank: %d -- h-blank: %d\n", (ram1_regs[CPU_REG_HVBJOY] & CPU_HVBJOY_FLAG_VBLANK) && 1, (ram1_regs[CPU_REG_HVBJOY] & CPU_HVBJOY_FLAG_HBLANK) && 1);
-   printf("==================================================\n");
+   printf("--------------------------------------------------\n");
+   printf("BG Mode: Mode %d\n", ram1_regs[PPU_REG_BGMODE] & PPU_BGMODE_MODE_MASK);
+   printf("\n");
 }
 
 
 void inidisp_write(uint32_t effective_address, uint8_t value)
 {
     ram1_regs[PPU_REG_INIDISP] = value;
-//    queue_write(PPU_REG_INIDISP, master_cycle, value);
 }
 
 uint8_t slhv_read(uint32_t effective_address)
@@ -330,7 +403,7 @@ uint8_t slhv_read(uint32_t effective_address)
 uint8_t opct_read(uint32_t effective_address)
 {
     uint32_t reg = effective_address & 0xffff;
-    uint32_t index = PPU_REG_OPVCT - reg;
+    uint32_t index = reg - PPU_REG_OPHCT;
     uint8_t value = latched_counters[index];
     latched_counters[index] >>= 8;
     return value;
@@ -347,15 +420,16 @@ void vmdata_write(uint32_t effective_address, uint8_t value)
 {
     uint32_t write_order = ram1_regs[PPU_REG_VMAINC] & 0x80;
     uint32_t reg = effective_address & 0xffff;
-    uint32_t addr = vram_addr * 2;
+    uint32_t write_addr = vram_addr << 1;
     uint32_t increment_shift = vmadd_increment_shifts[ram1_regs[PPU_REG_VMAINC] & 0x3];
 
-    if(ram1_regs[CPU_REG_HVBJOY] & V_BLANK_FLAG)
+    if((ram1_regs[CPU_REG_HVBJOY] & CPU_HVBJOY_FLAG_VBLANK) || (ram1_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK))
     {
-        addr += PPU_REG_VMDATAWH - reg;
-        vram[addr] = value;
+        write_addr += PPU_REG_VMDATAWH == reg;
+        vram[write_addr] = value;
         vram_addr += ((write_order == PPU_VMDATA_ADDR_INC_LH && reg == PPU_REG_VMDATAWH) ||
                       (write_order == PPU_VMDATA_ADDR_INC_HL && reg == PPU_REG_VMDATAWL)) << increment_shift;
+        vram_addr &= 0x7fff;
     }
 }
 
@@ -373,6 +447,7 @@ uint8_t vmdata_read(uint32_t effective_address)
         value = vram[addr];
         vram_addr += ((read_order == PPU_VMDATA_ADDR_INC_LH && reg == PPU_REG_VMDATARH) ||
                       (read_order == PPU_VMDATA_ADDR_INC_HL && reg == PPU_REG_VMDATARL)) << increment_shift;
+        vram_addr &= 0x7fff;
     }
 
     return value;
@@ -390,19 +465,45 @@ void oamadd_write(uint32_t effective_address, uint8_t value)
 
 void oamdata_write(uint32_t effective_address, uint8_t value)
 {
-    oam[oam_addr] = value;
-    oam_addr = (oam_addr + 1) % PPU_OAM_SIZE;
+//    oam[oam_addr] = value;
+//    oam_addr = (oam_addr + 1) % PPU_OAM_SIZE;
 }
 
 void bgmode_write(uint32_t effective_address, uint8_t value)
 {
     ram1_regs[PPU_REG_BGMODE] = value;
+    bg_draw = bg_mode_funcs[value & PPU_BGMODE_MODE_MASK];
+    backgrounds[0].chr_size = (value >> 4) && 1;
+    backgrounds[1].chr_size = (value >> 5) && 1;
+    backgrounds[2].chr_size = (value >> 6) && 1;
+    backgrounds[3].chr_size = (value >> 7) && 1;
 }
 
 void bgsc_write(uint32_t effective_address, uint8_t value)
 {
     uint32_t reg = effective_address & 0xffff;
     ram1_regs[reg] = value;
+
+    uint32_t offset = (uint32_t)(value & 0xfc) << 11;
+
+    uint32_t background_index = reg - PPU_REG_BG1SC;
+    backgrounds[background_index].data_base = (struct bg_sc_data_t *)(vram + offset);
+}
+
+void bgnba_write(uint32_t effective_address, uint8_t value)
+{
+    uint32_t reg = effective_address & 0xffff;
+    uint32_t background_index = (reg - PPU_REG_BG12NBA) << 1;
+    ram1_regs[reg] = value;
+
+    uint32_t offset = (uint32_t)(value & 0x0f) << 13;
+    struct background_t *background = backgrounds + background_index;
+    background_index++;
+    background->chr_base = vram + offset;
+
+    offset = (uint32_t)(value & 0xf0) << 9;
+    background = backgrounds + background_index;
+    background->chr_base = vram + offset;
 }
 
 void bgoffs_write(uint32_t effective_address, uint8_t value)
@@ -410,28 +511,155 @@ void bgoffs_write(uint32_t effective_address, uint8_t value)
     uint32_t reg = (effective_address & 0xffff) - PPU_REG_BG1HOFS;
     /* two registers per background (h and v offsets), so bit 1 gives us the
     offset of the background we want to */
-    struct bg_offset_t *bg_offset = &bg_offsets[reg >> 1];
+    // struct bg_offset_t *bg_offset = &bg_offsets[reg >> 1];
+    struct background_t *background = backgrounds + (reg >> 1);
     /* for each background, the first register is the horizontal offset, the second
     is vertical offset. */
     uint32_t offset_index = reg & 1;
 
-    if(bg_offset->lsb_written[offset_index])
+    if(background->offset.lsb_written[offset_index])
     {
-        bg_offset->offsets[offset_index] &= 0x00ff;
-        bg_offset->offsets[offset_index] |= ((uint16_t)value << 8) & 0x1fff;
-
-        // printf("offset for bg %d is h: %d -- v: %d\n", reg >> 1, bg_offset->offsets[0], bg_offset->offsets[1]);
+        background->offset.offsets[offset_index] &= 0x00ff;
+        background->offset.offsets[offset_index] |= ((uint16_t)value << 8) & 0x1fff;
     }
     else
     {
-        bg_offset->offsets[offset_index] &= 0xff00;
-        bg_offset->offsets[offset_index] |= value;
+        background->offset.offsets[offset_index] &= 0xff00;
+        background->offset.offsets[offset_index] |= value;
     }
 
-    bg_offset->lsb_written[offset_index] ^= 1;
+    background->offset.lsb_written[offset_index] ^= 1;
+}
+
+void vmainc_write(uint32_t effective_address, uint8_t value)
+{
+    uint32_t reg = effective_address & 0xffff;
+    ram1_regs[reg] = value;
+
+    uint32_t bitdepth = 2 << ((value >> 2) & 0x3);
+
+    backgrounds[0].chr_bits = bitdepth;
+    backgrounds[1].chr_bits = bitdepth;
+    backgrounds[2].chr_bits = bitdepth;
+    backgrounds[3].chr_bits = bitdepth;
 }
 
 void coldata_write(uint32_t effective_address, uint8_t value)
 {
     ram1_regs[PPU_REG_COLDATA] = value;
+}
+
+void update_irq_counter()
+{
+    uint16_t vtimer = (uint16_t)ram1_regs[CPU_REG_VTIMEL] | (uint16_t)ram1_regs[CPU_REG_VTIMEH] << 8;
+    uint16_t htimer = (uint16_t)ram1_regs[CPU_REG_VTIMEL] | (uint16_t)ram1_regs[CPU_REG_VTIMEH] << 8;
+
+    switch(ram1_regs[CPU_REG_NMITIMEN] & (CPU_NMITIMEN_FLAG_HTIMER_EN | CPU_NMITIMEN_FLAG_VTIMER_EN))
+    {
+        case CPU_NMITIMEN_FLAG_HTIMER_EN:
+            irq_count = SCANLINE_DOT_LENGTH;
+
+            if(htimer >= hcounter)
+            {
+                cur_irq_counter = htimer - hcounter;
+            }
+            else
+            {
+                cur_irq_counter = irq_count - (hcounter - htimer);
+            }
+        break;
+
+        case CPU_NMITIMEN_FLAG_VTIMER_EN:
+            irq_count = SCANLINE_COUNT * SCANLINE_DOT_LENGTH;
+
+            if(vtimer >= vcounter)
+            {
+                cur_irq_counter = (vtimer - vcounter) * SCANLINE_DOT_LENGTH;
+
+                /* if only virq is enabled and the time irq counter value is zero, it means either the current scanline value got
+                written to 0x4211 or virq got disabled and reenabled. In this case, the virq will be fired immediately. To make sure it'll
+                fire next frame at H=0, we subtract the current H from the count amount. */
+                if(!cur_irq_counter)
+                {
+                    irq_count -= hcounter;
+                    /* this will be decremented at the start of the ppu update and will turn 0, triggering the irq. */
+                    cur_irq_counter = 1;
+                }
+                else
+                {
+                    cur_irq_counter -= hcounter;
+                }
+            }
+            else
+            {
+                cur_irq_counter = irq_count - (vcounter - vtimer) * SCANLINE_DOT_LENGTH - hcounter;
+            }
+        break;
+
+        case CPU_NMITIMEN_FLAG_HTIMER_EN | CPU_NMITIMEN_FLAG_VTIMER_EN:
+            irq_count = SCANLINE_COUNT * SCANLINE_DOT_LENGTH;
+
+            if(vtimer >= vcounter)
+            {
+                cur_irq_counter = (vtimer - vcounter) * SCANLINE_DOT_LENGTH;
+            }
+            else
+            {
+                cur_irq_counter = irq_count - (vcounter - vtimer) * SCANLINE_DOT_LENGTH;
+            }
+
+            cur_irq_counter += htimer;
+
+            if(htimer >= hcounter)
+            {
+                cur_irq_counter += htimer - hcounter;
+            }
+            else
+            {
+                cur_irq_counter -= hcounter - htimer;
+            }
+
+        break;
+    }
+}
+
+void vhtime_write(uint32_t effective_address, uint8_t value)
+{
+    uint32_t reg = effective_address & 0xffff;
+    ram1_regs[reg] = value;
+    update_irq_counter();
+}
+
+void cgadd_write(uint32_t effective_address, uint8_t value)
+{
+    uint32_t reg = effective_address & 0xffff;
+    ram1_regs[reg] = value;
+    cgram_addr = value << 1;
+}
+
+uint8_t cgadd_read(uint32_t effective_address)
+{
+
+}
+
+void cgdata_write(uint32_t effective_address, uint8_t value)
+{
+    if((ram1_regs[CPU_REG_HVBJOY] & (CPU_HVBJOY_FLAG_HBLANK | CPU_HVBJOY_FLAG_VBLANK)) || (ram1_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK))
+    {
+        cgram[cgram_addr] = value;
+        cgram_addr = (cgram_addr + 1) & (PPU_CGRAM_SIZE - 1);
+    }
+}
+
+uint8_t cgdata_read(uint32_t effective_address)
+{
+    uint8_t value = 0;
+
+    if((ram1_regs[CPU_REG_HVBJOY] & (CPU_HVBJOY_FLAG_HBLANK | CPU_HVBJOY_FLAG_VBLANK)) || (ram1_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK))
+    {
+        value = cgram[cgram_addr];
+        cgram_addr = (cgram_addr + 1) & (PPU_CGRAM_SIZE - 1);
+    }
+
+    return value;
 }

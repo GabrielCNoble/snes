@@ -67,6 +67,12 @@ uint32_t clr_p(uint32_t arg);
 uint32_t xce(uint32_t arg);
 #define XCE UOP(xce, 0)
 
+uint32_t xba(uint32_t arg);
+#define XBA UOP(xba, 0)
+
+uint32_t wai(uint32_t);
+#define WAI UOP(wai, 0)
+
 uint32_t io(uint32_t arg);
 #define IO UOP(io, 0)
 
@@ -88,6 +94,12 @@ uint32_t skips(uint32_t arg);
 uint32_t skipc(uint32_t arg);
 #define SKIPC(count, flag) UOP(skipc, ((uint32_t)flag << 8) | ((uint32_t)count))
 
+enum CHK_ZW_WIDTH
+{
+    CHK_ZW_BYTE = 1,
+    CHK_ZW_WORD = 0
+};
+
 uint32_t chk_znw(uint32_t arg);
 #define CHK_ZNW(reg, width) UOP(chk_znw, ((uint32_t)width << 8) | ((uint32_t)reg))
 
@@ -96,6 +108,9 @@ uint32_t chk_zn(uint32_t arg);
 
 uint32_t alu_op(uint32_t arg);
 #define ALU_OP(op, width_flag, operand_a, operand_b) UOP(alu_op, ((uint32_t)operand_b << 24) | ((uint32_t)operand_a << 16) | ((uint32_t)op << 8) | ((uint32_t)width_flag))
+
+uint32_t brk(uint32_t arg);
+#define BRK UOP(brk, 0)
 
 
 #endif

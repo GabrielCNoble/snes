@@ -271,7 +271,7 @@ enum INSTRUCTIONS
     ADC_IMM             = 0x69,
 
     AND_ABS             = 0x2d,
-    AND_ABS_X           = 0x3e,
+    AND_ABS_X           = 0x3d,
     AND_ABS_Y           = 0x39,
     AND_ABSL            = 0x2f,
     AND_ABSL_X          = 0x3f,
@@ -312,7 +312,7 @@ enum INSTRUCTIONS
 
     BRA_PC_REL          = 0x80,
 
-    BRK                 = 0x00,
+    BRK_S               = 0x00,
 
     BRL_PC_RELL         = 0x82,
 
@@ -321,7 +321,7 @@ enum INSTRUCTIONS
     BVS_PC_REL          = 0x70,
 
     CLC_IMP             = 0x18,
-    
+
     CLD_IMP             = 0xd8,
 
     CLI_IMP             = 0x58,
@@ -331,7 +331,7 @@ enum INSTRUCTIONS
     CMP_ABS             = 0xcd,
     CMP_ABS_X           = 0xdd,
     CMP_ABS_Y           = 0xd9,
-    CMP_ABSL            = 0xcf, 
+    CMP_ABSL            = 0xcf,
     CMP_ABSL_X          = 0xdf,
     CMP_DIR             = 0xc5,
     CMP_S_REL           = 0xc3,
@@ -541,7 +541,7 @@ enum INSTRUCTIONS
     STA_DIR_IND         = 0x92,
     STA_DIR_INDL        = 0x87,
     STA_S_REL_IND_Y     = 0x93,
-    STA_DIR_IND_X       = 0x81,
+    STA_DIR_X_IND       = 0x81,
     STA_DIR_IND_Y       = 0x91,
     STA_DIR_INDL_Y      = 0x97,
 
@@ -560,7 +560,7 @@ enum INSTRUCTIONS
 
     TAX_IMP             = 0xaa,
 
-    TAY_IMP             = 0xab,
+    TAY_IMP             = 0xa8,
 
     TCD_IMP             = 0x5b,
 
@@ -592,7 +592,9 @@ enum INSTRUCTIONS
 
     XBA_ACC             = 0xeb,
 
-    XCE_ACC             = 0xfb
+    XCE_ACC             = 0xfb,
+
+    FETCH,
 };
 
 enum CPU_REGS
@@ -790,11 +792,9 @@ enum REGS
     REG_INST,
     REG_PC,
     REG_P,
-    REG_ALU_LATCH,
     REG_TEMP,
     REG_ADDR,
     REG_BANK,
-    // REG_DATA_LATCH,
     REG_ZERO,
     REG_LAST,
 };
@@ -825,7 +825,7 @@ struct inst_t
 
 #define MEM_SPEED_FAST_CYCLES   6
 #define MEM_SPEED_MED_CYCLES    8
-#define MEM_SPEED_SLOW_CYCLES   12 
+#define MEM_SPEED_SLOW_CYCLES   12
 
 enum STATUS_FLAGS
 {
@@ -845,18 +845,34 @@ enum STATUS_FLAGS
     STATUS_FLAG_PAGE,
     /* extra flag set when reg D LSB is not zero */
     STATUS_FLAG_DL,
+    STATUS_FLAG_AZ,
     STATUS_FLAG_LAST,
+};
+
+enum CPU_INTS
+{
+    CPU_INT_BRK = 0,
+    CPU_INT_IRQ,
+    CPU_INT_NMI,
+    CPU_INT_LAST
+};
+
+enum CPU_PINS
+{
+    CPU_PIN_RDY,
+    CPU_PIN_IRQ,
+    CPU_PIN_NMI,
+    CPU_PIN_LAST,
 };
 
 struct cpu_state_t
 {
-    uint8_t in_irqb;
-    uint8_t in_rdy;
-    uint8_t in_resb;
-    uint8_t in_prev_resb;
-    uint8_t in_abortb;
-    uint8_t in_nmib;
-    uint8_t s_wai;
+    uint8_t pins[CPU_PIN_LAST];
+    uint8_t interrupts[CPU_INT_LAST];
+//    uint8_t irq;
+    uint8_t wai;
+//    uint8_t nmi;
+    uint8_t cur_interrupt;
 
     union
     {
@@ -893,12 +909,15 @@ struct cpu_state_t
         uint8_t     flags[STATUS_FLAG_LAST];
     }reg_p;
 
-    struct reg_t        regs[REG_LAST];
-    uint32_t            cur_uop;
+    struct uop_t *      uop;
+    uint32_t            last_uop;
+    uint32_t            uop_index;
     int32_t             uop_cycles;
     struct inst_t *     instruction;
     int32_t             instruction_cycles;
     uint32_t            instruction_address;
+
+    struct reg_t        regs[REG_LAST];
 };
 
 enum CPU_HVBJOY_FLAGS
@@ -908,6 +927,13 @@ enum CPU_HVBJOY_FLAGS
 };
 
 #define CPU_MASTER_CYCLES 6
+
+// enum CPU_SIGNALS
+// {
+//     CPU_SIGNAL_RDY = 0,
+//     CPU_SIGNAL_IRQ,
+//     CPU_SIGNAL_NMI,
+// };
 
 
 char *instruction_str(uint32_t effective_address);
@@ -934,11 +960,29 @@ uint32_t check_int();
 
 void reset_cpu();
 
+void assert_pin(uint32_t pin);
+
+void deassert_pin(uint32_t pin);
+
+// void set_signal(uint32_t signal, uint8_t value);
+
+// uint8_t get_signal(uint32_t signal);
+
+void load_instruction();
+
+void load_uop();
+
+void next_uop();
+
 void step_cpu(int32_t cycle_count);
 
 uint8_t io_read(uint32_t effective_address);
 
 void io_write(uint32_t effective_address, uint8_t value);
+
+void nmitimen_write(uint32_t effective_address, uint8_t value);
+
+uint8_t timeup_read(uint32_t effective_address);
 
 // void step_cpu(int32_t cycle_count);
 

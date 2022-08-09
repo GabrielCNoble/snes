@@ -36,10 +36,6 @@
     The ppu also generates its own clock. That's (master clock / 4). So, for
     NTSC that's 5.369317 MHz (186.243427 ns). For PAL, it's 5.320342 MHz
     (187.957841 ns).
-
-    Unfortunately SDL's high performance counter has a resolution of 100 ns,
-    which is much too coarse for this. The solution then is to step the
-    emulation by scanline instead.
 */
 
 enum BREAKPOINT_REGISTER

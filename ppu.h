@@ -24,7 +24,8 @@ struct obj_attr_t
 #define FRAMEBUFFER_HEIGHT SCANLINE_COUNT
 #define PPU_CYCLES_PER_DOT 4
 #define PPU_OAM_SIZE 0x220
-
+#define PPU_CGRAM_SIZE 0x200
+#define PPU_VRAM_SIZE 0xffff
 struct dot_t
 {
     uint8_t a;
@@ -37,6 +38,27 @@ struct bg_offset_t
 {
     uint16_t    offsets[2];
     uint8_t     lsb_written[2];
+};
+
+#define BG_SC_DATA_NAME_MASK    0x3ff
+#define BG_SC_DATA_PAL_SHIFT    10
+#define BG_SC_DATA_PAL_MASK     0x07
+#define BG_SC_DATA_H_FLIP_SHIFT 14
+#define BG_SC_DATA_V_FLIP_SHIFT 15
+#define BG_SC_DATA_FLIP_MASK    0x01
+
+struct bg_sc_data_t
+{
+    uint16_t data;
+};
+
+struct background_t
+{
+    struct bg_offset_t      offset;
+    uint16_t                chr_bits;
+    uint16_t                chr_size;
+    struct bg_sc_data_t *   data_base;
+    void *                  chr_base;
 };
 
 enum PPU_REGS
@@ -89,7 +111,7 @@ enum PPU_REGS
     PPU_REG_M7X             = 0x211f,
     PPU_REG_M7Y             = 0x2120,
     PPU_REG_CGADD           = 0x2121,
-    PPU_REG_CGDATA          = 0x2122,
+    PPU_REG_CGDATAW         = 0x2122,
     PPU_REG_W12SEL          = 0x2123,
     PPU_REG_W34SEL          = 0x2124,
     PPU_REG_WCOLOBJSEL      = 0x2125,
@@ -107,7 +129,8 @@ enum PPU_REGS
     PPU_REG_OPHCT           = 0x213c,
     PPU_REG_OPVCT           = 0x213d,
     PPU_REG_VMDATARL        = 0x2139,
-    PPU_REG_VMDATARH        = 0x213a
+    PPU_REG_VMDATARH        = 0x213a,
+    PPU_REG_CGDATAR         = 0x213b,
 };
 
 enum PPU_VMDATA_ADDR_INCS
@@ -157,6 +180,66 @@ enum PPU_BGMODE_MODES
     PPU_BGMODE_MODE5,
     PPU_BGMODE_MODE6,
     PPU_BGMODE_MODE7,
+    PPU_BGMODE_LAST
+};
+
+struct chr2_t
+{
+    uint16_t p01[8];
+};
+
+struct chr4_t
+{
+    uint16_t p01[8];
+    uint16_t p23[8];
+};
+
+struct chr8_t
+{
+    uint16_t p01[8];
+    uint16_t p23[8];
+    uint16_t p45[8];
+    uint16_t p67[8];
+};
+
+#define COL_DATA_MASK  0x1f
+#define COL_DATA_R_SHIFT 0
+#define COL_DATA_G_SHIFT 5
+#define COL_DATA_B_SHIFT 10
+
+struct pal4_t
+{
+    uint16_t colors[4];
+};
+
+struct pal16_t
+{
+    uint16_t colors[16];
+};
+
+struct mode0_cgram_t
+{
+    struct pal4_t   bg1_data[8];
+    struct pal4_t   bg2_data[8];
+    struct pal4_t   bg3_data[8];
+    struct pal4_t   bg4_data[8];
+    struct pal16_t  obj_data[8];
+};
+
+struct mode1_cgram_t
+{
+    struct pal4_t   bg3_data[16];
+    struct pal16_t  bg12_data[8];
+};
+
+struct mode2_cgram_t
+{
+    struct pal16_t  bg12_data[8];
+};
+
+struct mode3_cgram_t
+{
+
 };
 
 enum PPU_BGMODE_CHR_SIZES
@@ -181,13 +264,27 @@ void shutdown_ppu();
 
 void reset_ppu();
 
-struct reg_write_t *queue_write(uint16_t reg, uint64_t cycle, uint8_t value);
+// struct reg_write_t *queue_write(uint16_t reg, uint64_t cycle, uint8_t value);
 
-void apply_writes();
+// void apply_writes();
+
+void bg_mode0_draw(struct dot_t *dot, uint32_t dot_h, uint32_t dot_v);
+
+void bg_mode1_draw(struct dot_t *dot, uint32_t dot_h, uint32_t dot_v);
+
+void bg_mode2_draw(struct dot_t *dot, uint32_t dot_h, uint32_t dot_v);
+
+void bg_mode3_draw(struct dot_t *dot, uint32_t dot_h, uint32_t dot_v);
+
+void bg_mode4_draw(struct dot_t *dot, uint32_t dot_h, uint32_t dot_v);
+
+void bg_mode5_draw(struct dot_t *dot, uint32_t dot_h, uint32_t dot_v);
+
+void bg_mode6_draw(struct dot_t *dot, uint32_t dot_h, uint32_t dot_v);
+
+void bg_mode7_draw(struct dot_t *dot, uint32_t dot_h, uint32_t dot_v);
 
 uint32_t step_ppu(int32_t cycle_count);
-
-void mode0_draw();
 
 void dump_ppu();
 
@@ -211,9 +308,23 @@ void bgmode_write(uint32_t effective_address, uint8_t value);
 
 void bgsc_write(uint32_t effective_address, uint8_t value);
 
+void bgnba_write(uint32_t effective_address, uint8_t value);
+
 void bgoffs_write(uint32_t effective_address, uint8_t value);
 
+void vmainc_write(uint32_t effective_address, uint8_t value);
+
 void coldata_write(uint32_t effective_address, uint8_t value);
+
+void update_irq_counter();
+
+void vhtime_write(uint32_t effective_address, uint8_t value);
+
+void cgadd_write(uint32_t effective_address, uint8_t value);
+
+void cgdata_write(uint32_t effective_address, uint8_t value);
+
+uint8_t cgdata_read(uint32_t effective_address);
 
 
 

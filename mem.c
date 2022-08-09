@@ -18,7 +18,7 @@
 // };
 uint8_t *               ram1_regs;
 uint8_t *               ram2;
-uint8_t *               vram;
+// uint8_t *               vram;
 struct mem_write_t *    reg_writes;
 struct mem_read_t *     reg_reads;
 
@@ -29,7 +29,7 @@ void init_mem()
     /* 120K of wram2 */
     ram2 = calloc(0x1e000, 1);
     /* 64K of vram */
-    vram = calloc(0xffff, 1);
+    // vram = calloc(0xffff, 1);
     /* write behavior for all mem mapped registers */
     reg_writes = calloc(RAM1_REGS_END - RAM1_REGS_START, sizeof(struct mem_write_t));
     reg_reads = calloc(RAM1_REGS_END - RAM1_REGS_START, sizeof(struct mem_read_t));
@@ -37,8 +37,15 @@ void init_mem()
     reg_writes[CPU_REG_MDMAEN].write = mdmaen_write;
     reg_writes[CPU_REG_HDMAEN].write = hdmaen_write;
     reg_writes[CPU_REG_JOYA].write = ctrl_write;
+    reg_writes[CPU_REG_NMITIMEN].write = nmitimen_write;
+    reg_writes[CPU_REG_HTIMEL].write = vhtime_write;
+    reg_writes[CPU_REG_HTIMEH].write = vhtime_write;
+    reg_writes[CPU_REG_VTIMEL].write = vhtime_write;
+    reg_writes[CPU_REG_VTIMEH].write = vhtime_write;
+
     reg_reads[CPU_REG_JOYA].read = ctrl_read;
     reg_reads[CPU_REG_JOYB].read = ctrl_read;
+    reg_reads[CPU_REG_TIMEUP].read = timeup_read;
 
 //    reg_reads[CPU_REG_JOYB].read = io_read;
 
@@ -56,7 +63,15 @@ void init_mem()
     reg_writes[PPU_REG_BG3SC].write = bgsc_write;
     reg_writes[PPU_REG_BG4SC].write = bgsc_write;
 
+    reg_writes[PPU_REG_BG12NBA].write = bgnba_write;
+    reg_writes[PPU_REG_BG34NBA].write = bgnba_write;
+
+    reg_writes[PPU_REG_VMAINC].write = vmainc_write;
+
     reg_writes[PPU_REG_COLDATA].write = coldata_write;
+    reg_writes[PPU_REG_CGADD].write = cgadd_write;
+    reg_writes[PPU_REG_CGDATAW].write = cgdata_write;
+    reg_reads[PPU_REG_CGDATAR].read = cgdata_read;  
 
     reg_writes[PPU_REG_INIDISP].write = inidisp_write;
     reg_writes[PPU_REG_BG1HOFS].write = bgoffs_write;
@@ -89,7 +104,7 @@ void shutdown_mem()
 {
     free(ram1_regs);
     free(ram2);
-    free(vram);
+    // free(vram);
     free(reg_writes);
     free(reg_reads);
 }

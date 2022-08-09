@@ -168,14 +168,9 @@ uint32_t step_emu()
 //    mem_refresh = scanline_cycles >= 536 && scanline_cycles <= 536 + 40;
     step_cycles = 4;
 
-    if((!ram1_regs[CPU_REG_MDMAEN] || !hdma_active) && mem_refresh <= 0)
+    if((!ram1_regs[CPU_REG_MDMAEN] || !hdma_active))
     {
         step_cpu(step_cycles);
-        // step_cycles = cpu_cycle_count;
-    }
-    else
-    {
-        // step_cycles = 4;
     }
 
     step_dma(step_cycles);
@@ -185,62 +180,34 @@ uint32_t step_emu()
 
     if(step_ppu(step_cycles) || animated_mode)
     {
+        uint64_t cur_count = SDL_GetPerformanceCounter();
+        float delta = (float)(cur_count - prev_count) / (float)counter_frequency;
+        printf("frame time: %f ms\n", delta * 1000.0);
+        prev_count = cur_count;
         blit_backbuffer();
     }
 
     uint32_t scanline_cycle = vcounter == 0 ? 536 : 538;
 
-    mem_refresh = scanline_cycles >= scanline_cycle && scanline_cycles < scanline_cycle + 40;
+//    mem_refresh = scanline_cycles >= scanline_cycle && scanline_cycles < scanline_cycle + 40;
 
-//    switch(mem_refresh_state)
-//    {
-//        case 0:
-//            if(scanline_cycles >= 536)
-//            {
-//                mem_refresh = 40;
-//                mem_refresh_state = 1;
-//            }
-//        break;
-//
-//        case 1:
-//            mem_refresh -= step_cycles;
-//            if(mem_refresh <= 0)
-//            {
-//                mem_refresh_state = 2;
-//            }
-//        break;
-//
-//        case 2:
-//            if(scanline_cycles < 536)
-//            {
-//                mem_refresh_state = 0;
-//            }
-//        break;
-//    }
-//     if(mem_refresh_state == 0)
-//     {
-//         if(scanline_cycles >= 536)
-//         {
-//             mem_refresh = 40;
-//             mem_refresh_state = 1;
-//         }
-//     }
-//     else if(mem_refresh_state == 1)
-//     {
-//         mem_refresh -= step_cycles;
-//         if(mem_refresh <= 0)
-//         {
-//             mem_refresh_state = 2;
-//         }
-//     }
-//
-//     if(mem_refresh_state == 2)
-//     {
-//         if(scanline_cycles < 536)
-//         {
-//             mem_refresh_state = 0;
-//         }
-//     }
+    if(scanline_cycles >= scanline_cycle && scanline_cycles < scanline_cycle + 40)
+    {
+        assert_pin(CPU_PIN_RDY);
+    }
+    else
+    {
+        deassert_pin(CPU_PIN_RDY);
+    }
+
+   if(ram1_regs[CPU_REG_TIMEUP] & 0x80)
+   {
+       assert_pin(CPU_PIN_IRQ);
+   }
+   else
+   {
+       deassert_pin(CPU_PIN_IRQ);
+   }
 
     master_cycles += step_cycles;
 
@@ -295,7 +262,8 @@ uint32_t step_emu()
 
 void dump_emu()
 {
-    dump_cpu(1);
+    printf("master cycles: %llu\n", master_cycles);
     dump_ppu();
-    printf("\n\n");
+    dump_cpu(1);
+    printf("\n");
 }

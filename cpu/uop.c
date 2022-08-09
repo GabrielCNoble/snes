@@ -5,6 +5,7 @@ extern struct cpu_state_t   cpu_state;
 extern uint64_t             master_cycles;
 extern struct opcode_t      opcode_matrix[];
 extern struct inst_t        instructions[];
+extern uint16_t             interrupt_vectors[][2];
 
 uint8_t alu_op_carry_flag[ALU_OP_LAST] =
 {
@@ -40,8 +41,7 @@ uint32_t inc_pc(uint32_t arg)
 
 uint32_t decode(uint32_t arg)
 {
-    cpu_state.instruction = instructions + cpu_state.regs[REG_INST].byte[0];
-    cpu_state.cur_uop = 0;
+    load_instruction();
     return 0;
 }
 
@@ -283,6 +283,21 @@ uint32_t xce(uint32_t arg)
     return 1;
 }
 
+uint32_t xba(uint32_t arg)
+{
+    uint8_t msb = cpu_state.regs[REG_ACCUM].byte[1];
+    cpu_state.regs[REG_ACCUM].byte[1] = cpu_state.regs[REG_ACCUM].byte[0];
+    cpu_state.regs[REG_ACCUM].byte[0] = msb;
+    return 1;
+}
+
+uint32_t wai(uint32_t)
+{
+    cpu_state.wai = 1;
+    cpu_state.pins[CPU_PIN_RDY] = 0;
+    return 1;
+}
+
 uint32_t io(uint32_t arg)
 {
     if(cpu_state.uop_cycles >= 6)
@@ -327,7 +342,8 @@ uint32_t skips(uint32_t arg)
 
     if(cpu_state.reg_p.flags[flag])
     {
-        cpu_state.cur_uop += count;
+        cpu_state.uop_index += count;
+        load_uop();
     }
 
     return 1;
@@ -340,7 +356,9 @@ uint32_t skipc(uint32_t arg)
 
     if(!cpu_state.reg_p.flags[flag])
     {
-        cpu_state.cur_uop += count;
+        cpu_state.uop_index += count;
+        load_uop();
+        // cpu_state.cur_uop = cpu_state.instruction->uops + cpu_state.cur_uop_index;
     }
 
     return 1;
@@ -469,5 +487,14 @@ uint32_t alu_op(uint32_t arg)
     // cpu_state.reg_p[cpu_state.reg_e] = flags;
     cpu_state.regs[REG_TEMP].word = result;
 
+    return 1;
+}
+
+uint32_t brk(uint32_t arg)
+{
+    cpu_state.regs[REG_ADDR].word = interrupt_vectors[cpu_state.cur_interrupt][cpu_state.reg_p.e];
+    /* adjust PC back one byte in case this is a hardware interrupt */
+    cpu_state.regs[REG_PC].word -= cpu_state.cur_interrupt == CPU_INT_IRQ || cpu_state.cur_interrupt == CPU_INT_NMI;
+    cpu_state.reg_p.b = cpu_state.reg_p.e && cpu_state.cur_interrupt == CPU_INT_BRK;
     return 1;
 }
