@@ -48,7 +48,8 @@ uint32_t decode(uint32_t arg)
 {
     cpu_state.regs[REG_INST].byte[1] = 0;
     load_instruction();
-    return 0;
+    cpu_state.uop_index--;
+    return 1;
 }
 
 uint32_t mov_lpc(uint32_t arg)
@@ -456,11 +457,6 @@ uint32_t alu_op(uint32_t arg)
     uint32_t operand1 = cpu_state.regs[operand_b_reg].word & zero_mask;
     uint32_t result;
 
-//    if(cpu_state.regs[REG_INST].byte[0] == INC_ACC)
-//    {
-//        printf("oh shit!\n");
-//    }
-
     switch(operation)
     {
         case ALU_OP_CMP:
@@ -529,13 +525,13 @@ uint32_t alu_op(uint32_t arg)
         case ALU_OP_TRB:
             cpu_state.regs[REG_TEMP].word = (uint32_t)((~cpu_state.regs[REG_ACCUM].word) & zero_mask) & operand0;
             cpu_state.reg_p.z = !((cpu_state.regs[REG_ACCUM].word & operand0) & zero_mask);
-            return;
+            return 1;
         break;
 
         case ALU_OP_TSB:
             cpu_state.regs[REG_TEMP].word = (uint32_t)(cpu_state.regs[REG_ACCUM].word & zero_mask) | operand0;
             cpu_state.reg_p.z = !((cpu_state.regs[REG_ACCUM].word & operand0) & zero_mask);
-            return;
+            return 1;
         break;
 
         case ALU_OP_BIT:
@@ -543,7 +539,7 @@ uint32_t alu_op(uint32_t arg)
             cpu_state.reg_p.v = (operand0 & (sign_mask >> 1)) && 1;
         case ALU_OP_BIT_IMM:
             cpu_state.reg_p.z = !((cpu_state.regs[REG_ACCUM].word & operand0) & zero_mask);
-            return;
+            return 1;
         break;
     }
 
@@ -567,6 +563,15 @@ uint32_t brk(uint32_t arg)
     /* adjust PC back one byte in case this is a hardware interrupt */
     cpu_state.regs[REG_PC].word -= cpu_state.cur_interrupt == CPU_INT_IRQ || cpu_state.cur_interrupt == CPU_INT_NMI;
     cpu_state.reg_p.b = cpu_state.reg_p.e && cpu_state.cur_interrupt == CPU_INT_BRK;
+    return 1;
+}
+
+uint32_t cop(uint32_t arg)
+{
+    cpu_state.regs[REG_INST].word = BRK_S;
+    cpu_state.cur_interrupt = CPU_INT_COP;
+    cpu_state.interrupts[CPU_INT_COP] = 1;
+    decode(0);
     return 1;
 }
 

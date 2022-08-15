@@ -107,9 +107,9 @@ uint32_t load_cart(char *file_name);
 
 void unload_cart();
 
-void *mode20_cart_pointer(uint32_t effective_address);
+void *mode20_cart_pointer(uint32_t effective_address, uint32_t write);
 
-void *mode21_cart_pointer(uint32_t effective_address);
+void *mode21_cart_pointer(uint32_t effective_address, uint32_t write);
 
 // void *cart_pointer(uint32_t effective_address);
 

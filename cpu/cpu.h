@@ -345,6 +345,8 @@ enum INSTRUCTIONS
     CMP_DIR_INDL_Y      = 0xd7,
     CMP_IMM             = 0xc9,
 
+    COP_S               = 0x02,
+
     CPX_ABS             = 0xec,
     CPX_DIR             = 0xe4,
     CPX_IMM             = 0xe0,
@@ -512,6 +514,7 @@ enum INSTRUCTIONS
     SBC_ABS             = 0xed,
     SBC_ABS_X           = 0xfd,
     SBC_ABS_Y           = 0xf9,
+    SBC_ABSL            = 0xef,
     SBC_ABSL_X          = 0xff,
     SBC_DIR             = 0xe5,
     SBC_S_REL           = 0xe3,

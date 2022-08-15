@@ -133,6 +133,9 @@ uint32_t alu_op(uint32_t arg);
 uint32_t brk(uint32_t arg);
 #define BRK UOP(brk, 0)
 
+uint32_t cop(uint32_t arg);
+#define COP UOP(cop, 0)
+
 uint32_t unimplemented(uint32_t arg);
 #define UNIMPLEMENTED UOP(unimplemented, 0);
 

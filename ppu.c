@@ -178,7 +178,7 @@ void bg_mode0_draw(struct dot_t *dot, uint32_t dot_h, uint32_t dot_v)
     // for(uint32_t background_index = 3; background_index >= 1; background_index--)
 //    for(uint32_t background_index = 1; background_index < 2; background_index++)
 //    uint32_t background_index = vcounter % 4;
-    uint32_t background_index = 0;
+    uint32_t background_index = 1;
     {
         struct background_t *background = backgrounds + background_index;
         uint32_t index_shift = 3 + background->chr_size;

@@ -1312,6 +1312,16 @@ struct inst_t instructions[] = {
     },
 
     /**************************************************************************************/
+    /*                                      COP                                           */
+    /**************************************************************************************/
+
+    [COP_S] = {
+        .uops = {
+            COP,
+        }
+    },
+
+    /**************************************************************************************/
     /*                                      CPX                                           */
     /**************************************************************************************/
 
@@ -3373,7 +3383,7 @@ struct inst_t instructions[] = {
             MOV_RRW     (REG_TEMP, REG_PC, MOV_RRW_WORD),
             SKIPS       (2, STATUS_FLAG_E),
             INCS,
-            MOV_L       (MOV_MSB, REG_S, REG_ZERO, REG_PBR),
+            MOV_L       (MOV_LSB, REG_S, REG_ZERO, REG_PBR),
         }
     },
 
@@ -3469,6 +3479,21 @@ struct inst_t instructions[] = {
             // CHK_ZN      (REG_ACCUM),
         }
     },
+
+    [SBC_ABSL] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_LPC     (MOV_LSB, REG_BANK),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_SUB, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            MOV_RR      (REG_TEMP, REG_ACCUM),
+        }
+    },
+
     [SBC_ABSL_X] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
@@ -5462,7 +5487,7 @@ int dump_cpu(int show_registers)
         printf("D:%d Z:%d I:%d C:%d]\n", cpu_state.reg_p.d, cpu_state.reg_p.z, cpu_state.reg_p.i, cpu_state.reg_p.c);
         printf("  [E: %02x] | [PC: %04x]", cpu_state.reg_p.e, cpu_state.regs[REG_PC].word);
 
-        if(cpu_state.regs[REG_INST].byte[0] == BRK_S)
+        if(cpu_state.regs[REG_INST].word == BRK_S)
         {
             char *interrupt_str = "";
             switch(cpu_state.cur_interrupt)
@@ -5477,6 +5502,10 @@ int dump_cpu(int show_registers)
 
                 case CPU_INT_NMI:
                     interrupt_str = "NMI";
+                break;
+
+                case CPU_INT_COP:
+                    interrupt_str = "COP";
                 break;
             }
 
@@ -5716,10 +5745,17 @@ uint32_t step_cpu(int32_t cycle_count)
 
         while(cpu_state.uop->func)
         {
+//            uint8_t prev_pbr = cpu_state.regs[REG_PBR].byte[0];
+
             if(!cpu_state.uop->func(cpu_state.uop->arg))
             {
                 break;
             }
+
+//            if(cpu_state.regs[REG_PBR].byte[0] == 0x74)
+//            {
+//                printf("oh shit!\n");
+//            }
 
             if(cpu_state.reg_p.e)
             {

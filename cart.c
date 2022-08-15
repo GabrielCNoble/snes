@@ -17,6 +17,13 @@ uint32_t rom_sizes[] = {
     [ROM_SIZE_33_64M]   = 0x4000000
 };
 
+uint32_t sram_sizes[] = {
+    [MAP_MODE_20_SLOW] = 0x7fff,
+    [MAP_MODE_20_FAST] = 0x7fff,
+    [MAP_MODE_21_SLOW] = 0x2000,
+    [MAP_MODE_21_FAST] = 0x2000,
+};
+
 const char *rom_size_strs[] = {
     [ROM_SIZE_3_4M]     = "3 - 4M",
     [ROM_SIZE_5_8M]     = "5 - 8M",
@@ -25,14 +32,14 @@ const char *rom_size_strs[] = {
     [ROM_SIZE_33_64M]   = "33 - 64M",
 };
 
-uint32_t ram_sizes[] = {
-    [RAM_SIZE_NONE]     = 0,
-    [RAM_SIZE_16K]      = 0x4000,
-    [RAM_SIZE_64K]      = 0x10000,
-    [RAM_SIZE_256K]     = 0x40000,
-    [RAM_SIZE_512K]     = 0x80000,
-    [RAM_SIZE_1M]       = 0x100000,
-};
+//uint32_t ram_sizes[] = {
+//    [RAM_SIZE_NONE]     = 0,
+//    [RAM_SIZE_16K]      = 0x4000,
+//    [RAM_SIZE_64K]      = 0x10000,
+//    [RAM_SIZE_256K]     = 0x40000,
+//    [RAM_SIZE_512K]     = 0x80000,
+//    [RAM_SIZE_1M]       = 0x100000,
+//};
 
 const char *ram_size_strs[] = {
     [RAM_SIZE_NONE]     = "None",
@@ -53,7 +60,7 @@ const char *map_mode_strs[] = {
     [MAP_MODE_25_FAST] = "Mode 25, fast"
 };
 
-void *(*map_mode_functions[])(uint32_t effective_address) = {
+void *(*map_mode_functions[])(uint32_t effective_address, uint32_t write) = {
     [MAP_MODE_20_SLOW] = mode20_cart_pointer,
 //    [MAP_MODE_21_SLOW] = mode21_cart_pointer,
     [MAP_MODE_21_SLOW] = mode20_cart_pointer,
@@ -61,7 +68,7 @@ void *(*map_mode_functions[])(uint32_t effective_address) = {
     [MAP_MODE_21_FAST] = mode21_cart_pointer,
 };
 
-void *(*cart_pointer)(uint32_t effective_address);
+void *(*cart_pointer)(uint32_t effective_address, uint32_t write);
 uint8_t *               rom_buffer;
 uint8_t *               sram;
 struct rom_header_t *   rom_header;
@@ -178,10 +185,10 @@ uint32_t load_cart(char *file_name)
     uint8_t *resized_rom_buffer = calloc(1, rom_sizes[rom_header->rom_size]);
     memcpy(resized_rom_buffer, file_buffer, file_size);
     rom_buffer = resized_rom_buffer + has_smc_header;
+    sram = calloc(1, sram_sizes[rom_header->map_mode]);
 
     if(rom_header->ram_size != RAM_SIZE_NONE)
     {
-        sram = calloc(1, ram_sizes[rom_header->ram_size]);
         strcpy(save_file, file_name);
         uint32_t index = strlen(save_file);
         while(index)
@@ -222,11 +229,11 @@ void unload_cart()
     if(sram)
     {
         free(sram);
-        rom_buffer = NULL;
+        sram = NULL;
     }
 }
 
-void *mode20_cart_pointer(uint32_t effective_address)
+void *mode20_cart_pointer(uint32_t effective_address, uint32_t write)
 {
     /* http://gatchan.net/uploads/Consoles/SNES/Flashcard/SNES_MemMap.txt */
     /* mode 20 (LoROM) ignores address line 15 (so, it addresses from 0x0000 to 0x7fff.
@@ -253,10 +260,15 @@ void *mode20_cart_pointer(uint32_t effective_address)
         return sram + offset;
     }
 
+    if(write)
+    {
+        return NULL;
+    }
+
     return rom_buffer + ((offset & 0x7fff) | ((bank & 0x007f0000) >> 1));
 }
 
-void *mode21_cart_pointer(uint32_t effective_address)
+void *mode21_cart_pointer(uint32_t effective_address, uint32_t write)
 {
     /* http://gatchan.net/uploads/Consoles/SNES/Flashcard/SNES_MemMap.txt */
     /* mode 21 (HiROM) uses address line 15 (so, it addresses from 0x0000 to 0xffff),
@@ -276,6 +288,11 @@ void *mode21_cart_pointer(uint32_t effective_address)
         return sram + (offset - 0x6000);
     }
 
+    if(write)
+    {
+        return NULL;
+    }
+
     return rom_buffer + effective_address;
 }
 
@@ -291,13 +308,17 @@ void *mode21_cart_pointer(uint32_t effective_address)
 
 uint8_t cart_read(uint32_t effective_address)
 {
-    return *(uint8_t *)cart_pointer(effective_address);
+    return *(uint8_t *)cart_pointer(effective_address, 0);
 }
 
 void cart_write(uint32_t effective_address, uint8_t data)
 {
-    uint8_t *pointer = cart_pointer(effective_address);
-    *pointer = data;
+    uint8_t *pointer = cart_pointer(effective_address, 1);
+
+    if(pointer)
+    {
+        *pointer = data;
+    }
 }
 
 
