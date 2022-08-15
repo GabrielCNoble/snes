@@ -30,8 +30,6 @@ void step_ctrl(int32_t cycle_count)
 
             while(SDL_PollEvent(&event))
             {
-
-
                 switch(event.type)
                 {
                     case SDL_CONTROLLERDEVICEADDED:
@@ -112,13 +110,14 @@ void step_ctrl(int32_t cycle_count)
             }
 
             controller_read = 1;
+            button_index = 0;
         }
     }
 }
 
 void ctrl_write(uint32_t effective_address, uint8_t value)
 {
-    if(value == 0)
+    if(value == 1)
     {
         button_index = 0;
     }
@@ -128,5 +127,6 @@ uint8_t ctrl_read(uint32_t effective_address)
 {
     uint8_t status = controllers[0].buttons[button_index];
     button_index++;
+//    printf("button: %d\n", status);
     return status;
 }

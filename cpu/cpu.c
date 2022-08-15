@@ -47,11 +47,13 @@ uint16_t interrupt_vectors[][2] = {
     [CPU_INT_BRK] = {0xffe6, 0xfffe},
     [CPU_INT_IRQ] = {0xffee, 0xfffe},
     [CPU_INT_NMI] = {0xffea, 0xfffa},
+    [CPU_INT_COP] = {0xffe4, 0xfff4}
 };
 
-uint32_t cpu_cycle_count = 0;
-extern uint64_t master_cycles;
-extern uint8_t  *ram1_regs;
+uint32_t            cpu_cycle_count = 0;
+extern uint64_t     master_cycles;
+extern uint8_t *    ram1_regs;
+extern uint8_t      last_bus_value;
 
 #define ALU_WIDTH_WORD 0
 #define ALU_WIDTH_BYTE 1
@@ -81,7 +83,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
             ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
     [ADC_ABS_X] = {
@@ -99,7 +101,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
     [ADC_ABS_Y] = {
@@ -117,7 +119,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
     [ADC_ABSL] = {
@@ -131,7 +133,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
     [ADC_ABSL_X] = {
@@ -146,7 +148,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
     [ADC_DIR] = {
@@ -162,7 +164,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
             ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
     [ADC_S_REL] = {
@@ -177,7 +179,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
             ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         },
     },
     [ADC_DIR_X] = {
@@ -195,7 +197,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
             ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
 
@@ -205,7 +207,7 @@ struct inst_t instructions[] = {
             ZEXT        (REG_ADDR),
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, 0),
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
@@ -216,7 +218,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
             ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
 
@@ -239,7 +241,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
 
@@ -262,7 +264,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
 
         }
     },
@@ -286,7 +288,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
             ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
 
@@ -296,7 +298,7 @@ struct inst_t instructions[] = {
             ZEXT        (REG_ADDR),
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, 0),
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
@@ -312,7 +314,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
 
@@ -329,7 +331,7 @@ struct inst_t instructions[] = {
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_BANK),
             MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            // MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
             ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
             MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
@@ -337,7 +339,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
 
@@ -348,7 +350,7 @@ struct inst_t instructions[] = {
             MOV_LPC     (MOV_MSB, REG_TEMP),
             ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
 
@@ -366,7 +368,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
             ALU_OP      (ALU_OP_AND, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
     [AND_ABS_X] = {
@@ -384,7 +386,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_AND, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
     [AND_ABS_Y] = {
@@ -402,7 +404,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_AND, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
     [AND_ABSL] = {
@@ -416,7 +418,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_AND, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
     [AND_ABSL_X] = {
@@ -431,7 +433,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_AND, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
     [AND_DIR] = {
@@ -447,7 +449,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
             ALU_OP      (ALU_OP_AND, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
     [AND_S_REL] = {
@@ -462,7 +464,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
             ALU_OP      (ALU_OP_AND, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         },
     },
     [AND_DIR_X] = {
@@ -480,7 +482,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
             ALU_OP      (ALU_OP_AND, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
 
@@ -490,7 +492,7 @@ struct inst_t instructions[] = {
             ZEXT        (REG_ADDR),
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, 0),
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
@@ -501,7 +503,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
             ALU_OP      (ALU_OP_AND, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
 
@@ -511,7 +513,7 @@ struct inst_t instructions[] = {
             ZEXT        (REG_ADDR),
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+        ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
@@ -524,7 +526,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_AND, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
 
@@ -547,7 +549,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_AND, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
 
         }
     },
@@ -571,7 +573,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
             ALU_OP      (ALU_OP_AND, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
 
@@ -597,7 +599,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_AND, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
 
@@ -614,7 +616,7 @@ struct inst_t instructions[] = {
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_BANK),
             MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            // MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
             ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
             MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
@@ -622,7 +624,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_AND, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
 
@@ -633,7 +635,7 @@ struct inst_t instructions[] = {
             MOV_LPC     (MOV_MSB, REG_TEMP),
             ALU_OP      (ALU_OP_AND, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
 
@@ -651,10 +653,10 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
             IO,
             ALU_OP      (ALU_OP_SHL, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
-            CHK_ZNW     (REG_TEMP, 0),
+            // CHK_ZNW     (REG_TEMP, 0),
             SKIPS       (2, STATUS_FLAG_M),
             MOV_S       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
-            ADDR_OFFI   (0xffff, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
             MOV_S       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
         }
     },
@@ -664,7 +666,7 @@ struct inst_t instructions[] = {
             IO,
             ALU_OP      (ALU_OP_SHL, STATUS_FLAG_M, REG_ACCUM, REG_ZERO),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
 
@@ -680,10 +682,10 @@ struct inst_t instructions[] = {
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_SHL, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
-            CHK_ZNW     (REG_TEMP, 0),
+            // CHK_ZNW     (REG_TEMP, 0),
             SKIPS       (2, STATUS_FLAG_M),
             MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ADDR_OFFI   (0xffff, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
             MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
         }
     },
@@ -701,10 +703,10 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
             IO,
             ALU_OP      (ALU_OP_SHL, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
-            CHK_ZNW     (REG_TEMP, 0),
+            // CHK_ZNW     (REG_TEMP, 0),
             SKIPS       (2, STATUS_FLAG_M),
             MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (0xffff, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
             MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
         }
     },
@@ -724,10 +726,10 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
             IO,
             ALU_OP      (ALU_OP_SHL, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
-            CHK_ZNW     (REG_TEMP, 0),
+            // CHK_ZNW     (REG_TEMP, 0),
             SKIPS       (2, STATUS_FLAG_M),
             MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (0xffff, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
             MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
         }
     },
@@ -740,10 +742,10 @@ struct inst_t instructions[] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             SEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_PC, 0),
+            ADDR_OFFRS  (REG_PC, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
             SKIPS       (2, STATUS_FLAG_C),
             IO          /* branch taken */,
-            MOV_RRW     (REG_ADDR, REG_PC, 0),
+            MOV_RRW     (REG_ADDR, REG_PC, MOV_RRW_WORD),
         }
     },
 
@@ -755,10 +757,10 @@ struct inst_t instructions[] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             SEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_PC, 0),
-            SKIPC       (2, STATUS_FLAG_N),
+            ADDR_OFFRS  (REG_PC, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
+            SKIPC       (2, STATUS_FLAG_C),
             IO          /* branch taken */,
-            MOV_RRW     (REG_ADDR, REG_PC, 0),
+            MOV_RRW     (REG_ADDR, REG_PC, MOV_RRW_WORD),
         }
     },
 
@@ -770,7 +772,7 @@ struct inst_t instructions[] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             SEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_PC, 0),
+            ADDR_OFFRS  (REG_PC, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
             SKIPC       (2, STATUS_FLAG_Z),
             IO          /* branch taken */,
             MOV_RRW     (REG_ADDR, REG_PC, 0),
@@ -847,7 +849,7 @@ struct inst_t instructions[] = {
             MOV_LPC     (MOV_LSB, REG_TEMP),
             SKIPS       (1, STATUS_FLAG_M),
             MOV_LPC     (MOV_MSB, REG_TEMP),
-            ALU_OP      (ALU_OP_BIT, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
+            ALU_OP      (ALU_OP_BIT_IMM, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
         }
     },
 
@@ -859,10 +861,10 @@ struct inst_t instructions[] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             SEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_PC, 0),
+            ADDR_OFFRS  (REG_PC, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
             SKIPC       (2, STATUS_FLAG_N),
             IO          /* branch taken */,
-            MOV_RRW     (REG_ADDR, REG_PC, 0),
+            MOV_RRW     (REG_ADDR, REG_PC, MOV_RRW_WORD),
         }
     },
 
@@ -874,10 +876,10 @@ struct inst_t instructions[] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             SEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_PC, 0),
+            ADDR_OFFRS  (REG_PC, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
             SKIPS       (2, STATUS_FLAG_Z),
             IO          /* branch taken */,
-            MOV_RRW     (REG_ADDR, REG_PC, 0),
+            MOV_RRW     (REG_ADDR, REG_PC, MOV_RRW_WORD),
         }
     },
 
@@ -889,10 +891,10 @@ struct inst_t instructions[] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             SEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_PC, 0),
+            ADDR_OFFRS  (REG_PC, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
             SKIPS       (2, STATUS_FLAG_N),
             IO          /* branch taken */,
-            MOV_RRW     (REG_ADDR, REG_PC, 0),
+            MOV_RRW     (REG_ADDR, REG_PC, MOV_RRW_WORD),
         }
     },
 
@@ -904,9 +906,9 @@ struct inst_t instructions[] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             SEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_PC, 0),
+            ADDR_OFFRS  (REG_PC, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
             IO          /* branch taken */,
-            MOV_RRW     (REG_ADDR, REG_PC, 0),
+            MOV_RRW     (REG_ADDR, REG_PC, MOV_RRW_WORD),
         }
     },
 
@@ -960,9 +962,9 @@ struct inst_t instructions[] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             MOV_LPC     (MOV_MSB, REG_ADDR),
-            ADDR_OFFR   (REG_PC, 0),
+            ADDR_OFFR   (REG_PC, ADDR_OFF_BANK_WRAP),
             IO          /* branch taken */,
-            MOV_RRW     (REG_ADDR, REG_PC, 0),
+            MOV_RRW     (REG_ADDR, REG_PC, MOV_RRW_WORD),
         }
     },
 
@@ -974,10 +976,10 @@ struct inst_t instructions[] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             SEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_PC, 0),
+            ADDR_OFFRS  (REG_PC, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
             SKIPS       (2, STATUS_FLAG_V),
             IO          /* branch taken */,
-            MOV_RRW     (REG_ADDR, REG_PC, 0),
+            MOV_RRW     (REG_ADDR, REG_PC, MOV_RRW_WORD),
         }
     },
 
@@ -989,10 +991,10 @@ struct inst_t instructions[] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             SEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_PC, 0),
+            ADDR_OFFRS  (REG_PC, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
             SKIPC       (2, STATUS_FLAG_V),
             IO          /* branch taken */,
-            MOV_RRW     (REG_ADDR, REG_PC, 0),
+            MOV_RRW     (REG_ADDR, REG_PC, MOV_RRW_WORD),
         }
     },
 
@@ -1053,7 +1055,7 @@ struct inst_t instructions[] = {
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
             ALU_OP      (ALU_OP_CMP, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            CHK_ZNW     (REG_TEMP, 0),
+            // CHK_ZNW     (REG_TEMP, 0),
         }
     },
     [CMP_ABS_X] = {
@@ -1070,7 +1072,7 @@ struct inst_t instructions[] = {
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_CMP, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            CHK_ZNW     (REG_TEMP, 0),
+            // CHK_ZNW     (REG_TEMP, 0),
         }
     },
     [CMP_ABS_Y] = {
@@ -1087,7 +1089,7 @@ struct inst_t instructions[] = {
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_CMP, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            CHK_ZNW     (REG_TEMP, 0),
+            // CHK_ZNW     (REG_TEMP, 0),
         }
     },
     [CMP_ABSL] = {
@@ -1100,7 +1102,7 @@ struct inst_t instructions[] = {
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_CMP, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            CHK_ZNW     (REG_TEMP, 0),
+            // CHK_ZNW     (REG_TEMP, 0),
         }
     },
     [CMP_ABSL_X] = {
@@ -1114,7 +1116,7 @@ struct inst_t instructions[] = {
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_CMP, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            CHK_ZNW     (REG_TEMP, 0),
+            // CHK_ZNW     (REG_TEMP, 0),
         }
     },
     [CMP_DIR] = {
@@ -1129,7 +1131,7 @@ struct inst_t instructions[] = {
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
             ALU_OP      (ALU_OP_CMP, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            CHK_ZNW     (REG_TEMP, 0),
+            // CHK_ZNW     (REG_TEMP, 0),
         }
     },
     [CMP_S_REL] = {
@@ -1143,7 +1145,7 @@ struct inst_t instructions[] = {
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
             ALU_OP      (ALU_OP_CMP, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            CHK_ZNW     (REG_TEMP, 0),
+            // CHK_ZNW     (REG_TEMP, 0),
         },
     },
     [CMP_DIR_X] = {
@@ -1160,7 +1162,7 @@ struct inst_t instructions[] = {
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
             ALU_OP      (ALU_OP_CMP, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            CHK_ZNW     (REG_TEMP, 0),
+            // CHK_ZNW     (REG_TEMP, 0),
         }
     },
 
@@ -1170,7 +1172,7 @@ struct inst_t instructions[] = {
             ZEXT        (REG_ADDR),
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, 0),
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
@@ -1180,7 +1182,7 @@ struct inst_t instructions[] = {
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
             ALU_OP      (ALU_OP_CMP, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            CHK_ZNW     (REG_TEMP, 0),
+            // CHK_ZNW     (REG_TEMP, 0),
         }
     },
 
@@ -1202,7 +1204,7 @@ struct inst_t instructions[] = {
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_CMP, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            CHK_ZNW     (REG_TEMP, 0),
+            // CHK_ZNW     (REG_TEMP, 0),
         }
     },
 
@@ -1224,7 +1226,7 @@ struct inst_t instructions[] = {
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_CMP, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            CHK_ZNW     (REG_TEMP, 0),
+            // CHK_ZNW     (REG_TEMP, 0),
         }
     },
 
@@ -1246,7 +1248,7 @@ struct inst_t instructions[] = {
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
             ALU_OP      (ALU_OP_CMP, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            CHK_ZNW     (REG_TEMP, 0),
+            // CHK_ZNW     (REG_TEMP, 0),
         }
     },
 
@@ -1256,7 +1258,7 @@ struct inst_t instructions[] = {
             ZEXT        (REG_ADDR),
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, 0),
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
@@ -1271,7 +1273,7 @@ struct inst_t instructions[] = {
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_CMP, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            CHK_ZNW     (REG_TEMP, 0),
+            // CHK_ZNW     (REG_TEMP, 0),
         }
     },
 
@@ -1288,14 +1290,14 @@ struct inst_t instructions[] = {
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_BANK),
             MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            // MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
             ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
             MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_CMP, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            CHK_ZNW     (REG_TEMP, 0),
+            // CHK_ZNW     (REG_TEMP, 0),
         }
     },
 
@@ -1305,7 +1307,7 @@ struct inst_t instructions[] = {
             SKIPS       (1, STATUS_FLAG_M),
             MOV_LPC     (MOV_MSB, REG_TEMP),
             ALU_OP      (ALU_OP_CMP, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            CHK_ZNW     (REG_TEMP, 0),
+            // CHK_ZNW     (REG_TEMP, 0),
         }
     },
 
@@ -1322,7 +1324,7 @@ struct inst_t instructions[] = {
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
             ALU_OP      (ALU_OP_CMP, STATUS_FLAG_X, REG_X, REG_TEMP),
-            CHK_ZNW     (REG_TEMP, 0),
+            // CHK_ZNW     (REG_TEMP, 0),
         }
     },
 
@@ -1338,7 +1340,7 @@ struct inst_t instructions[] = {
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
             ALU_OP      (ALU_OP_CMP, STATUS_FLAG_X, REG_X, REG_TEMP),
-            CHK_ZN      (REG_TEMP),
+            // CHK_ZN      (REG_TEMP),
         }
     },
 
@@ -1348,7 +1350,7 @@ struct inst_t instructions[] = {
             SKIPS       (1, STATUS_FLAG_X),
             MOV_LPC     (MOV_MSB, REG_TEMP),
             ALU_OP      (ALU_OP_CMP, STATUS_FLAG_X, REG_X, REG_TEMP),
-            CHK_ZNW     (REG_TEMP, 0),
+            // CHK_ZNW     (REG_TEMP, 0),
         }
     },
 
@@ -1365,7 +1367,7 @@ struct inst_t instructions[] = {
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
             ALU_OP      (ALU_OP_CMP, STATUS_FLAG_X, REG_Y, REG_TEMP),
-            CHK_ZNW     (REG_TEMP, 0),
+            // CHK_ZNW     (REG_TEMP, 0),
         }
     },
 
@@ -1381,7 +1383,7 @@ struct inst_t instructions[] = {
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
             ALU_OP      (ALU_OP_CMP, STATUS_FLAG_X, REG_Y, REG_TEMP),
-            CHK_ZN      (REG_TEMP),
+            // CHK_ZN      (REG_TEMP),
         }
     },
 
@@ -1391,7 +1393,7 @@ struct inst_t instructions[] = {
             SKIPS       (1, STATUS_FLAG_X),
             MOV_LPC     (MOV_MSB, REG_TEMP),
             ALU_OP      (ALU_OP_CMP, STATUS_FLAG_X, REG_Y, REG_TEMP),
-            CHK_ZNW     (REG_TEMP, 0),
+            // CHK_ZNW     (REG_TEMP, 0),
         }
     },
 
@@ -1409,10 +1411,10 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
             IO,
             ALU_OP      (ALU_OP_DEC, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
-            CHK_ZNW     (REG_TEMP, 0),
+            // CHK_ZNW     (REG_TEMP, 0),
             SKIPS       (2, STATUS_FLAG_M),
             MOV_S       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
-            ADDR_OFFI   (0xffff, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
             MOV_S       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
         }
     },
@@ -1422,7 +1424,7 @@ struct inst_t instructions[] = {
             IO,
             ALU_OP      (ALU_OP_DEC, STATUS_FLAG_M, REG_ACCUM, REG_ZERO),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
 
@@ -1438,10 +1440,10 @@ struct inst_t instructions[] = {
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_DEC, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
-            CHK_ZNW     (REG_TEMP, 0),
+            // CHK_ZNW     (REG_TEMP, 0),
             SKIPS       (2, STATUS_FLAG_M),
             MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ADDR_OFFI   (0xffff, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
             MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
         }
     },
@@ -1459,10 +1461,10 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
             IO,
             ALU_OP      (ALU_OP_DEC, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
-            CHK_ZNW     (REG_TEMP, 0),
+            // CHK_ZNW     (REG_TEMP, 0),
             SKIPS       (2, STATUS_FLAG_M),
             MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (0xffff, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
             MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
         }
     },
@@ -1482,10 +1484,10 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
             IO,
             ALU_OP      (ALU_OP_DEC, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
-            CHK_ZNW     (REG_TEMP, 0),
+            // CHK_ZNW     (REG_TEMP, 0),
             SKIPS       (2, STATUS_FLAG_M),
             MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (0xffff, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
             MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
         }
     },
@@ -1496,10 +1498,10 @@ struct inst_t instructions[] = {
 
     [DEX_IMP] = {
         .uops = {
-            ALU_OP      (ALU_OP_DEC, STATUS_FLAG_X, REG_X, REG_ZERO),
             IO,
+            ALU_OP      (ALU_OP_DEC, STATUS_FLAG_X, REG_X, REG_ZERO),
             MOV_RR      (REG_TEMP, REG_X),
-            CHK_ZN      (REG_X),
+            // CHK_ZN      (REG_X),
         }
     },
 
@@ -1509,10 +1511,10 @@ struct inst_t instructions[] = {
 
     [DEY_IMP] = {
         .uops = {
-            ALU_OP      (ALU_OP_DEC, STATUS_FLAG_X, REG_Y, REG_ZERO),
             IO,
+            ALU_OP      (ALU_OP_DEC, STATUS_FLAG_X, REG_Y, REG_ZERO),
             MOV_RR      (REG_TEMP, REG_Y),
-            CHK_ZN      (REG_Y),
+            // CHK_ZN      (REG_Y),
         }
     },
 
@@ -1530,7 +1532,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
             ALU_OP      (ALU_OP_XOR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
     [EOR_ABS_X] = {
@@ -1548,7 +1550,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_XOR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
     [EOR_ABS_Y] = {
@@ -1566,7 +1568,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_XOR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
     [EOR_ABSL] = {
@@ -1580,7 +1582,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_XOR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
     [EOR_ABSL_X] = {
@@ -1595,7 +1597,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_XOR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
 
@@ -1612,7 +1614,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
             ALU_OP      (ALU_OP_XOR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
     [EOR_S_REL] = {
@@ -1627,7 +1629,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
             ALU_OP      (ALU_OP_XOR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         },
     },
     [EOR_DIR_X] = {
@@ -1645,7 +1647,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
             ALU_OP      (ALU_OP_XOR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
 
@@ -1655,7 +1657,7 @@ struct inst_t instructions[] = {
             ZEXT        (REG_ADDR),
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, 0),
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
@@ -1666,7 +1668,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
             ALU_OP      (ALU_OP_XOR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
 
@@ -1689,7 +1691,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_XOR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
 
@@ -1712,7 +1714,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_XOR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
 
         }
     },
@@ -1736,7 +1738,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
             ALU_OP      (ALU_OP_XOR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
 
@@ -1746,7 +1748,7 @@ struct inst_t instructions[] = {
             ZEXT        (REG_ADDR),
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, 0),
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
@@ -1762,7 +1764,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_XOR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
 
@@ -1770,7 +1772,7 @@ struct inst_t instructions[] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             ZEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_D, 0),
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
             MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
@@ -1779,7 +1781,7 @@ struct inst_t instructions[] = {
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_BANK),
             MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            // MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
             ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
             MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
@@ -1787,7 +1789,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_XOR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
 
@@ -1798,7 +1800,7 @@ struct inst_t instructions[] = {
             MOV_LPC     (MOV_MSB, REG_TEMP),
             ALU_OP      (ALU_OP_XOR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
 
@@ -1816,10 +1818,10 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
             IO,
             ALU_OP      (ALU_OP_INC, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
-            CHK_ZNW     (REG_TEMP, 0),
+            // CHK_ZNW     (REG_TEMP, 0),
             SKIPS       (2, STATUS_FLAG_M),
             MOV_S       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
-            ADDR_OFFI   (0xffff, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
             MOV_S       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
         }
     },
@@ -1829,7 +1831,7 @@ struct inst_t instructions[] = {
             IO,
             ALU_OP      (ALU_OP_INC, STATUS_FLAG_M, REG_ACCUM, REG_ZERO),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
 
@@ -1845,10 +1847,10 @@ struct inst_t instructions[] = {
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_INC, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
-            CHK_ZNW     (REG_TEMP, 0),
+            // CHK_ZNW     (REG_TEMP, 0),
             SKIPS       (2, STATUS_FLAG_M),
             MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ADDR_OFFI   (0xffff, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
             MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
         }
     },
@@ -1866,10 +1868,10 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
             IO,
             ALU_OP      (ALU_OP_INC, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
-            CHK_ZNW     (REG_TEMP, 0),
+            // CHK_ZNW     (REG_TEMP, 0),
             SKIPS       (2, STATUS_FLAG_M),
             MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (0xffff, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
             MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
         }
     },
@@ -1889,10 +1891,10 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
             IO,
             ALU_OP      (ALU_OP_INC, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
-            CHK_ZNW     (REG_TEMP, 0),
+            // CHK_ZNW     (REG_TEMP, 0),
             SKIPS       (2, STATUS_FLAG_M),
             MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (0xffff, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
             MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
         }
     },
@@ -1906,7 +1908,7 @@ struct inst_t instructions[] = {
             IO,
             ALU_OP      (ALU_OP_INC, STATUS_FLAG_X, REG_X, REG_ZERO),
             MOV_RR      (REG_TEMP, REG_X),
-            CHK_ZN      (REG_X),
+            // CHK_ZN      (REG_X),
         }
     },
 
@@ -1919,7 +1921,7 @@ struct inst_t instructions[] = {
             IO,
             ALU_OP      (ALU_OP_INC, STATUS_FLAG_X, REG_Y, REG_ZERO),
             MOV_RR      (REG_TEMP, REG_Y),
-            CHK_ZN      (REG_Y),
+            // CHK_ZN      (REG_Y),
         }
     },
 
@@ -1979,9 +1981,9 @@ struct inst_t instructions[] = {
             MOV_LPC     (MOV_MSB, REG_ADDR),
             IO,
             ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_PBR, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_PBR, REG_TEMP),
             MOV_RRW     (REG_TEMP, REG_PC, MOV_RRW_WORD),
         }
     },
@@ -1997,7 +1999,7 @@ struct inst_t instructions[] = {
             MOV_S       (MOV_LSB, REG_S, REG_ZERO, REG_PBR),
             DECS,
             IO,
-            MOV_LPC     (MOV_LSB, REG_BANK),
+            MOV_L       (MOV_LSB, REG_PC, REG_PBR, REG_BANK),
             MOV_S       (MOV_MSB, REG_S, REG_ZERO, REG_PC),
             DECS,
             MOV_S       (MOV_LSB, REG_S, REG_ZERO, REG_PC),
@@ -2014,7 +2016,7 @@ struct inst_t instructions[] = {
     [JSR_ABS] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_L       (MOV_MSB, REG_PC, REG_PBR, REG_ADDR),
             IO,
             MOV_S       (MOV_MSB, REG_S, REG_ZERO, REG_PC),
             DECS,
@@ -2031,13 +2033,13 @@ struct inst_t instructions[] = {
             DECS,
             MOV_S       (MOV_LSB, REG_S, REG_ZERO, REG_PC),
             DECS,
-            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_L       (MOV_MSB, REG_PC, REG_PBR, REG_ADDR),
             IO,
             ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_PBR, REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            MOV_RRW     (REG_ADDR, REG_PC, MOV_RRW_WORD),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_PBR, REG_TEMP),
+            MOV_RRW     (REG_TEMP, REG_PC, MOV_RRW_WORD),
         }
     },
 
@@ -2052,7 +2054,7 @@ struct inst_t instructions[] = {
             MOV_LPC     (MOV_MSB, REG_ADDR),
             MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, 0),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
             CHK_ZN      (REG_ACCUM),
@@ -2178,7 +2180,7 @@ struct inst_t instructions[] = {
             ZEXT        (REG_ADDR),
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, 0),
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
@@ -2297,7 +2299,7 @@ struct inst_t instructions[] = {
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_BANK),
             MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            // MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
             ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
             MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
@@ -2328,7 +2330,7 @@ struct inst_t instructions[] = {
             MOV_LPC     (MOV_MSB, REG_ADDR),
             MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_X),
-            ADDR_OFFI   (1, 0),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_X),
             CHK_ZN      (REG_X),
@@ -2490,10 +2492,10 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
             IO,
             ALU_OP      (ALU_OP_SHR, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
-            CHK_ZNW     (REG_TEMP, 0),
+            // CHK_ZNW     (REG_TEMP, 0),
             SKIPS       (2, STATUS_FLAG_M),
             MOV_S       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
-            ADDR_OFFI   (0xffff, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
             MOV_S       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
         }
     },
@@ -2503,7 +2505,7 @@ struct inst_t instructions[] = {
             IO,
             ALU_OP      (ALU_OP_SHR, STATUS_FLAG_M, REG_ACCUM, REG_ZERO),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
 
@@ -2519,10 +2521,10 @@ struct inst_t instructions[] = {
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_SHR, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
-            CHK_ZNW     (REG_TEMP, 0),
+            // CHK_ZNW     (REG_TEMP, 0),
             SKIPS       (2, STATUS_FLAG_M),
             MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ADDR_OFFI   (0xffff, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
             MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
         }
     },
@@ -2540,10 +2542,10 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
             IO,
             ALU_OP      (ALU_OP_SHR, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
-            CHK_ZNW     (REG_TEMP, 0),
+            // CHK_ZNW     (REG_TEMP, 0),
             SKIPS       (2, STATUS_FLAG_M),
             MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (0xffff, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
             MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
         }
     },
@@ -2563,10 +2565,10 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
             IO,
             ALU_OP      (ALU_OP_SHR, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
-            CHK_ZNW     (REG_TEMP, 0),
+            // CHK_ZNW     (REG_TEMP, 0),
             SKIPS       (2, STATUS_FLAG_M),
             MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (0xffff, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
             MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
         }
     },
@@ -2582,30 +2584,49 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_LSB, REG_X, REG_ADDR, REG_TEMP),
             MOV_S       (MOV_LSB, REG_Y, REG_BANK, REG_TEMP),
             IO,
-            MOV_RRW     (REG_X, REG_ADDR, MOV_RRW_WORD),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_RRW     (REG_ADDR, REG_X, MOV_RRW_WORD),
+            INC_RW      (REG_X),
             IO,
-            MOV_RRW     (REG_Y, REG_ADDR, MOV_RRW_WORD),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_RRW     (REG_ADDR, REG_Y, MOV_RRW_WORD),
-
-            MOV_RRW     (REG_PC, REG_ADDR, MOV_RRW_WORD),
-            ADDR_OFFI   (0xfffe, ADDR_OFF_BANK_WRAP),
-            MOV_RRW     (REG_ADDR, REG_PC, MOV_RRW_WORD),
+            INC_RW      (REG_Y),
+            DEC_RW      (REG_ACCUM),
+            SKIPS       (3, STATUS_FLAG_AM),
+            /* we're not done copying stuff yet, so reset PC
+            to the start of the instruction */
+            DEC_RW      (REG_PC),
+            DEC_RW      (REG_PC),
+            DEC_RW      (REG_PC),
         }
     },
 
     /**************************************************************************************/
     /*                                      MVP                                           */
     /**************************************************************************************/
-
+    [MVP_BLK] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_BANK),
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_L       (MOV_LSB, REG_X, REG_ADDR, REG_TEMP),
+            MOV_S       (MOV_LSB, REG_Y, REG_BANK, REG_TEMP),
+            IO,
+            DEC_RW      (REG_X),
+            IO,
+            DEC_RW      (REG_Y),
+            DEC_RW      (REG_ACCUM),
+            SKIPS       (3, STATUS_FLAG_AM),
+            /* we're not done copying stuff yet, so reset PC
+            to the start of the instruction */
+            DEC_RW      (REG_PC),
+            DEC_RW      (REG_PC),
+            DEC_RW      (REG_PC),
+        }
+    },
     /**************************************************************************************/
     /*                                      NOP                                           */
     /**************************************************************************************/
 
     [NOP_IMP] = {
-
+        .uops = {
+            SKIPC   (0, 0)
+        }
     },
 
     /**************************************************************************************/
@@ -2622,7 +2643,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
             ALU_OP      (ALU_OP_OR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
     [ORA_ABS_X] = {
@@ -2640,7 +2661,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_OR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
     [ORA_ABS_Y] = {
@@ -2658,7 +2679,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_OR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
     [ORA_ABSL] = {
@@ -2672,7 +2693,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_OR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
     [ORA_ABSL_X] = {
@@ -2687,7 +2708,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_OR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
 
@@ -2704,7 +2725,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
             ALU_OP      (ALU_OP_OR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
     [ORA_S_REL] = {
@@ -2719,7 +2740,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
             ALU_OP      (ALU_OP_OR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         },
     },
     [ORA_DIR_X] = {
@@ -2737,7 +2758,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
             ALU_OP      (ALU_OP_OR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
 
@@ -2747,7 +2768,7 @@ struct inst_t instructions[] = {
             ZEXT        (REG_ADDR),
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, 0),
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
@@ -2758,7 +2779,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
             ALU_OP      (ALU_OP_OR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
 
@@ -2781,7 +2802,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_OR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
 
@@ -2804,7 +2825,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_OR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
 
         }
     },
@@ -2828,7 +2849,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
             ALU_OP      (ALU_OP_OR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
 
@@ -2838,7 +2859,7 @@ struct inst_t instructions[] = {
             ZEXT        (REG_ADDR),
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, 0),
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
@@ -2854,7 +2875,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_OR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
 
@@ -2862,7 +2883,7 @@ struct inst_t instructions[] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             ZEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_D, 0),
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
             MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
@@ -2871,7 +2892,7 @@ struct inst_t instructions[] = {
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_BANK),
             MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            // MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
             ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
             MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
@@ -2879,7 +2900,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_OR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
 
@@ -2890,7 +2911,7 @@ struct inst_t instructions[] = {
             MOV_LPC     (MOV_MSB, REG_TEMP),
             ALU_OP      (ALU_OP_OR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
 
@@ -2913,9 +2934,38 @@ struct inst_t instructions[] = {
     /*                                      PEI                                           */
     /**************************************************************************************/
 
+    [PEI_S] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            SKIPC       (1, STATUS_FLAG_DL),
+            IO,
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_S       (MOV_MSB, REG_S, REG_ZERO, REG_TEMP),
+            DECS,
+            MOV_S       (MOV_LSB, REG_S, REG_ZERO, REG_TEMP),
+            DECS,
+        }
+    },
+
     /**************************************************************************************/
     /*                                      PER                                           */
     /**************************************************************************************/
+
+    [PER_S] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            ADDR_OFFRS  (REG_PC, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
+            MOV_S       (MOV_MSB, REG_S, REG_ZERO, REG_ADDR),
+            DECS,
+            MOV_S       (MOV_LSB, REG_S, REG_ZERO, REG_ADDR),
+            DECS,
+        }
+    },
 
     /**************************************************************************************/
     /*                                      PHA                                           */
@@ -3129,10 +3179,10 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
             IO,
             ALU_OP      (ALU_OP_ROL, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
-            CHK_ZNW     (REG_TEMP, 0),
+            // CHK_ZNW     (REG_TEMP, 0),
             SKIPS       (2, STATUS_FLAG_M),
             MOV_S       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
-            ADDR_OFFI   (0xffff, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
             MOV_S       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
         }
     },
@@ -3142,7 +3192,7 @@ struct inst_t instructions[] = {
             IO,
             ALU_OP      (ALU_OP_ROL, STATUS_FLAG_M, REG_ACCUM, REG_ZERO),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
 
@@ -3158,10 +3208,10 @@ struct inst_t instructions[] = {
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_ROL, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
-            CHK_ZNW     (REG_TEMP, 0),
+            // CHK_ZNW     (REG_TEMP, 0),
             SKIPS       (2, STATUS_FLAG_M),
             MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ADDR_OFFI   (0xffff, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
             MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
         }
     },
@@ -3179,10 +3229,10 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
             IO,
             ALU_OP      (ALU_OP_ROL, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
-            CHK_ZNW     (REG_TEMP, 0),
+            // CHK_ZNW     (REG_TEMP, 0),
             SKIPS       (2, STATUS_FLAG_M),
             MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (0xffff, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
             MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
         }
     },
@@ -3202,10 +3252,10 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
             IO,
             ALU_OP      (ALU_OP_ROL, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
-            CHK_ZNW     (REG_TEMP, 0),
+            // CHK_ZNW     (REG_TEMP, 0),
             SKIPS       (2, STATUS_FLAG_M),
             MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (0xffff, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
             MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
         }
     },
@@ -3223,11 +3273,11 @@ struct inst_t instructions[] = {
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
             IO,
-            ALU_OP      (ALU_OP_ROL, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
-            CHK_ZNW     (REG_TEMP, 0),
+            ALU_OP      (ALU_OP_ROR, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
+            // CHK_ZNW     (REG_TEMP, 0),
             SKIPS       (2, STATUS_FLAG_M),
             MOV_S       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
-            ADDR_OFFI   (0xffff, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
             MOV_S       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
         }
     },
@@ -3237,7 +3287,7 @@ struct inst_t instructions[] = {
             IO,
             ALU_OP      (ALU_OP_ROR, STATUS_FLAG_M, REG_ACCUM, REG_ZERO),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
 
@@ -3252,11 +3302,11 @@ struct inst_t instructions[] = {
             SKIPS       (2, STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_ROL, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
-            CHK_ZNW     (REG_TEMP, 0),
+            ALU_OP      (ALU_OP_ROR, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
+            // CHK_ZNW     (REG_TEMP, 0),
             SKIPS       (2, STATUS_FLAG_M),
             MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ADDR_OFFI   (0xffff, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
             MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
         }
     },
@@ -3273,11 +3323,11 @@ struct inst_t instructions[] = {
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
             IO,
-            ALU_OP      (ALU_OP_ROL, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
-            CHK_ZNW     (REG_TEMP, 0),
+            ALU_OP      (ALU_OP_ROR, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
+            // CHK_ZNW     (REG_TEMP, 0),
             SKIPS       (2, STATUS_FLAG_M),
             MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (0xffff, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
             MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
         }
     },
@@ -3296,11 +3346,11 @@ struct inst_t instructions[] = {
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
             IO,
-            ALU_OP      (ALU_OP_ROL, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
-            CHK_ZNW     (REG_TEMP, 0),
+            ALU_OP      (ALU_OP_ROR, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
+            // CHK_ZNW     (REG_TEMP, 0),
             SKIPS       (2, STATUS_FLAG_M),
             MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (0xffff, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
             MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
         }
     },
@@ -3342,6 +3392,7 @@ struct inst_t instructions[] = {
             INCS,
             MOV_L       (MOV_LSB, REG_S, REG_ZERO, REG_BANK),
             IO,
+            INC_RW      (REG_ADDR),
             MOV_RRW     (REG_ADDR, REG_PC, MOV_RRW_WORD),
             MOV_RRW     (REG_BANK, REG_PBR, MOV_RRW_BYTE),
         }
@@ -3360,6 +3411,7 @@ struct inst_t instructions[] = {
             INCS,
             MOV_L       (MOV_MSB, REG_S, REG_ZERO, REG_ADDR),
             IO,
+            INC_RW      (REG_ADDR),
             MOV_RRW     (REG_ADDR, REG_PC, MOV_RRW_WORD),
         }
     },
@@ -3376,9 +3428,9 @@ struct inst_t instructions[] = {
             SKIPS       (2, STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
-            ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            ALU_OP      (ALU_OP_SUB, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
     [SBC_ABS_X] = {
@@ -3394,9 +3446,9 @@ struct inst_t instructions[] = {
             SKIPS       (2, STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
+            ALU_OP      (ALU_OP_SUB, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
     [SBC_ABS_Y] = {
@@ -3414,7 +3466,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_SUB, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
     [SBC_ABSL_X] = {
@@ -3429,7 +3481,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_SUB, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
     [SBC_DIR] = {
@@ -3445,7 +3497,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
             ALU_OP      (ALU_OP_SUB, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
     [SBC_S_REL] = {
@@ -3460,7 +3512,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
             ALU_OP      (ALU_OP_SUB, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         },
     },
     [SBC_DIR_X] = {
@@ -3478,7 +3530,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
             ALU_OP      (ALU_OP_SUB, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
 
@@ -3499,7 +3551,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
             ALU_OP      (ALU_OP_SUB, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
 
@@ -3522,7 +3574,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_SUB, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
 
@@ -3545,7 +3597,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_SUB, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
 
         }
     },
@@ -3569,7 +3621,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
             ALU_OP      (ALU_OP_SUB, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
 
@@ -3595,7 +3647,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_SUB, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
 
@@ -3612,7 +3664,7 @@ struct inst_t instructions[] = {
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_BANK),
             MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            // MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
             ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
             MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
@@ -3620,7 +3672,7 @@ struct inst_t instructions[] = {
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_SUB, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
 
@@ -3631,7 +3683,7 @@ struct inst_t instructions[] = {
             MOV_LPC     (MOV_MSB, REG_TEMP),
             ALU_OP      (ALU_OP_SUB, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            // CHK_ZN      (REG_ACCUM),
         }
     },
 
@@ -3690,7 +3742,7 @@ struct inst_t instructions[] = {
             MOV_LPC     (MOV_MSB, REG_ADDR),
             MOV_S       (MOV_LSB, REG_ADDR, REG_DBR, REG_ACCUM),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, 0),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_S       (MOV_MSB, REG_ADDR, REG_DBR, REG_ACCUM),
         }
     },
@@ -3698,13 +3750,26 @@ struct inst_t instructions[] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_DBR, REG_BANK, 1),
-            ADDR_OFFR   (REG_X, 1),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
             IO          /* extra cycle due to write */,
-            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_X),
-            SKIPS       (2, STATUS_FLAG_X),
-            ADDR_OFFI   (1, 0),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_X),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_ACCUM),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_ACCUM),
+        }
+    },
+    [STA_ABS_Y] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
+            IO          /* extra cycle due to write */,
+            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_ACCUM),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_ACCUM),
         }
     },
     [STA_ABSL] = {
@@ -3714,7 +3779,7 @@ struct inst_t instructions[] = {
             MOV_LPC     (MOV_LSB, REG_BANK),
             MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_ACCUM),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, 0),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_ACCUM),
         }
     },
@@ -3723,10 +3788,10 @@ struct inst_t instructions[] = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             MOV_LPC     (MOV_MSB, REG_ADDR),
             MOV_LPC     (MOV_LSB, REG_BANK),
-            ADDR_OFFR   (REG_X, 1),
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
             MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_ACCUM),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, 0),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
             MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_ACCUM),
         }
     },
@@ -3734,12 +3799,12 @@ struct inst_t instructions[] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             ZEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_D, 0),
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
             MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_ACCUM),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, 0),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_ACCUM),
         }
     },
@@ -3778,7 +3843,7 @@ struct inst_t instructions[] = {
             ZEXT        (REG_ADDR),
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, 0),
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
@@ -3856,7 +3921,7 @@ struct inst_t instructions[] = {
             ZEXT        (REG_ADDR),
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, 0),
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
@@ -3877,7 +3942,7 @@ struct inst_t instructions[] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             ZEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_D, 0), 
+            ADDR_OFFR   (REG_D, 0),
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
             MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
@@ -3886,7 +3951,7 @@ struct inst_t instructions[] = {
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_BANK),
             MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            // MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
             ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
             MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_ACCUM),
             SKIPS       (2, STATUS_FLAG_M),
@@ -3905,7 +3970,7 @@ struct inst_t instructions[] = {
             MOV_LPC     (MOV_MSB, REG_ADDR),
             MOV_S       (MOV_LSB, REG_ADDR, REG_DBR, REG_X),
             SKIPS       (2, STATUS_FLAG_X),
-            ADDR_OFFI   (1, 0),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_S       (MOV_MSB, REG_ADDR, REG_DBR, REG_X),
         }
     },
@@ -3913,12 +3978,12 @@ struct inst_t instructions[] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             ZEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_D, 0),
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0  */,
             MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_X),
             SKIPS       (2, STATUS_FLAG_X),
-            ADDR_OFFI   (1, 0),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_X),
         }
     },
@@ -3926,14 +3991,14 @@ struct inst_t instructions[] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             ZEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_D, 0),
-            ADDR_OFFR   (REG_Y, 0),
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_WRAP),
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
             IO,
             MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_X),
             SKIPS       (2, STATUS_FLAG_X),
-            ADDR_OFFI   (1, 0),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_X),
         }
     },
@@ -3948,7 +4013,7 @@ struct inst_t instructions[] = {
             MOV_LPC     (MOV_MSB, REG_ADDR),
             MOV_S       (MOV_LSB, REG_ADDR, REG_DBR, REG_Y),
             SKIPS       (2, STATUS_FLAG_X),
-            ADDR_OFFI   (1, 0),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_S       (MOV_MSB, REG_ADDR, REG_DBR, REG_Y),
         }
     },
@@ -3956,12 +4021,12 @@ struct inst_t instructions[] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             ZEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_D, 0),
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL !=0  */,
             MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_Y),
             SKIPS       (2, STATUS_FLAG_X),
-            ADDR_OFFI   (1, 0),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_Y),
         }
     },
@@ -3969,14 +4034,14 @@ struct inst_t instructions[] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             ZEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_D, 0),
-            ADDR_OFFR   (REG_X, 0),
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
             IO,
             MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_Y),
             SKIPS       (2, STATUS_FLAG_X),
-            ADDR_OFFI   (1, 0),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_Y),
         }
     },
@@ -3991,7 +4056,7 @@ struct inst_t instructions[] = {
             MOV_LPC     (MOV_MSB, REG_ADDR),
             MOV_S       (MOV_LSB, REG_ADDR, REG_DBR, REG_ZERO),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, 0),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_S       (MOV_MSB, REG_ADDR, REG_DBR, REG_ZERO),
         }
     },
@@ -4000,12 +4065,12 @@ struct inst_t instructions[] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_DBR, REG_BANK, 1),
-            ADDR_OFFR   (REG_X, 1),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
             IO          /* extra cycle due to write */,
             MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_ZERO),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, 0),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
             MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_ZERO),
         }
     },
@@ -4014,12 +4079,12 @@ struct inst_t instructions[] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             ZEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_D, 0),
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL !=0  */,
             MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_ZERO),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, 0),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_ZERO),
         }
     },
@@ -4028,14 +4093,14 @@ struct inst_t instructions[] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             ZEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_D, 0),
-            ADDR_OFFR   (REG_X, 0),
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
             IO,
             MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_ZERO),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, 0),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_ZERO),
         }
     },
@@ -4072,8 +4137,86 @@ struct inst_t instructions[] = {
     [TCD_IMP] = {
         .uops = {
             IO,
-            MOV_RRW     (REG_ACCUM, REG_D, 0),
-            CHK_ZN      (REG_D),
+            MOV_RRW     (REG_ACCUM, REG_D, MOV_RRW_WORD),
+            CHK_ZNW     (REG_D, CHK_ZW_WORD),
+        }
+    },
+
+    /**************************************************************************************/
+    /*                                      TRB                                           */
+    /**************************************************************************************/
+
+    [TRB_ABS] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ALU_OP      (ALU_OP_TRB, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
+            IO,
+            SKIPS       (2, STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP)
+        }
+    },
+
+    [TRB_DIR] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ALU_OP      (ALU_OP_TRB, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
+            IO,
+            SKIPS       (2, STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP)
+        }
+    },
+
+    /**************************************************************************************/
+    /*                                      TSB                                           */
+    /**************************************************************************************/
+
+    [TSB_ABS] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ALU_OP      (ALU_OP_TSB, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
+            IO,
+            SKIPS       (2, STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP)
+        }
+    },
+
+    [TSB_DIR] = {
+        .uops = {
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            ZEXT        (REG_ADDR),
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ALU_OP      (ALU_OP_TSB, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
+            IO,
+            SKIPS       (2, STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP)
         }
     },
 
@@ -4084,7 +4227,7 @@ struct inst_t instructions[] = {
     [TCS_IMP] = {
         .uops = {
             IO,
-            MOV_RRW     (REG_ACCUM, REG_S, 0),
+            MOV_RRW     (REG_ACCUM, REG_S, MOV_RRW_WORD),
         }
     },
 
@@ -4095,7 +4238,7 @@ struct inst_t instructions[] = {
     [TDC_IMP] = {
         .uops = {
             IO,
-            MOV_RRW     (REG_D, REG_ACCUM, 0),
+            MOV_RRW     (REG_D, REG_ACCUM, MOV_RRW_WORD),
             CHK_ZN      (REG_ACCUM),
         }
     },
@@ -4107,7 +4250,7 @@ struct inst_t instructions[] = {
     [TSC_ACC] = {
         .uops = {
             IO,
-            MOV_RRW     (REG_S, REG_ACCUM, 0),
+            MOV_RRW     (REG_S, REG_ACCUM, MOV_RRW_WORD),
             CHK_ZN      (REG_ACCUM),
         }
     },
@@ -4143,7 +4286,7 @@ struct inst_t instructions[] = {
     [TXS_ACC] = {
         .uops = {
             IO,
-            MOV_RR      (REG_X, REG_S),
+            MOV_RRW     (REG_X, REG_S, MOV_RRW_WORD),
         }
     },
 
@@ -4201,7 +4344,7 @@ struct inst_t instructions[] = {
 
     [WDM_ACC] = {
         .uops = {
-
+            SKIPC(0, 0)
         }
     },
 
@@ -4214,7 +4357,7 @@ struct inst_t instructions[] = {
             IO,
             IO,
             XBA,
-            CHK_ZNW     (REG_ACCUM, CHK_ZW_WORD)
+            CHK_ZNW     (REG_ACCUM, CHK_ZW_BYTE)
         }
     },
 
@@ -4994,6 +5137,12 @@ uint32_t opcode_width(struct opcode_t *opcode)
                 case OPCODE_EOR:
                 case OPCODE_ORA:
                 case OPCODE_ADC:
+                case OPCODE_BIT:
+                case OPCODE_SBC:
+                case OPCODE_ROR:
+                case OPCODE_ROL:
+                case OPCODE_LSR:
+                case OPCODE_ASL:
                     if(cpu_state.reg_p.m)
                     {
                         width = 2;
@@ -5414,6 +5563,47 @@ uint32_t cpu_read_wordbyte(uint32_t effective_address)
     return (uint32_t)cpu_read_word(effective_address) | ((uint32_t)cpu_read_byte(effective_address + 2) << 16);
 }
 
+void assert_nmi(uint8_t bit)
+{
+    cpu_state.nmi1 = cpu_state.nmi0;
+
+    if(!cpu_state.nmi1)
+    {
+        cpu_state.interrupts[CPU_INT_NMI] = 1;
+    }
+
+    cpu_state.nmi0 |= 1 << bit;
+}
+
+void deassert_nmi(uint8_t bit)
+{
+    cpu_state.nmi0 = cpu_state.nmi1;
+    cpu_state.nmi1 &= ~(1 << bit);
+}
+
+void assert_irq(uint8_t bit)
+{
+    cpu_state.irq |= 1 << bit;
+}
+
+void deassert_irq(uint8_t bit)
+{
+    cpu_state.irq &= ~(1 << bit);
+}
+
+void assert_rdy(uint8_t bit)
+{
+    if(!cpu_state.wai)
+    {
+        cpu_state.rdy |= 1 << bit;
+    }
+}
+
+void deassert_rdy(uint8_t bit)
+{
+    cpu_state.rdy &= ~(1 << bit);
+}
+
 void reset_cpu()
 {
     cpu_state.regs[REG_PC].word = read_word(0xfffc);
@@ -5435,18 +5625,22 @@ void reset_cpu()
     // cpu_state.in_nmib = 1;
     // cpu_state.in
 
-    cpu_state.pins[CPU_PIN_IRQ] = 1;
-    cpu_state.pins[CPU_PIN_NMI] = 1;
-    cpu_state.pins[CPU_PIN_RDY] = 1;
+    // cpu_state.pins[CPU_PIN_IRQ] = 1;
+    // cpu_state.pins[CPU_PIN_NMI] = 1;
+    // cpu_state.pins[CPU_PIN_RDY] = 1;
 
     cpu_state.interrupts[CPU_INT_BRK] = 0;
     cpu_state.interrupts[CPU_INT_IRQ] = 0;
     cpu_state.interrupts[CPU_INT_NMI] = 0;
+    cpu_state.nmi0 = 0;
+    cpu_state.nmi1 = 0;
+    cpu_state.irq = 0;
+    cpu_state.rdy = 1;
 
     cpu_state.cur_interrupt = CPU_INT_BRK;
 
     cpu_state.instruction_address = EFFECTIVE_ADDRESS(cpu_state.regs[REG_PBR].byte[0], cpu_state.regs[REG_PC].word);
-    cpu_state.regs[REG_INST].byte[0] = FETCH;
+    cpu_state.regs[REG_INST].word = FETCH;
     load_instruction();
 //    cpu_state.instruction = instructions + FETCH;
 //    cpu_state.cur_uop_index = 0;
@@ -5458,39 +5652,46 @@ void reset_cpu()
     ram1_regs[CPU_REG_HTIMEH] = 0x01;
     ram1_regs[CPU_REG_VTIMEL] = 0xff;
     ram1_regs[CPU_REG_VTIMEH] = 0x01;
+    ram1_regs[CPU_REG_MDMAEN] = 0;
+    ram1_regs[CPU_REG_HDMAEN] = 0;
 }
 
-void assert_pin(uint32_t pin)
-{
-    cpu_state.pins[pin] = 0;
+// void assert_pin(uint32_t pin)
+// {
+//     cpu_state.pins[pin] = 0;
 
-    switch(pin)
-    {
-//        case CPU_PIN_IRQ:
-//            cpu_state.interrupts[CPU_INT_IRQ] = 1;
-//        break;
+//     switch(pin)
+//     {
+// //        case CPU_PIN_IRQ:
+// //            cpu_state.interrupts[CPU_INT_IRQ] = 1;
+// //        break;
 
-        case CPU_PIN_NMI:
-            cpu_state.interrupts[CPU_INT_NMI] = 1;
-        break;
-    }
-}
+//         case CPU_PIN_NMI:
+//             cpu_state.interrupts[CPU_INT_NMI] = 1;
+//         break;
+//     }
+// }
 
-void deassert_pin(uint32_t pin)
-{
-    if(pin == CPU_PIN_RDY && cpu_state.wai)
-    {
-        return;
-    }
+// void deassert_pin(uint32_t pin)
+// {
+//     if(pin == CPU_PIN_RDY && cpu_state.wai)
+//     {
+//         return;
+//     }
 
-    cpu_state.pins[pin] = 1;
-}
+//     cpu_state.pins[pin] = 1;
+// }
 
 void load_instruction()
 {
-    cpu_state.instruction = instructions + cpu_state.regs[REG_INST].byte[0];
+    cpu_state.instruction = instructions + cpu_state.regs[REG_INST].word;
     cpu_state.uop_index = 0;
     load_uop();
+
+    if(!cpu_state.instruction->uops[0].func)
+    {
+        unimplemented(0);
+    }
 }
 
 void load_uop()
@@ -5505,9 +5706,10 @@ void next_uop()
     load_uop();
 }
 
-void step_cpu(int32_t cycle_count)
+uint32_t step_cpu(int32_t cycle_count)
 {
-    if(cpu_state.pins[CPU_PIN_RDY])
+    uint32_t end_of_instruction = 0;
+    if(cpu_state.rdy)
     {
         cpu_state.uop_cycles += cycle_count;
         cpu_state.instruction_cycles += cycle_count;
@@ -5534,54 +5736,70 @@ void step_cpu(int32_t cycle_count)
 
             if(cpu_state.last_uop)
             {
-
+                if(cpu_state.irq && !cpu_state.reg_p.i && !cpu_state.interrupts[CPU_INT_NMI])
+                {
+                    cpu_state.interrupts[CPU_INT_IRQ] = 1;
+                }
             }
 
-            cpu_state.reg_p.dl = cpu_state.regs[REG_D].byte[0];
+            cpu_state.reg_p.dl = cpu_state.regs[REG_D].byte[0] != 0;
+            cpu_state.reg_p.am = cpu_state.regs[REG_ACCUM].word == 0xffff;
             next_uop();
+        }
+    }
+    else if(cpu_state.wai)
+    {
+        if(cpu_state.irq && !cpu_state.reg_p.i && !cpu_state.interrupts[CPU_INT_NMI])
+        {
+            cpu_state.interrupts[CPU_INT_IRQ] = 1;
         }
     }
 
     if(!cpu_state.uop->func)
     {
-       if(cpu_state.interrupts[CPU_INT_NMI])
-       {
-           cpu_state.pins[CPU_PIN_RDY] = 1;
-           cpu_state.regs[REG_INST].byte[0] = BRK_S;
-           cpu_state.cur_interrupt = CPU_INT_NMI;
-       }
-       else if(!cpu_state.pins[CPU_PIN_IRQ] && (!cpu_state.reg_p.i))
-       {
-           if(cpu_state.wai)
-           {
-               cpu_state.pins[CPU_PIN_RDY] = 1;
-               cpu_state.interrupts[cpu_state.cur_interrupt] = 0;
-               cpu_state.regs[REG_INST].byte[0] = FETCH;
-               cpu_state.cur_interrupt = CPU_INT_BRK;
-           }
-           else
-           {
-               cpu_state.regs[REG_INST].byte[0] = BRK_S;
-               cpu_state.cur_interrupt = CPU_INT_IRQ;
-           }
-       }
-       else
+        if(cpu_state.interrupts[CPU_INT_NMI])
         {
-            cpu_state.interrupts[cpu_state.cur_interrupt] = 0;
-            cpu_state.regs[REG_INST].byte[0] = FETCH;
+            cpu_state.rdy = 1;
+            cpu_state.regs[REG_INST].word = BRK_S;
+            cpu_state.cur_interrupt = CPU_INT_NMI;
+            cpu_state.interrupts[CPU_INT_NMI] = 0;
+        }
+        else if(cpu_state.interrupts[CPU_INT_IRQ])
+        {
+            if(cpu_state.wai)
+            {
+                cpu_state.wai = 0;
+                cpu_state.rdy = 1;
+                cpu_state.interrupts[CPU_INT_IRQ] = 0;
+                cpu_state.regs[REG_INST].word = FETCH;
+                cpu_state.cur_interrupt = CPU_INT_BRK;
+            }
+            else
+            {
+                cpu_state.regs[REG_INST].word = BRK_S;
+                cpu_state.cur_interrupt = CPU_INT_IRQ;
+            }
+            cpu_state.interrupts[CPU_INT_IRQ] = 0;
+        }
+        else
+        {
+            cpu_state.regs[REG_INST].word = FETCH;
             cpu_state.cur_interrupt = CPU_INT_BRK;
         }
 
-        cpu_state.instruction_cycles = cpu_state.uop_cycles;
-        cpu_state.instruction_address = EFFECTIVE_ADDRESS(cpu_state.regs[REG_PBR].byte[0], cpu_state.regs[REG_PC].word);
-        cpu_state.uop_index = 0;
+        if(!cpu_state.wai)
+        {
+            cpu_state.interrupts[cpu_state.cur_interrupt] = 0;
+            cpu_state.instruction_cycles = cpu_state.uop_cycles;
+            cpu_state.instruction_address = EFFECTIVE_ADDRESS(cpu_state.regs[REG_PBR].byte[0], cpu_state.regs[REG_PC].word);
+            cpu_state.uop_index = 0;
+            load_instruction();
+        }
 
-        load_instruction();
-
-        // cpu_state.instruction = instructions + cpu_state.regs[REG_INST].byte[0];
-
-        // cpu_state.cur_uop = cpu_state.instruction->uops + cpu_state.cur_uop_index;
+        end_of_instruction = 1;
     }
+
+    return end_of_instruction;
 }
 
 uint8_t io_read(uint32_t effective_address)
@@ -5612,9 +5830,24 @@ uint8_t timeup_read(uint32_t effective_address)
 {
     uint8_t value = ram1_regs[CPU_REG_TIMEUP];
     ram1_regs[CPU_REG_TIMEUP] = 0;
-    return value;
+    /* bits 6-0 are open bus, so we put the last thing that was on the data bus in them */
+    return value | (last_bus_value & 0x7f);
 }
 
+uint8_t rdnmi_read(uint32_t effective_address)
+{
+    uint8_t value = ram1_regs[CPU_REG_RDNMI];
+    ram1_regs[CPU_REG_RDNMI] &= ~CPU_RDNMI_BLANK_NMI;
+    /* bits 6-4 are open bus, so we put the last thing that was on the data bus in them */
+    return value | (last_bus_value & 0x70);
+}
+
+uint8_t hvbjoy_read(uint32_t effective_address)
+{
+    uint8_t value = ram1_regs[CPU_REG_HVBJOY];
+    /* bits 5-1 are open bus, so we put the last thing that was on the data bus in them */
+    return value | (last_bus_value & 0x3e);
+}
 
 
 

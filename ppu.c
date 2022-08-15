@@ -58,6 +58,8 @@ uint32_t scanline_cycles = 0;
 uint64_t irq_cycle = 0xffffffffffffffff;
 uint32_t cur_irq_counter = 0;
 uint32_t irq_count = 0;
+uint32_t last_draw_scanline = 0;
+uint32_t wmdata_address = 0;
 
 struct dot_t *framebuffer;
 
@@ -85,18 +87,15 @@ union
 }oamdata_buffer;
 
 extern uint8_t *    ram1_regs;
+extern uint8_t *    ram2;
 extern uint64_t     master_cycles;
 uint32_t            cur_field = 0;
 int32_t             ppu_cycle_count = 0;
 
-//struct reg_write_t *    free_writes = NULL;
-//struct reg_write_t *    pending_writes = NULL;
-//struct reg_write_t *    last_pending_write = NULL;
-
 uint16_t            oam_addr = 0;
 uint16_t            draw_oam_addr = 0;
 uint8_t             oam_byte = 0;
-uint8_t             oam[544];
+uint8_t *           oam;
 
 uint16_t            cgram_addr = 0;
 uint8_t *           cgram = NULL;
@@ -145,8 +144,10 @@ void (*bg_draw)(struct dot_t *dot, uint32_t dot_h, uint32_t dot_v) = NULL;
 void init_ppu()
 {
     framebuffer = calloc(FRAMEBUFFER_WIDTH * FRAMEBUFFER_HEIGHT, sizeof(struct dot_t));
+    oam = calloc(1, PPU_OAM_SIZE);
     cgram = calloc(1, PPU_CGRAM_SIZE);
-    vram = calloc(PPU_VRAM_SIZE, 1);
+    vram = calloc(1, PPU_VRAM_SIZE << 1);
+    last_draw_scanline = 224;
 }
 
 void shutdown_ppu()
@@ -174,34 +175,135 @@ void bg_mode0_draw(struct dot_t *dot, uint32_t dot_h, uint32_t dot_v)
 {
     struct mode0_cgram_t *mode_cgram = (struct mode0_cgram_t *)cgram;
 
-    for(uint32_t background_index = 0; background_index < 1; background_index++)
+    // for(uint32_t background_index = 3; background_index >= 1; background_index--)
+//    for(uint32_t background_index = 1; background_index < 2; background_index++)
+//    uint32_t background_index = vcounter % 4;
+    uint32_t background_index = 0;
     {
         struct background_t *background = backgrounds + background_index;
         uint32_t index_shift = 3 + background->chr_size;
         uint32_t data_index = (dot_h >> index_shift) + (dot_v >> index_shift) * 32;
         struct bg_sc_data_t *bg_data = background->data_base + data_index;
         struct chr2_t *chr = (struct chr2_t *)background->chr_base + (bg_data->data & BG_SC_DATA_NAME_MASK);
+
         struct pal4_t *pallete = (struct pal4_t *)cgram + ((bg_data->data >> BG_SC_DATA_PAL_SHIFT) & BG_SC_DATA_PAL_MASK);
         uint32_t chr_dot_h = dot_h % (1 << index_shift);
         uint32_t chr_dot_v = dot_v % (1 << index_shift);
 
-        uint32_t color_index = (chr->p01[chr_dot_v] & (0x01 << chr_dot_h)) && 1;
-        color_index |= ((chr->p01[chr_dot_v] & (0x100 << chr_dot_h)) && 1) << 1;
+        uint32_t color_index = (chr->p01[chr_dot_v] & (0x80 >> chr_dot_h)) && 1;
+        color_index |= ((chr->p01[chr_dot_v] & (0x8000 >> chr_dot_h)) && 1) << 1;
 
         dot->r = 255 * ((float)((pallete->colors[color_index] >> COL_DATA_R_SHIFT) & COL_DATA_MASK) / 32.0);
         dot->g = 255 * ((float)((pallete->colors[color_index] >> COL_DATA_G_SHIFT) & COL_DATA_MASK) / 32.0);
         dot->b = 255 * ((float)((pallete->colors[color_index] >> COL_DATA_B_SHIFT) & COL_DATA_MASK) / 32.0);
+        dot->a = 255;
     }
 
-    dot->a = 255;
+
 }
 
 void bg_mode1_draw(struct dot_t *dot, uint32_t dot_h, uint32_t dot_v)
 {
-    dot->r = 255;
-    dot->g = 0;
-    dot->b = 0;
-    dot->a = 255;
+    struct mode1_cgram_t *pallets = (struct mode1_cgram_t *)cgram;
+    struct background_t *background = backgrounds + 2;
+    uint32_t index_shift = 3 + background->chr_size;
+    uint32_t data_index = (dot_h >> index_shift) + (dot_v >> index_shift) * 32;
+    struct bg_sc_data_t *bg_data = background->data_base + data_index;
+    uint32_t chr_dot_h = dot_h % (1 << index_shift);
+    uint32_t chr_dot_v = dot_v % (1 << index_shift);
+    uint32_t color_index = 0;
+
+//    switch((ram1_regs[PPU_REG_VMAINC] >> 2) & 0x3)
+//    {
+//        case 1:
+//        {
+//            struct chr2_t *chr = (struct chr2_t *)background->chr_base + (bg_data->data & BG_SC_DATA_NAME_MASK);
+//            color_index = (chr->p01[chr_dot_v] & (0x01 << chr_dot_h)) && 1;
+//            color_index |= ((chr->p01[chr_dot_v] & (0x100 << chr_dot_h)) && 1) << 1;
+//        }
+//        break;
+//
+//        case 2:
+//        {
+//            struct chr4_t *chr = (struct chr4_t *)background->chr_base + (bg_data->data & BG_SC_DATA_NAME_MASK);
+//            color_index = (chr->p01[chr_dot_v] & (0x01 << chr_dot_h)) && 1;
+//            color_index |= ((chr->p01[chr_dot_v] & (0x100 << chr_dot_h)) && 1) << 1;
+//            color_index |= ((chr->p23[chr_dot_v] & (0x01 << chr_dot_h)) && 1) << 2;
+//            color_index |= ((chr->p23[chr_dot_v] & (0x100 << chr_dot_h)) && 1) << 3;
+//        }
+//        break;
+//
+//        case 3:
+//        {
+//            struct chr8_t *chr = (struct chr8_t *)background->chr_base + (bg_data->data & BG_SC_DATA_NAME_MASK);
+//            color_index = (chr->p01[chr_dot_v] & (0x01 << chr_dot_h)) && 1;
+//            color_index |= ((chr->p01[chr_dot_v] & (0x100 << chr_dot_h)) && 1) << 1;
+//            color_index |= ((chr->p23[chr_dot_v] & (0x01 << chr_dot_h)) && 1) << 2;
+//            color_index |= ((chr->p23[chr_dot_v] & (0x100 << chr_dot_h)) && 1) << 3;
+//            color_index |= ((chr->p45[chr_dot_v] & (0x01 << chr_dot_h)) && 1) << 4;
+//            color_index |= ((chr->p45[chr_dot_v] & (0x100 << chr_dot_h)) && 1) << 5;
+//            color_index |= ((chr->p67[chr_dot_v] & (0x01 << chr_dot_h)) && 1) << 6;
+//            color_index |= ((chr->p67[chr_dot_v] & (0x100 << chr_dot_h)) && 1) << 7;
+//        }
+//        break;
+//    }
+//
+//    struct pal4_t *pallete = pallets->bg3_data + ((bg_data->data >> BG_SC_DATA_PAL_SHIFT) & BG_SC_DATA_PAL_MASK);
+//    dot->r = 255 * ((float)((pallete->colors[color_index] >> COL_DATA_R_SHIFT) & COL_DATA_MASK) / 32.0);
+//    dot->g = 255 * ((float)((pallete->colors[color_index] >> COL_DATA_G_SHIFT) & COL_DATA_MASK) / 32.0);
+//    dot->b = 255 * ((float)((pallete->colors[color_index] >> COL_DATA_B_SHIFT) & COL_DATA_MASK) / 32.0);
+
+
+    for(int32_t background_index = 0; background_index >= 0; background_index--)
+    {
+        struct background_t *background = backgrounds + background_index;
+        uint32_t index_shift = 3 + background->chr_size;
+        uint32_t data_index = (dot_h >> index_shift) + (dot_v >> index_shift) * 32;
+        struct bg_sc_data_t *bg_data = background->data_base + data_index;
+        uint32_t chr_dot_h = dot_h % (1 << index_shift);
+        uint32_t chr_dot_v = dot_v % (1 << index_shift);
+        uint32_t color_index = 0;
+
+        switch((ram1_regs[PPU_REG_VMAINC] >> 2) & 0x3)
+        {
+            case 1:
+            {
+                struct chr2_t *chr = (struct chr2_t *)background->chr_base + (bg_data->data & BG_SC_DATA_NAME_MASK);
+                color_index = (chr->p01[chr_dot_v] & (0x01 << chr_dot_h)) && 1;
+                color_index |= ((chr->p01[chr_dot_v] & (0x100 << chr_dot_h)) && 1) << 1;
+            }
+            break;
+
+            case 2:
+            {
+                struct chr4_t *chr = (struct chr4_t *)background->chr_base + (bg_data->data & BG_SC_DATA_NAME_MASK);
+                color_index = (chr->p01[chr_dot_v] & (0x01 << chr_dot_h)) && 1;
+                color_index |= ((chr->p01[chr_dot_v] & (0x100 << chr_dot_h)) && 1) << 1;
+                color_index |= ((chr->p23[chr_dot_v] & (0x01 << chr_dot_h)) && 1) << 2;
+                color_index |= ((chr->p23[chr_dot_v] & (0x100 << chr_dot_h)) && 1) << 3;
+            }
+            break;
+
+            case 3:
+            {
+                struct chr8_t *chr = (struct chr8_t *)background->chr_base + (bg_data->data & BG_SC_DATA_NAME_MASK);
+                color_index = (chr->p01[chr_dot_v] & (0x01 << chr_dot_h)) && 1;
+                color_index |= ((chr->p01[chr_dot_v] & (0x100 << chr_dot_h)) && 1) << 1;
+                color_index |= ((chr->p23[chr_dot_v] & (0x01 << chr_dot_h)) && 1) << 2;
+                color_index |= ((chr->p23[chr_dot_v] & (0x100 << chr_dot_h)) && 1) << 3;
+                color_index |= ((chr->p45[chr_dot_v] & (0x01 << chr_dot_h)) && 1) << 4;
+                color_index |= ((chr->p45[chr_dot_v] & (0x100 << chr_dot_h)) && 1) << 5;
+                color_index |= ((chr->p67[chr_dot_v] & (0x01 << chr_dot_h)) && 1) << 6;
+                color_index |= ((chr->p67[chr_dot_v] & (0x100 << chr_dot_h)) && 1) << 7;
+            }
+            break;
+        }
+
+        struct pal16_t *pallete = pallets->bg12_data + ((bg_data->data >> BG_SC_DATA_PAL_SHIFT) & BG_SC_DATA_PAL_MASK);
+        dot->r = 255 * ((float)((pallete->colors[color_index] >> COL_DATA_R_SHIFT) & COL_DATA_MASK) / 32.0);
+        dot->g = 255 * ((float)((pallete->colors[color_index] >> COL_DATA_G_SHIFT) & COL_DATA_MASK) / 32.0);
+        dot->b = 255 * ((float)((pallete->colors[color_index] >> COL_DATA_B_SHIFT) & COL_DATA_MASK) / 32.0);
+    }
 }
 
 void bg_mode2_draw(struct dot_t *dot, uint32_t dot_h, uint32_t dot_v)
@@ -257,8 +359,11 @@ uint32_t step_ppu(int32_t cycle_count)
     ppu_cycle_count += cycle_count;
     uint32_t vblank = 0;
 
-    struct obj_attr_t *obj_tab1 = (struct obj_attr_t *)oam;
-    uint16_t *obj_tab2 = (uint16_t *)(oam + 512);
+    struct oam_t *oam_tables = (struct oam_t *)oam;
+    uint32_t obj_size = (ram1_regs[PPU_REG_OBJSEL] >> PPU_OBJSEL_SIZE_SHIFT) & PPU_OBJSEL_SIZE_MASK;
+    uint32_t *obj_sizes = objsel_size_sel_sizes + obj_size;
+
+
 
     while(ppu_cycle_count)
     {
@@ -302,28 +407,35 @@ uint32_t step_ppu(int32_t cycle_count)
             if(vcounter == V_BLANK_END_LINE)
             {
                 ram1_regs[CPU_REG_HVBJOY] &= ~CPU_HVBJOY_FLAG_VBLANK;
+                ram1_regs[CPU_REG_RDNMI] &= ~CPU_RDNMI_BLANK_NMI;
             }
             else
             {
-                uint32_t last_scanline;
-                uint8_t setini = ram1_regs[PPU_REG_SETINI];
+//                uint32_t last_scanline;
+//                uint8_t setini = ram1_regs[PPU_REG_SETINI];
+//
+//                if(setini & PPU_SETINI_FLAG_BGV_SEL)
+//                {
+//                    last_scanline = 240;
+//                }
+//                else
+//                {
+//                    last_scanline = 225;
+//                }
 
-                if(setini & PPU_SETINI_FLAG_BGV_SEL)
-                {
-                    last_scanline = 240;
-                }
-                else
-                {
-                    last_scanline = 225;
-                }
-
-                if(vcounter == last_scanline)
+                if(vcounter == last_draw_scanline && hcounter == 0)
                 {
                     if(!(ram1_regs[CPU_REG_HVBJOY] & CPU_HVBJOY_FLAG_VBLANK))
                     {
                         vblank = 1;
+                        ram1_regs[CPU_REG_RDNMI] |= CPU_RDNMI_BLANK_NMI;
                     }
                     ram1_regs[CPU_REG_HVBJOY] |= CPU_HVBJOY_FLAG_VBLANK;
+                    if(ram1_regs[CPU_REG_NMITIMEN] & CPU_NMITIMEN_FLAG_NMI_ENABLE)
+                    {
+                        assert_nmi(2);
+                        deassert_nmi(2);
+                    }
                 }
             }
 
@@ -344,18 +456,42 @@ uint32_t step_ppu(int32_t cycle_count)
 
             uint8_t hvbjoy = ram1_regs[CPU_REG_HVBJOY];
 
-            if(!(hvbjoy & CPU_HVBJOY_FLAG_VBLANK) && !(hvbjoy & CPU_HVBJOY_FLAG_HBLANK))
+            if(!(hvbjoy & CPU_HVBJOY_FLAG_VBLANK) && vcounter >= DRAW_START_LINE
+               && hcounter >= DRAW_START_DOT && hcounter <= DRAW_END_DOT)
             {
                 uint8_t inidisp = ram1_regs[PPU_REG_INIDISP];
                 float brightness = (float)(inidisp & 0xf) / 15.0;
+                uint32_t dot_x = hcounter - DRAW_START_DOT;
+                uint32_t dot_y = vcounter - DRAW_START_LINE;
 
                 if(ram1_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK)
                 {
                     brightness = 0.0;
                 }
 
-                struct dot_t *dot = framebuffer + vcounter * FRAMEBUFFER_WIDTH + hcounter;
-                bg_draw(dot, hcounter - 1, vcounter);
+                struct dot_t *dot = framebuffer + dot_y * FRAMEBUFFER_WIDTH + dot_x;
+                bg_draw(dot, dot_x, dot_y);
+
+//                for(uint32_t obj_index = 0; obj_index < 128; obj_index++)
+//                {
+//                    struct obj1_t *obj1 = oam_tables->table1 + obj_index;
+//                    struct obj2_t *obj2 = oam_tables->table2 + (obj_index >> 3);
+//                    uint16_t obj2_data = obj2->size_hpos >> (obj_index << 1);
+//                    uint32_t size = obj_sizes[(obj2_data >> 1) & 1];
+//                    uint16_t obj_vpos = obj1->v_pos;
+//                    uint16_t obj_hpos = (uint16_t)obj1->h_pos | ((obj2_data & 1) << 8);
+//
+//                    if(hcounter >= obj_hpos && hcounter <= obj_hpos + size)
+//                    {
+//                        if(vcounter >= obj_vpos && vcounter <= obj_vpos + size)
+//                        {
+//                            dot->r = 255;
+//                            dot->g = 0;
+//                            dot->b = 0;
+//                            dot->a = 255;
+//                        }
+//                    }
+//                }
 
                 dot->r *= brightness;
                 dot->g *= brightness;
@@ -411,7 +547,8 @@ uint8_t opct_read(uint32_t effective_address)
 
 void vmadd_write(uint32_t effective_address, uint8_t value)
 {
-    uint32_t reg = PPU_REG_VMADDH - (effective_address & 0xffff);
+//    uint32_t reg = PPU_REG_VMADDH - (effective_address & 0xffff);
+    uint32_t reg = effective_address & 0xffff;
     ram1_regs[reg] = value;
     vram_addr = (uint16_t)ram1_regs[PPU_REG_VMADDL] | ((uint16_t)ram1_regs[PPU_REG_VMADDH] << 8);
 }
@@ -459,14 +596,13 @@ void oamadd_write(uint32_t effective_address, uint8_t value)
     ram1_regs[reg] = value;
     oam_addr = ((uint16_t)ram1_regs[PPU_REG_OAMADDL] | ((uint16_t)ram1_regs[PPU_REG_OAMADDH] << 8)) & 0x01ff;
     oam_addr <<= 1;
-    draw_oam_addr = oam_addr;
-//    printf("oamaddr: %d\n", oam_addr);
+//    draw_oam_addr = oam_addr;
 }
 
 void oamdata_write(uint32_t effective_address, uint8_t value)
 {
-//    oam[oam_addr] = value;
-//    oam_addr = (oam_addr + 1) % PPU_OAM_SIZE;
+    oam[oam_addr] = value;
+    oam_addr = (oam_addr + 1) % PPU_OAM_SIZE;
 }
 
 void bgmode_write(uint32_t effective_address, uint8_t value)
@@ -483,8 +619,8 @@ void bgsc_write(uint32_t effective_address, uint8_t value)
 {
     uint32_t reg = effective_address & 0xffff;
     ram1_regs[reg] = value;
-
-    uint32_t offset = (uint32_t)(value & 0xfc) << 11;
+    uint32_t offset = (((uint32_t)(value & 0xfc) << 8) & 0x7fff) << 1;
+//    uint32_t offset = 0x7c00;
 
     uint32_t background_index = reg - PPU_REG_BG1SC;
     backgrounds[background_index].data_base = (struct bg_sc_data_t *)(vram + offset);
@@ -496,12 +632,12 @@ void bgnba_write(uint32_t effective_address, uint8_t value)
     uint32_t background_index = (reg - PPU_REG_BG12NBA) << 1;
     ram1_regs[reg] = value;
 
-    uint32_t offset = (uint32_t)(value & 0x0f) << 13;
+    uint32_t offset = (((uint32_t)(value & 0x0f) << 12) & 0x7fff) << 1;
     struct background_t *background = backgrounds + background_index;
     background_index++;
     background->chr_base = vram + offset;
 
-    offset = (uint32_t)(value & 0xf0) << 9;
+    offset = (((uint32_t)(value & 0xf0) << 8) & 0x7fff) << 1;
     background = backgrounds + background_index;
     background->chr_base = vram + offset;
 }
@@ -647,7 +783,7 @@ void cgdata_write(uint32_t effective_address, uint8_t value)
     if((ram1_regs[CPU_REG_HVBJOY] & (CPU_HVBJOY_FLAG_HBLANK | CPU_HVBJOY_FLAG_VBLANK)) || (ram1_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK))
     {
         cgram[cgram_addr] = value;
-        cgram_addr = (cgram_addr + 1) & (PPU_CGRAM_SIZE - 1);
+        cgram_addr = (cgram_addr + 1) % PPU_CGRAM_SIZE;
     }
 }
 
@@ -658,8 +794,43 @@ uint8_t cgdata_read(uint32_t effective_address)
     if((ram1_regs[CPU_REG_HVBJOY] & (CPU_HVBJOY_FLAG_HBLANK | CPU_HVBJOY_FLAG_VBLANK)) || (ram1_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK))
     {
         value = cgram[cgram_addr];
-        cgram_addr = (cgram_addr + 1) & (PPU_CGRAM_SIZE - 1);
+        cgram_addr = (cgram_addr + 1) % PPU_CGRAM_SIZE;
     }
 
     return value;
 }
+
+void setinit_write(uint32_t effective_address, uint8_t value)
+{
+    ram1_regs[PPU_REG_SETINI] = value;
+    if(value & PPU_SETINI_FLAG_BGV_SEL)
+    {
+        last_draw_scanline = 239;
+    }
+    else
+    {
+        last_draw_scanline = 224;
+    }
+}
+
+void wmdata_write(uint32_t effective_address, uint8_t value)
+{
+    write_byte(wmdata_address, value);
+    wmdata_address++;
+}
+
+uint8_t wmdata_read(uint32_t effective_address)
+{
+    uint8_t value = read_byte(wmdata_address);
+    wmdata_address++;
+    return value;
+}
+
+void wmadd_write(uint32_t effective_address, uint8_t value)
+{
+    uint32_t reg = effective_address & 0xffff;
+    ram1_regs[reg] = value;
+    wmdata_address = (uint32_t)ram1_regs[PPU_REG_WMADDL] | ((uint32_t)ram1_regs[PPU_REG_WMADDM] << 8) | ((uint32_t)ram1_regs[PPU_REG_WMADDH] << 16);
+    wmdata_address = PPU_WMDATA_BASE | (wmdata_address & PPU_WMADDR_MASK);
+}
+

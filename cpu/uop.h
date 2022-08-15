@@ -49,8 +49,20 @@ uint32_t mov_p(uint32_t arg);
 uint32_t decs(uint32_t arg);
 #define DECS UOP(decs, 0)
 
+uint32_t dec_rw(uint32_t arg);
+#define DEC_RW(reg) UOP(dec_rw, reg)
+
+uint32_t dec_rb(uint32_t arg);
+#define DEC_RB(reg) UOP(dec_rb, reg)
+
 uint32_t incs(uint32_t arg);
 #define INCS UOP(incs, 0)
+
+uint32_t inc_rw(uint32_t arg);
+#define INC_RW(reg) UOP(inc_rw, reg)
+
+uint32_t inc_rb(uint32_t arg);
+#define INC_RB(reg) UOP(inc_rb, reg)
 
 uint32_t zext(uint32_t arg);
 #define ZEXT(reg) UOP(zext, reg)
@@ -82,11 +94,20 @@ enum ADDR_OFF_BANK
     ADDR_OFF_BANK_NEXT = 1,
     ADDR_OFF_BANK_WRAP = 0,
 };
+
+enum ADDR_OFF_SIGN
+{
+    ADDR_OFF_SIGNED = 1,
+    ADDR_OFF_UNSIGNED = 0
+};
+
 uint32_t addr_offr(uint32_t arg);
-#define ADDR_OFFR(addr_reg, bank_wrap) UOP(addr_offr, ((uint32_t)bank_wrap << 8) | ((uint32_t)addr_reg))
+#define ADDR_OFFRS(addr_reg, bank_wrap, offset_sign) UOP(addr_offr, ((uint32_t)offset_sign << 16) | ((uint32_t)bank_wrap << 8) | ((uint32_t)addr_reg))
+#define ADDR_OFFR(addr_reg, bank_wrap) ADDR_OFFRS(addr_reg, bank_wrap, ADDR_OFF_UNSIGNED)
 
 uint32_t addr_offi(uint32_t arg);
-#define ADDR_OFFI(offset, bank_wrap) UOP(addr_offi, ((uint32_t)bank_wrap << 16) | ((uint32_t)offset))
+#define ADDR_OFFIS(offset, bank_wrap, offset_sign) UOP(addr_offi, ((uint32_t)offset_sign << 24) | ((uint32_t)bank_wrap << 16) | ((uint32_t)offset))
+#define ADDR_OFFI(offset, bank_wrap) ADDR_OFFIS(offset, bank_wrap, ADDR_OFF_UNSIGNED)
 
 uint32_t skips(uint32_t arg);
 #define SKIPS(count, flag) UOP(skips, ((uint32_t)flag << 8) | ((uint32_t)count))
@@ -111,6 +132,9 @@ uint32_t alu_op(uint32_t arg);
 
 uint32_t brk(uint32_t arg);
 #define BRK UOP(brk, 0)
+
+uint32_t unimplemented(uint32_t arg);
+#define UNIMPLEMENTED UOP(unimplemented, 0);
 
 
 #endif

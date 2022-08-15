@@ -56,6 +56,12 @@ enum BREAKPOINT_TYPE
     BREAKPOINT_TYPE_REGISTER,
 };
 
+enum EMU_STATUS
+{
+    EMU_STATUS_END_OF_INSTRUCTION   = 1,
+    EMU_STATUS_BREAKPOINT           = 1 << 1,
+};
+
 struct breakpoint_t
 {
     uint32_t type;
@@ -78,7 +84,7 @@ void shutdown_emu();
 
 void reset_emu();
 
-uint32_t step_emu();
+uint32_t step_emu(int32_t step_cycles);
 
 void dump_emu();
 

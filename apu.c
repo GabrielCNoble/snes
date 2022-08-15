@@ -22,5 +22,5 @@ uint8_t apuio_read(uint32_t effective_address)
 void apuio_write(uint32_t effective_address, uint8_t data)
 {
     uint32_t reg = (effective_address & 0xffff) - APU_REG_IO0;
-    // io_regs[reg].write = data;
+    io_regs[reg].read = data;
 }

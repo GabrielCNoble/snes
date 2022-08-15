@@ -13,17 +13,48 @@ struct obj_attr_t
     uint16_t fpcn;
 };
 
-#define SCANLINE_DOT_LENGTH 340
-#define SCANLINE_COUNT 262
-#define H_BLANK_END_DOT 1
-#define H_BLANK_START_DOT 274
+struct obj1_t
+{
+    uint8_t h_pos;
+    uint8_t v_pos;
+    uint16_t fpcn;
+};
+
+struct obj2_t
+{
+    uint16_t size_hpos;
+};
+
+struct oam_t
+{
+    struct obj1_t table1[128];
+    struct obj2_t table2[32];
+};
+
+#define SCANLINE_DOT_LENGTH     340
+#define SCANLINE_COUNT          262
+#define H_BLANK_END_DOT         1
+#define H_BLANK_START_DOT       274
+
+/*
+    https://problemkaputt.github.io/fullsnes.htm#snestiminghvevents
+
+    Didn't really find this explicitly stated in the official snes programmer
+    manual, which is odd, but it's somewhat hinted at on page A-20. The display
+    area described there is 256x224 or 256x239. H-blank starts at dot 274 and ends
+    at dot 1. So, there's 21 dots that fall outside the left side of the screen...
+*/
+#define DRAW_START_DOT          22
+#define DRAW_END_DOT            273
+#define DRAW_START_LINE         1
+//#define DRAW_END_LINE           224
 
 #define V_BLANK_END_LINE 0
 
 #define FRAMEBUFFER_WIDTH SCANLINE_DOT_LENGTH
 #define FRAMEBUFFER_HEIGHT SCANLINE_COUNT
 #define PPU_CYCLES_PER_DOT 4
-#define PPU_OAM_SIZE 0x220
+#define PPU_OAM_SIZE 0x420
 #define PPU_CGRAM_SIZE 0x200
 #define PPU_VRAM_SIZE 0xffff
 struct dot_t
@@ -131,7 +162,15 @@ enum PPU_REGS
     PPU_REG_VMDATARL        = 0x2139,
     PPU_REG_VMDATARH        = 0x213a,
     PPU_REG_CGDATAR         = 0x213b,
+    PPU_REG_WMDATA          = 0x2180,
+    PPU_REG_WMADDL          = 0x2181,
+    PPU_REG_WMADDM          = 0x2182,
+    PPU_REG_WMADDH          = 0x2183,
 };
+
+#define PPU_WMDATA_BASE 0x7e0000
+#define PPU_WMADDR_MASK 0x1ffff
+// #define PPU_WMDATA_RAM1_END 0x2000
 
 enum PPU_VMDATA_ADDR_INCS
 {
@@ -158,6 +197,9 @@ enum PPU_SETINI_FLAGS
     PPU_SETINI_FLAG_OBJV_SEL    = 1 << 1,
     PPU_SETINI_FLAG_BGV_SEL     = 1 << 2,
 };
+
+#define PPU_OBJSEL_SIZE_SHIFT   5
+#define PPU_OBJSEL_SIZE_MASK    0x07
 
 enum PPU_OBJSEL_SIZE_SEL
 {
@@ -228,7 +270,7 @@ struct mode0_cgram_t
 
 struct mode1_cgram_t
 {
-    struct pal4_t   bg3_data[16];
+    struct pal4_t   bg3_data[8];
     struct pal16_t  bg12_data[8];
 };
 
@@ -326,6 +368,13 @@ void cgdata_write(uint32_t effective_address, uint8_t value);
 
 uint8_t cgdata_read(uint32_t effective_address);
 
+void setinit_write(uint32_t effective_address, uint8_t value);
+
+void wmdata_write(uint32_t effective_address, uint8_t value);
+
+uint8_t wmdata_read(uint32_t effective_address);
+
+void wmadd_write(uint32_t effective_address, uint8_t value);
 
 
 #endif // PPU_H

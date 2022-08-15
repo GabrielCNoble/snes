@@ -32,6 +32,7 @@ enum ALU_OP
     ALU_OP_TSB,
     ALU_OP_TRB,
     ALU_OP_BIT,
+    ALU_OP_BIT_IMM,
     ALU_OP_LAST
 };
 
@@ -533,6 +534,7 @@ enum INSTRUCTIONS
 
     STA_ABS             = 0x8d,
     STA_ABS_X           = 0x9d,
+    STA_ABS_Y           = 0x99,
     STA_ABSL            = 0x8f,
     STA_ABSL_X          = 0x9f,
     STA_DIR             = 0x85,
@@ -568,8 +570,10 @@ enum INSTRUCTIONS
 
     TDC_IMP             = 0x7b,
 
+    TRB_ABS             = 0x1c,
     TRB_DIR             = 0x14,
 
+    TSB_ABS             = 0x0c,
     TSB_DIR             = 0x04,
 
     TSC_ACC             = 0x3b,
@@ -594,7 +598,7 @@ enum INSTRUCTIONS
 
     XCE_ACC             = 0xfb,
 
-    FETCH,
+    FETCH               = 0x100,
 };
 
 enum CPU_REGS
@@ -699,6 +703,17 @@ enum CPU_NMITIMEN_FLAGS
     CPU_NMITIMEN_FLAG_HTIMER_EN     = 1 << 4,
     CPU_NMITIMEN_FLAG_VTIMER_EN     = 1 << 5,
     CPU_NMITIMEN_FLAG_NMI_ENABLE    = 1 << 7,
+};
+
+enum CPU_RDNMI_FLAGS
+{
+    CPU_RDNMI_BLANK_NMI = 1 << 7
+};
+
+enum CPU_HVBJOY_FLAGS
+{
+    CPU_HVBJOY_FLAG_VBLANK = 1 << 7,
+    CPU_HVBJOY_FLAG_HBLANK = 1 << 6,
 };
 
 // enum CPU_STATUS_FLAGS
@@ -845,7 +860,7 @@ enum STATUS_FLAGS
     STATUS_FLAG_PAGE,
     /* extra flag set when reg D LSB is not zero */
     STATUS_FLAG_DL,
-    STATUS_FLAG_AZ,
+    STATUS_FLAG_AM,
     STATUS_FLAG_LAST,
 };
 
@@ -854,25 +869,30 @@ enum CPU_INTS
     CPU_INT_BRK = 0,
     CPU_INT_IRQ,
     CPU_INT_NMI,
+    CPU_INT_COP,
     CPU_INT_LAST
 };
 
-enum CPU_PINS
-{
-    CPU_PIN_RDY,
-    CPU_PIN_IRQ,
-    CPU_PIN_NMI,
-    CPU_PIN_LAST,
-};
+// enum CPU_PINS
+// {
+//     CPU_PIN_RDY,
+//     CPU_PIN_IRQ,
+//     CPU_PIN_NMI,
+//     CPU_PIN_LAST,
+// };
 
 struct cpu_state_t
 {
-    uint8_t pins[CPU_PIN_LAST];
-    uint8_t interrupts[CPU_INT_LAST];
-//    uint8_t irq;
+    // uint8_t pins[CPU_PIN_LAST];
+
+    uint8_t nmi0;
+    uint8_t nmi1;
+    uint8_t irq;
     uint8_t wai;
-//    uint8_t nmi;
+    uint8_t rdy;
     uint8_t cur_interrupt;
+    /* interrupts waiting to be serviced */
+    uint8_t interrupts[CPU_INT_LAST];
 
     union
     {
@@ -904,6 +924,8 @@ struct cpu_state_t
             uint8_t page;
             /* set when the LSB of D register is not zero */
             uint8_t dl;
+            /* set when the accumulator is 0xffff */
+            uint8_t am;
         };
 
         uint8_t     flags[STATUS_FLAG_LAST];
@@ -918,12 +940,6 @@ struct cpu_state_t
     uint32_t            instruction_address;
 
     struct reg_t        regs[REG_LAST];
-};
-
-enum CPU_HVBJOY_FLAGS
-{
-    CPU_HVBJOY_FLAG_VBLANK = 1 << 7,
-    CPU_HVBJOY_FLAG_HBLANK = 1 << 6,
 };
 
 #define CPU_MASTER_CYCLES 6
@@ -960,9 +976,21 @@ uint32_t check_int();
 
 void reset_cpu();
 
-void assert_pin(uint32_t pin);
+void assert_nmi(uint8_t bit);
 
-void deassert_pin(uint32_t pin);
+void deassert_nmi(uint8_t bit);
+
+void assert_irq(uint8_t bit);
+
+void deassert_irq(uint8_t bit);
+
+void assert_rdy(uint8_t bit);
+
+void deassert_rdy(uint8_t bit);
+
+// void assert_pin(uint32_t pin);
+
+// void deassert_pin(uint32_t pin);
 
 // void set_signal(uint32_t signal, uint8_t value);
 
@@ -974,7 +1002,7 @@ void load_uop();
 
 void next_uop();
 
-void step_cpu(int32_t cycle_count);
+uint32_t step_cpu(int32_t cycle_count);
 
 uint8_t io_read(uint32_t effective_address);
 
@@ -983,6 +1011,10 @@ void io_write(uint32_t effective_address, uint8_t value);
 void nmitimen_write(uint32_t effective_address, uint8_t value);
 
 uint8_t timeup_read(uint32_t effective_address);
+
+uint8_t rdnmi_read(uint32_t effective_address);
+
+uint8_t hvbjoy_read(uint32_t effective_address);
 
 // void step_cpu(int32_t cycle_count);
 

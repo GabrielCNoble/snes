@@ -18,6 +18,7 @@
 // };
 uint8_t *               ram1_regs;
 uint8_t *               ram2;
+uint8_t                 last_bus_value;
 // uint8_t *               vram;
 struct mem_write_t *    reg_writes;
 struct mem_read_t *     reg_reads;
@@ -46,6 +47,9 @@ void init_mem()
     reg_reads[CPU_REG_JOYA].read = ctrl_read;
     reg_reads[CPU_REG_JOYB].read = ctrl_read;
     reg_reads[CPU_REG_TIMEUP].read = timeup_read;
+    reg_reads[CPU_REG_RDNMI].read = rdnmi_read;
+    reg_reads[CPU_REG_HVBJOY].read = hvbjoy_read;
+
 
 //    reg_reads[CPU_REG_JOYB].read = io_read;
 
@@ -67,11 +71,12 @@ void init_mem()
     reg_writes[PPU_REG_BG34NBA].write = bgnba_write;
 
     reg_writes[PPU_REG_VMAINC].write = vmainc_write;
+    reg_writes[PPU_REG_SETINI].write = setinit_write;
 
     reg_writes[PPU_REG_COLDATA].write = coldata_write;
     reg_writes[PPU_REG_CGADD].write = cgadd_write;
     reg_writes[PPU_REG_CGDATAW].write = cgdata_write;
-    reg_reads[PPU_REG_CGDATAR].read = cgdata_read;  
+    reg_reads[PPU_REG_CGDATAR].read = cgdata_read;
 
     reg_writes[PPU_REG_INIDISP].write = inidisp_write;
     reg_writes[PPU_REG_BG1HOFS].write = bgoffs_write;
@@ -87,6 +92,12 @@ void init_mem()
     reg_writes[APU_REG_IO1].write = apuio_write;
     reg_writes[APU_REG_IO2].write = apuio_write;
     reg_writes[APU_REG_IO3].write = apuio_write;
+
+    reg_writes[PPU_REG_WMADDL].write = wmadd_write;
+    reg_writes[PPU_REG_WMADDM].write = wmadd_write;
+    reg_writes[PPU_REG_WMADDH].write = wmadd_write;
+    reg_writes[PPU_REG_WMDATA].write = wmdata_write;
+    reg_reads[PPU_REG_WMDATA].read = wmdata_read;
 
     reg_reads[PPU_REG_SLVH].read = slhv_read;
     reg_reads[PPU_REG_OPHCT].read = opct_read;
@@ -144,7 +155,7 @@ uint32_t access_location(uint32_t effective_address)
 void write_byte(uint32_t effective_address, uint8_t data)
 {
     uint32_t access = access_location(effective_address);
-
+    last_bus_value = data;
     if(access == ACCESS_RAM2)
     {
         uint32_t offset = effective_address - RAM2_START;
@@ -206,6 +217,8 @@ uint8_t read_byte(uint32_t effective_address)
     {
         data = cart_read(effective_address);
     }
+
+    last_bus_value = data;
 
     return data;
 }

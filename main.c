@@ -60,9 +60,14 @@ int main(int argc, char *argv[])
                     }
                     else
                     {
-                        if(!strcmp(param, "-step"))
+                        if(!strcmp(param, "-stepi"))
                         {
-                            step_emu();
+                            while(!(step_emu(4) & EMU_STATUS_END_OF_INSTRUCTION));
+                            dump_emu();
+                        }
+                        else if(!strcmp(param, "-stepc"))
+                        {
+                            step_emu(1);
                             dump_emu();
                         }
                         else if(!strcmp(param, "-stepn"))
@@ -71,7 +76,7 @@ int main(int argc, char *argv[])
                             scanf("%d", &step_count);
                             while(step_count)
                             {
-                                step_emu();
+                                step_emu(4);
                                 step_count--;
                             }
 
@@ -94,7 +99,7 @@ int main(int argc, char *argv[])
                         }
                         else if(!strcmp(param, "-run"))
                         {
-                            while(step_emu());
+                            while(!(step_emu(4) & EMU_STATUS_BREAKPOINT));
                             dump_cpu(1);
                         }
                         else if(!strcmp(param, "-reset"))
@@ -114,7 +119,7 @@ int main(int argc, char *argv[])
                         {
                             animated_mode = 1;
 
-                            while(step_emu())
+                            while(step_emu(4))
                             {
                                  dump_cpu(1);
                             }

@@ -105,6 +105,8 @@ void init_dma();
 
 void step_dma(int32_t cycle_count);
 
+void dump_dma();
+
 uint32_t hdma_idle_state(int32_t cycle_count);
 
 uint32_t hdma_init_state(int32_t cycle_count);

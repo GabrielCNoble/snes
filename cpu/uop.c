@@ -33,6 +33,11 @@ uint32_t alu_carry_masks[] = {
     [1] = 0x00000100
 };
 
+uint32_t alu_carry_shifts[] = {
+    [0] = 16,
+    [1] = 8
+};
+
 uint32_t inc_pc(uint32_t arg)
 {
     cpu_state.regs[REG_PC].word += arg;
@@ -41,6 +46,7 @@ uint32_t inc_pc(uint32_t arg)
 
 uint32_t decode(uint32_t arg)
 {
+    cpu_state.regs[REG_INST].byte[1] = 0;
     load_instruction();
     return 0;
 }
@@ -185,6 +191,18 @@ uint32_t decs(uint32_t arg)
     return 1;
 }
 
+uint32_t dec_rw(uint32_t arg)
+{
+    cpu_state.regs[arg].word--;
+    return 1;
+}
+
+uint32_t dec_rb(uint32_t arg)
+{
+    cpu_state.regs[arg].byte[0]--;
+    return 1;
+}
+
 uint32_t incs(uint32_t arg)
 {
     if(cpu_state.reg_p.e)
@@ -196,6 +214,18 @@ uint32_t incs(uint32_t arg)
         cpu_state.regs[REG_S].word++;
     }
 
+    return 1;
+}
+
+uint32_t inc_rw(uint32_t arg)
+{
+    cpu_state.regs[arg].word++;
+    return 1;
+}
+
+uint32_t inc_rb(uint32_t arg)
+{
+    cpu_state.regs[arg].byte[0]++;
     return 1;
 }
 
@@ -294,7 +324,8 @@ uint32_t xba(uint32_t arg)
 uint32_t wai(uint32_t)
 {
     cpu_state.wai = 1;
-    cpu_state.pins[CPU_PIN_RDY] = 0;
+    cpu_state.rdy = 0;
+//    cpu_state.pins[CPU_PIN_RDY] = 0;
     return 1;
 }
 
@@ -310,13 +341,25 @@ uint32_t io(uint32_t arg)
 
 uint32_t addr_offr(uint32_t arg)
 {
+    uint32_t signed_offset = (arg >> 16) & 0xff;
     uint32_t bank_wrap = (arg >> 8) & 0xff;
     uint32_t addr_reg = arg & 0xff;
-    uint32_t addr_offset = cpu_state.regs[addr_reg].word;
+    uint32_t offset = (uint32_t)cpu_state.regs[addr_reg].word;
     uint32_t prev_addr = EFFECTIVE_ADDRESS(cpu_state.regs[REG_BANK].byte[0], cpu_state.regs[REG_ADDR].word);
-    uint32_t addr = prev_addr + addr_offset;
+
+    if(signed_offset && (offset & 0x8000))
+    {
+        offset |= 0xffff0000;
+    }
+
+    uint32_t addr = prev_addr + offset;
     cpu_state.regs[REG_ADDR].word = addr & 0xffff;
-    cpu_state.regs[REG_BANK].byte[0] = (addr >> 16) & 0xff;
+
+    if(!bank_wrap)
+    {
+        cpu_state.regs[REG_BANK].byte[0] = (addr >> 16) & 0xff;
+    }
+
     cpu_state.reg_p.page = ((prev_addr ^ addr) & 0x00ff00) && 1;
     cpu_state.reg_p.bank = ((prev_addr ^ addr) & 0xff0000) && 1;
     return 1;
@@ -324,12 +367,24 @@ uint32_t addr_offr(uint32_t arg)
 
 uint32_t addr_offi(uint32_t arg)
 {
+    uint32_t signed_offset = (arg >> 24) & 0xff;
     uint32_t bank_wrap = (arg >> 16) & 0xff;
     uint16_t offset = arg & 0xffff;
     uint32_t prev_addr = EFFECTIVE_ADDRESS(cpu_state.regs[REG_BANK].byte[0], cpu_state.regs[REG_ADDR].word);
+
+    if(signed_offset && (offset & 0x8000))
+    {
+        offset |= 0xffff0000;
+    }
+
     uint32_t addr = prev_addr + (uint32_t)offset;
     cpu_state.regs[REG_ADDR].word = addr & 0xffff;
-    cpu_state.regs[REG_BANK].byte[0] = (addr >> 16) & 0xff;
+
+    if(!bank_wrap)
+    {
+        cpu_state.regs[REG_BANK].byte[0] = (addr >> 16) & 0xff;
+    }
+
     cpu_state.reg_p.page = ((prev_addr ^ addr) & 0x00ff00) && 1;
     cpu_state.reg_p.bank = ((prev_addr ^ addr) & 0xff0000) && 1;
     return 1;
@@ -358,7 +413,6 @@ uint32_t skipc(uint32_t arg)
     {
         cpu_state.uop_index += count;
         load_uop();
-        // cpu_state.cur_uop = cpu_state.instruction->uops + cpu_state.cur_uop_index;
     }
 
     return 1;
@@ -396,96 +450,113 @@ uint32_t alu_op(uint32_t arg)
     uint32_t carry_mask = alu_carry_masks[width];
     uint32_t zero_mask = alu_zero_masks[width];
     uint32_t carry = cpu_state.reg_p.c;
+    uint32_t carry_shift = alu_carry_shifts[width];
 
-    uint32_t operand0 = cpu_state.regs[operand_a_reg].word;
-    uint32_t operand1 = cpu_state.regs[operand_b_reg].word;
+    uint32_t operand0 = cpu_state.regs[operand_a_reg].word & zero_mask;
+    uint32_t operand1 = cpu_state.regs[operand_b_reg].word & zero_mask;
     uint32_t result;
 
-    // operand0 &= zero_mask;
-    // operand1 &= zero_mask;
+//    if(cpu_state.regs[REG_INST].byte[0] == INC_ACC)
+//    {
+//        printf("oh shit!\n");
+//    }
 
     switch(operation)
     {
         case ALU_OP_CMP:
             carry = 1;
-        case ALU_OP_SUB:
-            operand1 = ((~operand1) & zero_mask) + 1;
-            operand1 -= (!carry);
-            result = operand0 + operand1;
+            operand1 ^= zero_mask;
+            result = operand0 + operand1 + carry;
         break;
 
+        case ALU_OP_SUB:
+            operand1 ^= zero_mask;
         case ALU_OP_ADD:
-            result = operand0 + operand1 + carry;
+            if(cpu_state.reg_p.d)
+            {
+
+            }
+            else
+            {
+                result = operand0 + operand1 + carry;
+            }
+
             /* if operand0 and operand1 have the same sign, and the result have a different
             sign than the operands, then overflow ocurred */
             cpu_state.reg_p.v = (((~(operand0 ^ operand1)) & (operand1 ^ result)) & sign_mask) && 1;
         break;
 
         case ALU_OP_AND:
-            result = operand0 & operand1;
+            result = (operand0 & operand1) | (carry << carry_shift);
         break;
 
         case ALU_OP_OR:
-            result = operand0 | operand1;
+            result = (operand0 | operand1) | (carry << carry_shift);
         break;
 
         case ALU_OP_XOR:
-            result = operand0 ^ operand1;
+            result = (operand0 ^ operand1) | (carry << carry_shift);
         break;
 
         case ALU_OP_INC:
-            result = operand0 + 1;
+            result = ((operand0 + 1) & zero_mask) | (carry << carry_shift);
         break;
 
         case ALU_OP_DEC:
-            result = operand0 - 1;
+            result = ((operand0 - 1) & zero_mask) | (carry << carry_shift);
         break;
 
-        case ALU_OP_ROL:
         case ALU_OP_SHL:
             /* shift left shifts msb into the carry */
-            cpu_state.reg_p.c = (operand0 & sign_mask) && 1;
-            /* rotate left shifts the carry into the lsb */
-            result = (operand0 << 1) | (operation == ALU_OP_ROL && carry);
+            carry = 0;
+        case ALU_OP_ROL:
+            /* rotate left shifts the carry into the lsb and the
+            msb into the carry */
+            result = (operand0 << 1) | carry;
         break;
 
 
         case ALU_OP_ROR:
-            /* rotate right shifts the carry into the msb */
-            operand0 = carry ? (operand0 | carry_mask) : operand0;
+            /* rotate right shifts the carry into the msb and the lsb
+            into the carry */
+            operand0 |= carry << carry_shift;
         case ALU_OP_SHR:
+            carry = (operand0 & 1) << carry_shift;
             /* shift right shifts lsb into the carry */
-            cpu_state.reg_p.c = operand0 & 1;
-            result = operand0 >> 1;
-        break;
-
-        case ALU_OP_TSB:
-
+            result = (operand0 >> 1) | carry;
         break;
 
         case ALU_OP_TRB:
+            cpu_state.regs[REG_TEMP].word = (uint32_t)((~cpu_state.regs[REG_ACCUM].word) & zero_mask) & operand0;
+            cpu_state.reg_p.z = !((cpu_state.regs[REG_ACCUM].word & operand0) & zero_mask);
+            return;
+        break;
 
+        case ALU_OP_TSB:
+            cpu_state.regs[REG_TEMP].word = (uint32_t)(cpu_state.regs[REG_ACCUM].word & zero_mask) | operand0;
+            cpu_state.reg_p.z = !((cpu_state.regs[REG_ACCUM].word & operand0) & zero_mask);
+            return;
         break;
 
         case ALU_OP_BIT:
             cpu_state.reg_p.n = (operand0 & sign_mask) && 1;
             cpu_state.reg_p.v = (operand0 & (sign_mask >> 1)) && 1;
-            cpu_state.reg_p.z = ((cpu_state.regs[REG_ACCUM].word & operand0) & zero_mask) && 1;
+        case ALU_OP_BIT_IMM:
+            cpu_state.reg_p.z = !((cpu_state.regs[REG_ACCUM].word & operand0) & zero_mask);
+            return;
         break;
     }
 
-    /* every alu op affects negative and zero */
-    // flags = (result & sign_mask) ? (flags | CPU_STATUS_FLAG_NEGATIVE) : (flags & ~CPU_STATUS_FLAG_NEGATIVE);
-    // flags = (result & zero_mask) ? (flags | CPU_STATUS_FLAG_ZERO) : (flags & ~CPU_STATUS_FLAG_ZERO);
+    // if(alu_op_carry_flag[operation])
+    // {
+    //     cpu_state.reg_p.c = (result & carry_mask) && 1;
+    // }
 
-    if(alu_op_carry_flag[operation])
-    {
-        // flags = (result & carry_mask) ? (flags | CPU_STATUS_FLAG_CARRY) : (flags & ~CPU_STATUS_FLAG_CARRY);
-        cpu_state.reg_p.c = (result & carry_mask) && 1;
-    }
-
-    // cpu_state.reg_p[cpu_state.reg_e] = flags;
-    cpu_state.regs[REG_TEMP].word = result;
+//    cpu_state.reg_p.c = (result & carry_mask) && 1;
+    cpu_state.reg_p.c = result > zero_mask;
+    cpu_state.regs[REG_TEMP].word = result & zero_mask;
+    chk_znw((width << 8) | REG_TEMP);
+//    CHK_ZNW(REG_TEMP, width);
 
     return 1;
 }
@@ -497,4 +568,11 @@ uint32_t brk(uint32_t arg)
     cpu_state.regs[REG_PC].word -= cpu_state.cur_interrupt == CPU_INT_IRQ || cpu_state.cur_interrupt == CPU_INT_NMI;
     cpu_state.reg_p.b = cpu_state.reg_p.e && cpu_state.cur_interrupt == CPU_INT_BRK;
     return 1;
+}
+
+uint32_t unimplemented(uint32_t arg)
+{
+    printf("Unimplemented opcode %x at %02x:%04x\n", cpu_state.regs[REG_INST].byte[0], cpu_state.regs[REG_PBR].byte[0], cpu_state.regs[REG_PC].word);
+    while(1);
+    return 0;
 }

@@ -157,6 +157,39 @@ void step_dma(int32_t cycle_count)
     }
 }
 
+void dump_dma()
+{
+    printf("===================== DMA/HDMA ===================\n");
+    printf("HDMA: ch1: %d, ch2: %d, ch3: %d, ch4: %d, ch5: %d, ch6: %d, ch7: %d, ch8: %d\n",
+    ram1_regs[CPU_REG_HDMAEN] & 1, (ram1_regs[CPU_REG_HDMAEN] >> 1) & 1, (ram1_regs[CPU_REG_HDMAEN] >> 2) & 1,
+    (ram1_regs[CPU_REG_HDMAEN] >> 3) & 1, (ram1_regs[CPU_REG_HDMAEN] >> 4) & 1, (ram1_regs[CPU_REG_HDMAEN] >> 5) & 1,
+    (ram1_regs[CPU_REG_HDMAEN] >> 6) & 1, (ram1_regs[CPU_REG_HDMAEN] >> 7) & 1);
+
+    printf("-------------------------------------\n");
+    printf("DMA: ch1: %d, ch2: %d, ch3: %d, ch4: %d, ch5: %d, ch6: %d, ch7: %d, ch8: %d\n",
+    ram1_regs[CPU_REG_MDMAEN] & 1, (ram1_regs[CPU_REG_MDMAEN] >> 1) & 1, (ram1_regs[CPU_REG_MDMAEN] >> 2) & 1,
+    (ram1_regs[CPU_REG_MDMAEN] >> 3) & 1, (ram1_regs[CPU_REG_MDMAEN] >> 4) & 1, (ram1_regs[CPU_REG_MDMAEN] >> 5) & 1,
+    (ram1_regs[CPU_REG_MDMAEN] >> 6) & 1, (ram1_regs[CPU_REG_MDMAEN] >> 7) & 1);
+    if(ram1_regs[CPU_REG_MDMAEN])
+    {
+        struct dma_t *channel = NULL;
+        uint32_t channel_index;
+        for(channel_index = 0; channel_index < 8; channel_index++)
+        {
+            if(ram1_regs[CPU_REG_MDMAEN] & (1 << channel_index))
+            {
+                channel = dma_channels + channel_index;
+                break;
+            }
+        }
+        printf("-------------------------------------\n");
+        printf("current channel: %d\n", channel_index + 1);
+        printf("src: %06x, dst: %04x\n", channel->addr, channel->regs[channel->cur_reg]);
+        printf("count: %d bytes\n", channel->count);
+    }
+    printf("\n");
+}
+
 uint32_t hdma_idle_state(int32_t cycle_count)
 {
     uint8_t enabled_channels = ram1_regs[CPU_REG_HDMAEN];

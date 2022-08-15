@@ -160,17 +160,23 @@ void reset_emu()
     reset_ppu();
 }
 
-uint32_t step_emu()
+uint32_t step_emu(int32_t step_cycles)
 {
-    int32_t step_cycles = 0;
+//    int32_t step_cycles = 0;
+    uint32_t status = 0;
     uint32_t hdma_active = ram1_regs[CPU_REG_HDMAEN] && ((ram1_regs[CPU_REG_HVBJOY] & (CPU_HVBJOY_FLAG_HBLANK | CPU_HVBJOY_FLAG_VBLANK)) == CPU_HVBJOY_FLAG_HBLANK);
 
-//    mem_refresh = scanline_cycles >= 536 && scanline_cycles <= 536 + 40;
-    step_cycles = 4;
-
-    if((!ram1_regs[CPU_REG_MDMAEN] || !hdma_active))
+    if((!ram1_regs[CPU_REG_MDMAEN] && !hdma_active))
     {
-        step_cpu(step_cycles);
+        if(step_cpu(step_cycles))
+        {
+            status |= EMU_STATUS_END_OF_INSTRUCTION;
+        }
+    }
+    else
+    {
+//        end_of_instruction = 1;
+        status |= EMU_STATUS_END_OF_INSTRUCTION;
     }
 
     step_dma(step_cycles);
@@ -182,87 +188,89 @@ uint32_t step_emu()
     {
         uint64_t cur_count = SDL_GetPerformanceCounter();
         float delta = (float)(cur_count - prev_count) / (float)counter_frequency;
-        printf("frame time: %f ms\n", delta * 1000.0);
+//        printf("frame time: %f ms\n", delta * 1000.0);
         prev_count = cur_count;
         blit_backbuffer();
     }
 
     uint32_t scanline_cycle = vcounter == 0 ? 536 : 538;
 
-//    mem_refresh = scanline_cycles >= scanline_cycle && scanline_cycles < scanline_cycle + 40;
-
     if(scanline_cycles >= scanline_cycle && scanline_cycles < scanline_cycle + 40)
     {
-        assert_pin(CPU_PIN_RDY);
+        deassert_rdy(0);
     }
     else
     {
-        deassert_pin(CPU_PIN_RDY);
+        assert_rdy(0);
     }
 
    if(ram1_regs[CPU_REG_TIMEUP] & 0x80)
    {
-       assert_pin(CPU_PIN_IRQ);
+       assert_irq(1);
    }
    else
    {
-       deassert_pin(CPU_PIN_IRQ);
+       deassert_irq(1);
    }
 
     master_cycles += step_cycles;
 
-    for(uint32_t breakpoint_index = 0; breakpoint_index < breakpoint_count; breakpoint_index++)
+    if(status & EMU_STATUS_END_OF_INSTRUCTION)
     {
-        struct breakpoint_t *breakpoint = breakpoints + breakpoint_index;
-
-        switch(breakpoint->type)
+        for(uint32_t breakpoint_index = 0; breakpoint_index < breakpoint_count; breakpoint_index++)
         {
-            case BREAKPOINT_TYPE_EXECUTION:
-                // if(breakpoint->address == EFFECTIVE_ADDRESS(cpu_state.regs[REG_PBR].byte[0], cpu_state.regs[REG_PC].word))
-                if(breakpoint->address == cpu_state.instruction_address)
-                {
-                    return 0;
-                }
-            break;
+            struct breakpoint_t *breakpoint = breakpoints + breakpoint_index;
 
-            case BREAKPOINT_TYPE_REGISTER:
+            switch(breakpoint->type)
             {
-                uint32_t reg_value;
+                case BREAKPOINT_TYPE_EXECUTION:
+                    if(breakpoint->address == EFFECTIVE_ADDRESS(cpu_state.regs[REG_PBR].byte[0], cpu_state.regs[REG_PC].word))
+                    // if(breakpoint->address == cpu_state.instruction_address)
+                    {
+                        return status | EMU_STATUS_BREAKPOINT;
+                    }
+                break;
 
-                switch(breakpoint->reg)
+                case BREAKPOINT_TYPE_REGISTER:
                 {
-                    case BREAKPOINT_REGISTER_Y:
-                        reg_value = cpu_state.regs[REG_Y].word;
-                    break;
+                    uint32_t reg_value;
 
-                    case BREAKPOINT_REGISTER_YL:
-                        reg_value = cpu_state.regs[REG_Y].byte[0];
-                    break;
+                    switch(breakpoint->reg)
+                    {
+                        case BREAKPOINT_REGISTER_Y:
+                            reg_value = cpu_state.regs[REG_Y].word;
+                        break;
 
-                    case BREAKPOINT_REGISTER_YH:
-                        reg_value = cpu_state.regs[REG_Y].byte[1];
-                    break;
+                        case BREAKPOINT_REGISTER_YL:
+                            reg_value = cpu_state.regs[REG_Y].byte[0];
+                        break;
 
-                    case BREAKPOINT_REGISTER_X:
-                        reg_value = cpu_state.regs[REG_X].word;
-                    break;
+                        case BREAKPOINT_REGISTER_YH:
+                            reg_value = cpu_state.regs[REG_Y].byte[1];
+                        break;
+
+                        case BREAKPOINT_REGISTER_X:
+                            reg_value = cpu_state.regs[REG_X].word;
+                        break;
+                    }
+
+                    if(breakpoint->value == reg_value)
+                    {
+                        return status | EMU_STATUS_BREAKPOINT;
+                    }
                 }
-
-                if(breakpoint->value == reg_value)
-                {
-                    return 0;
-                }
+                break;
             }
-            break;
         }
     }
 
-    return 1;
+    return status;
 }
 
 void dump_emu()
 {
     printf("master cycles: %llu\n", master_cycles);
+    dump_dma();
     dump_ppu();
     dump_cpu(1);
     printf("\n");

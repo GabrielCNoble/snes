@@ -245,7 +245,15 @@ void *mode20_cart_pointer(uint32_t effective_address)
     shift left the bank index by one bit, turning bit 0 of the bank index into bit 15
     of the offset into the rom. */
 
-    return rom_buffer + ((effective_address & 0x7fff) | ((effective_address & 0x007f0000) >> 1));
+    uint32_t offset = effective_address & 0xffff;
+    uint32_t bank = effective_address & 0xff0000;
+
+    if(bank >= 0x700000 && bank <= 0x7d0000 && offset < 0x8000)
+    {
+        return sram + offset;
+    }
+
+    return rom_buffer + ((offset & 0x7fff) | ((bank & 0x007f0000) >> 1));
 }
 
 void *mode21_cart_pointer(uint32_t effective_address)
