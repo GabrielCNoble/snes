@@ -258,10 +258,10 @@ uint32_t set_p(uint32_t arg)
         cpu_state.reg_p.z = cpu_state.reg_p.z || (flags & (1 << STATUS_FLAG_Z));
         cpu_state.reg_p.i = cpu_state.reg_p.i || (flags & (1 << STATUS_FLAG_I));
         cpu_state.reg_p.d = cpu_state.reg_p.d || (flags & (1 << STATUS_FLAG_D));
-        cpu_state.reg_p.x = cpu_state.reg_p.x || (flags & (1 << STATUS_FLAG_X));
-        cpu_state.reg_p.m = cpu_state.reg_p.m || (flags & (1 << STATUS_FLAG_M));
         cpu_state.reg_p.v = cpu_state.reg_p.v || (flags & (1 << STATUS_FLAG_V));
         cpu_state.reg_p.n = cpu_state.reg_p.n || (flags & (1 << STATUS_FLAG_N));
+        cpu_state.reg_p.x = cpu_state.reg_p.x || (flags & (1 << STATUS_FLAG_X));
+        cpu_state.reg_p.m = cpu_state.reg_p.m || (flags & (1 << STATUS_FLAG_M));
     }
 
     return 1;
@@ -286,6 +286,13 @@ uint32_t clr_p(uint32_t arg)
         cpu_state.reg_p.v = cpu_state.reg_p.v && (flags & (1 << STATUS_FLAG_V));
         cpu_state.reg_p.n = cpu_state.reg_p.n && (flags & (1 << STATUS_FLAG_N));
     }
+
+    if(cpu_state.reg_p.e)
+    {
+        cpu_state.reg_p.x = 1;
+        cpu_state.reg_p.m = 1;
+    }
+
     return 1;
 }
 

@@ -61,6 +61,9 @@ void init_mem()
     reg_writes[PPU_REG_OAMADDH].write = oamadd_write;
     reg_writes[PPU_REG_OAMDATA].write = oamdata_write;
     reg_writes[PPU_REG_BGMODE].write = bgmode_write;
+    reg_writes[PPU_REG_TMAIN].write = tmain_write;
+    reg_writes[PPU_REG_TSUB].write = tsub_write;
+    reg_writes[PPU_REG_OBJSEL].write = objsel_write;
 
     reg_writes[PPU_REG_BG1SC].write = bgsc_write;
     reg_writes[PPU_REG_BG2SC].write = bgsc_write;

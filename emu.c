@@ -188,7 +188,7 @@ uint32_t step_emu(int32_t step_cycles)
     {
         uint64_t cur_count = SDL_GetPerformanceCounter();
         float delta = (float)(cur_count - prev_count) / (float)counter_frequency;
-//        printf("frame time: %f ms\n", delta * 1000.0);
+        printf("frame time: %f ms\n", delta * 1000.0);
         prev_count = cur_count;
         blit_backbuffer();
     }

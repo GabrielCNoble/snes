@@ -5757,18 +5757,18 @@ uint32_t step_cpu(int32_t cycle_count)
 //                printf("oh shit!\n");
 //            }
 
-            if(cpu_state.reg_p.e)
-            {
-                cpu_state.reg_p.m = 1;
-                cpu_state.reg_p.x = 1;
-                cpu_state.regs[REG_S].byte[1] = 0x01;
-            }
+            // if(cpu_state.reg_p.e)
+            // {
+            //     cpu_state.reg_p.m = 1;
+            //     cpu_state.reg_p.x = 1;
+            //     cpu_state.regs[REG_S].byte[1] = 0x01;
+            // }
 
-            if(cpu_state.reg_p.x)
-            {
-                cpu_state.regs[REG_X].byte[1] = 0;
-                cpu_state.regs[REG_Y].byte[1] = 0;
-            }
+            // if(cpu_state.reg_p.x)
+            // {
+            //     cpu_state.regs[REG_X].byte[1] = 0;
+            //     cpu_state.regs[REG_Y].byte[1] = 0;
+            // }
 
             if(cpu_state.last_uop)
             {

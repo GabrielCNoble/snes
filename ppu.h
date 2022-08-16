@@ -13,6 +13,9 @@ struct obj_attr_t
     uint16_t fpcn;
 };
 
+#define OBJ1_HPOS_MASK 0x01
+#define OBJ1_PAL_SHIFT 0x08
+#define OBJ1_PAL_MASK  0x03
 struct obj1_t
 {
     uint8_t h_pos;
@@ -20,9 +23,21 @@ struct obj1_t
     uint16_t fpcn;
 };
 
+#define OBJ2_HPOS_MASK 0x01
+#define OBJ2_SIZE_SHIFT 0x01
+#define OBJ2_SIZE_MASK 0x01
+#define OBJ2_DATA_MASK 0x03
 struct obj2_t
 {
     uint16_t size_hpos;
+};
+
+struct line_obj_t
+{
+    uint16_t vpos;
+    uint16_t hpos;
+    uint16_t size;
+    uint16_t index;
 };
 
 struct oam_t
@@ -86,10 +101,10 @@ struct bg_sc_data_t
 struct background_t
 {
     struct bg_offset_t      offset;
-    uint16_t                chr_bits;
-    uint16_t                chr_size;
     struct bg_sc_data_t *   data_base;
     void *                  chr_base;
+    void *                  pal_base;
+    uint16_t                chr_size;
 };
 
 enum PPU_REGS
@@ -154,6 +169,9 @@ enum PPU_REGS
     PPU_REG_WCOLOBJLOG      = 0x212b,
     PPU_REG_TMAIN           = 0x212c,
     PPU_REG_TSUB            = 0x212d,
+    PPU_REG_TMAINWM         = 0x212e,
+    PPU_REG_TSUBWM          = 0x212f,
+    PPU_REG_CGSWSEL         = 0x2130,
     PPU_REG_COLDATA         = 0x2132,
     PPU_REG_SETINI          = 0x2133,
     PPU_REG_SLVH            = 0x2137,
@@ -177,6 +195,18 @@ enum PPU_VMDATA_ADDR_INCS
     PPU_VMDATA_ADDR_INC_HL = 0,
     PPU_VMDATA_ADDR_INC_LH = 1 << 7,
 };
+
+enum PPU_CHR_BITDEPTHS
+{
+    PPU_CHR_BITDEPTH_0,
+    PPU_CHR_BITDEPTH_2,
+    PPU_CHR_BITDEPTH_4,
+    PPU_CHR_BITDEPTH_8,
+};
+
+#define PPU_VMAINC_SC_INCREMENT_MASK    0x03
+#define PPU_VMAINC_BITDEPTH_SHIFT       0x02
+#define PPU_VMAINC_BITDEPTH_MASK        0x03
 
 enum PPU_INIDISP_FLAGS
 {
@@ -211,7 +241,12 @@ enum PPU_OBJSEL_SIZE_SEL
     PPU_OBJSEL_SIZE_SEL_32_64,
 };
 
-#define PPU_BGMODE_MODE_MASK 0x07
+#define PPU_BGMODE_MODE_MASK            0x07
+#define PPU_BGMODE_BG_CHR_SIZE_MASK     0x01
+#define PPU_BGMODE_BG1_CHR_SIZE_SHIFT   0x04
+#define PPU_BGMODE_BG2_CHR_SIZE_SHIFT   0x05
+#define PPU_BGMODE_BG3_CHR_SIZE_SHIFT   0x06
+#define PPU_BGMODE_BG4_CHR_SIZE_SHIFT   0x07
 enum PPU_BGMODE_MODES
 {
     PPU_BGMODE_MODE0 = 0,
@@ -223,6 +258,24 @@ enum PPU_BGMODE_MODES
     PPU_BGMODE_MODE6,
     PPU_BGMODE_MODE7,
     PPU_BGMODE_LAST
+};
+
+enum PPU_TMAIN_FLAGS
+{
+    PPU_TMAIN_FLAG_BG1 = 1,
+    PPU_TMAIN_FLAG_BG2 = 1 << 1,
+    PPU_TMAIN_FLAG_BG3 = 1 << 2,
+    PPU_TMAIN_FLAG_BG4 = 1 << 3,
+    PPU_TMAIN_FLAG_OBJ = 1 << 4,
+};
+
+enum PPU_TSUB_FLAGS
+{
+    PPU_TSUB_FLAG_BG1 = 1,
+    PPU_TSUB_FLAG_BG2 = 1 << 1,
+    PPU_TSUB_FLAG_BG3 = 1 << 2,
+    PPU_TSUB_FLAG_BG4 = 1 << 3,
+    PPU_TSUB_FLAG_OBJ = 1 << 4,
 };
 
 struct chr2_t
@@ -259,29 +312,67 @@ struct pal16_t
     uint16_t colors[16];
 };
 
+struct pal256_t
+{
+    uint16_t colors[256];
+};
+
+struct col_entry_t
+{
+    uint8_t color_index;
+    uint8_t pal_index;
+};
+
+struct bg_tile_t
+{
+    uint16_t chr_index;
+    uint16_t pal_index;
+};
+
+struct col_t
+{
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
+};
+
 struct mode0_cgram_t
 {
-    struct pal4_t   bg1_data[8];
-    struct pal4_t   bg2_data[8];
-    struct pal4_t   bg3_data[8];
-    struct pal4_t   bg4_data[8];
-    struct pal16_t  obj_data[8];
+    struct pal4_t       bg1_colors[8];
+    struct pal4_t       bg2_colors[8];
+    struct pal4_t       bg3_colors[8];
+    struct pal4_t       bg4_colors[8];
+    struct pal16_t      obj_colors[8];
 };
 
-struct mode1_cgram_t
+struct mode12_cgram_t
 {
-    struct pal4_t   bg3_data[8];
-    struct pal16_t  bg12_data[8];
+    struct pal4_t       bg3_colors[8];
+    struct pal16_t      bg12_colors[8];
+    struct pal16_t      obj_colors[8];
 };
 
-struct mode2_cgram_t
+// struct mode3_cgram_t
+// {
+//     struct pal4_t       bg2_colors[8];
+//     struct pal256_t     bg1_colors;
+// };
+
+struct mode56_cgram_t
 {
-    struct pal16_t  bg12_data[8];
+    union
+    {
+        struct pal4_t   bg2_colors[8];
+        struct pal16_t  bg1_colors[8];
+    };
+
+    struct pal16_t      obj_colors[8];
 };
 
-struct mode3_cgram_t
+struct bg_draw_t
 {
-
+    struct background_t *   background;
+    uint16_t           (*   color_func)(uint32_t dot_h, uint32_t dot_v, struct background_t *background);
 };
 
 enum PPU_BGMODE_CHR_SIZES
@@ -306,31 +397,29 @@ void shutdown_ppu();
 
 void reset_ppu();
 
-// struct reg_write_t *queue_write(uint16_t reg, uint64_t cycle, uint8_t value);
+uint8_t bg_chr0_dot_col(void *chr_base, uint32_t index, uint32_t dot_h, uint32_t dot_v);
 
-// void apply_writes();
+uint8_t bg_chr2_dot_col(void *chr_base, uint32_t index, uint32_t dot_h, uint32_t dot_v);
 
-void bg_mode0_draw(struct dot_t *dot, uint32_t dot_h, uint32_t dot_v);
+uint8_t bg_chr4_dot_col(void *chr_base, uint32_t index, uint32_t dot_h, uint32_t dot_v);
 
-void bg_mode1_draw(struct dot_t *dot, uint32_t dot_h, uint32_t dot_v);
+uint8_t bg_chr8_dot_col(void *chr_base, uint32_t index, uint32_t dot_h, uint32_t dot_v);
 
-void bg_mode2_draw(struct dot_t *dot, uint32_t dot_h, uint32_t dot_v);
+struct bg_tile_t bg_tile_entry(uint32_t dot_h, uint32_t dot_v, struct background_t *background);
 
-void bg_mode3_draw(struct dot_t *dot, uint32_t dot_h, uint32_t dot_v);
+uint16_t bg_pal4_col(uint32_t dot_h, uint32_t dot_v, struct background_t *background);
 
-void bg_mode4_draw(struct dot_t *dot, uint32_t dot_h, uint32_t dot_v);
+uint16_t bg_pal16_col(uint32_t dot_h, uint32_t dot_v, struct background_t *background);
 
-void bg_mode5_draw(struct dot_t *dot, uint32_t dot_h, uint32_t dot_v);
-
-void bg_mode6_draw(struct dot_t *dot, uint32_t dot_h, uint32_t dot_v);
-
-void bg_mode7_draw(struct dot_t *dot, uint32_t dot_h, uint32_t dot_v);
+void update_line_objs(uint16_t line);
 
 uint32_t step_ppu(int32_t cycle_count);
 
 void dump_ppu();
 
 void inidisp_write(uint32_t effective_address, uint8_t value);
+
+void objsel_write(uint32_t effective_address, uint8_t value);
 
 uint8_t slhv_read(uint32_t effective_address);
 
@@ -346,6 +435,8 @@ void oamadd_write(uint32_t effective_address, uint8_t value);
 
 void oamdata_write(uint32_t effective_address, uint8_t value);
 
+void update_bg_state();
+
 void bgmode_write(uint32_t effective_address, uint8_t value);
 
 void bgsc_write(uint32_t effective_address, uint8_t value);
@@ -355,6 +446,10 @@ void bgnba_write(uint32_t effective_address, uint8_t value);
 void bgoffs_write(uint32_t effective_address, uint8_t value);
 
 void vmainc_write(uint32_t effective_address, uint8_t value);
+
+void tmain_write(uint32_t effective_address, uint8_t value);
+
+void tsub_write(uint32_t effective_address, uint8_t value);
 
 void coldata_write(uint32_t effective_address, uint8_t value);
 

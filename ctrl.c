@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include "ctrl.h"
 #include "cpu/cpu.h"
+#include "ppu.h"
 #include "SDL2/SDL.h"
 
 uint32_t controller_read = 0;
