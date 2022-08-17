@@ -16,6 +16,16 @@ enum APU_REGS
     APU_REG_IO3     = 0x2143,
 };
 
+enum APU_STATES
+{
+    APU_STATE_IDLE,
+    APU_STATE_START_TRANSFER,
+    // APU_STATE_WAITING_DATA,
+    // APU_STATE_DATA_RECEIVED,
+    APU_STATE_TRANSFER,
+    APU_STATE_END_TRANSFER,
+};
+
 
 void init_apu();
 

@@ -25,12 +25,12 @@ enum ROM_SIZE
 
 enum RAM_SIZE
 {
-    RAM_SIZE_NONE   = 0x00,
-    RAM_SIZE_16K    = 0x01,
-    RAM_SIZE_64K    = 0x03,
-    RAM_SIZE_256K   = 0x05,
-    RAM_SIZE_512K   = 0x06,
-    RAM_SIZE_1M     = 0x07,
+    RAM_SIZE_NONE      = 0x00,
+    RAM_SIZE_16KBit    = 0x01,
+    RAM_SIZE_64KBit    = 0x03,
+    RAM_SIZE_256KBit   = 0x05,
+    RAM_SIZE_512KBit   = 0x06,
+    RAM_SIZE_1MBit     = 0x07,
 };
 
 // enum CART_LOCS
@@ -68,11 +68,10 @@ enum RAM_SIZE
 //};
 //#pragma pack(pop)
 
-#pragma pack(push, 1)
 struct rom_header_t
 {
     uint16_t maker_code;
-    uint32_t game_code;
+    uint8_t game_code[4];
     uint8_t unused0[7];
     uint8_t expansion_ram_size;
     uint8_t special_version;
@@ -88,7 +87,6 @@ struct rom_header_t
     uint8_t complement_check[2];
     uint8_t check_sum[2];
 };
-#pragma pack(pop)
 
 //struct rom_t
 //{

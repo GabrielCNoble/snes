@@ -14,8 +14,9 @@ struct obj_attr_t
 };
 
 #define OBJ1_HPOS_MASK 0x01
-#define OBJ1_PAL_SHIFT 0x08
-#define OBJ1_PAL_MASK  0x03
+#define OBJ1_PAL_SHIFT 0x09
+#define OBJ1_PAL_MASK  0x07
+#define OBJ1_NAME_MASK 0x1ff
 struct obj1_t
 {
     uint8_t h_pos;
@@ -180,6 +181,8 @@ enum PPU_REGS
     PPU_REG_VMDATARL        = 0x2139,
     PPU_REG_VMDATARH        = 0x213a,
     PPU_REG_CGDATAR         = 0x213b,
+    PPU_REG_STAT77          = 0x213e,
+    PPU_REG_STAT78          = 0x213f,
     PPU_REG_WMDATA          = 0x2180,
     PPU_REG_WMADDL          = 0x2181,
     PPU_REG_WMADDM          = 0x2182,
@@ -194,6 +197,12 @@ enum PPU_VMDATA_ADDR_INCS
 {
     PPU_VMDATA_ADDR_INC_HL = 0,
     PPU_VMDATA_ADDR_INC_LH = 1 << 7,
+};
+
+enum PPU_STAT77_FLAGS
+{
+    PPU_STAT77_FLAG_33_RANGE_OVER = 1 << 6,
+    PPU_STAT77_FLAG_35_TIME_OVER = 1 << 7,
 };
 
 enum PPU_CHR_BITDEPTHS
@@ -228,8 +237,11 @@ enum PPU_SETINI_FLAGS
     PPU_SETINI_FLAG_BGV_SEL     = 1 << 2,
 };
 
-#define PPU_OBJSEL_SIZE_SHIFT   5
-#define PPU_OBJSEL_SIZE_MASK    0x07
+#define PPU_OBJSEL_SIZE_SHIFT       0x05
+#define PPU_OBJSEL_SIZE_MASK        0x07
+#define PPU_OBJSEL_NAME_BASE_MASK   0x07
+#define PPU_OBJSEL_NAME_SEL_SHIFT   0x03
+#define PPU_OBJSEL_NAME_SEL_MASK    0x03
 
 enum PPU_OBJSEL_SIZE_SEL
 {
@@ -397,19 +409,21 @@ void shutdown_ppu();
 
 void reset_ppu();
 
-uint8_t bg_chr0_dot_col(void *chr_base, uint32_t index, uint32_t dot_h, uint32_t dot_v);
+uint8_t bg_chr0_dot_col(void *chr_base, uint32_t index, uint32_t size16, uint32_t dot_h, uint32_t dot_v);
 
-uint8_t bg_chr2_dot_col(void *chr_base, uint32_t index, uint32_t dot_h, uint32_t dot_v);
+uint8_t bg_chr2_dot_col(void *chr_base, uint32_t index, uint32_t size16, uint32_t dot_h, uint32_t dot_v);
 
-uint8_t bg_chr4_dot_col(void *chr_base, uint32_t index, uint32_t dot_h, uint32_t dot_v);
+uint8_t bg_chr4_dot_col(void *chr_base, uint32_t index, uint32_t size16, uint32_t dot_h, uint32_t dot_v);
 
-uint8_t bg_chr8_dot_col(void *chr_base, uint32_t index, uint32_t dot_h, uint32_t dot_v);
+uint8_t bg_chr8_dot_col(void *chr_base, uint32_t index, uint32_t size16, uint32_t dot_h, uint32_t dot_v);
 
 struct bg_tile_t bg_tile_entry(uint32_t dot_h, uint32_t dot_v, struct background_t *background);
 
 uint16_t bg_pal4_col(uint32_t dot_h, uint32_t dot_v, struct background_t *background);
 
 uint16_t bg_pal16_col(uint32_t dot_h, uint32_t dot_v, struct background_t *background);
+
+uint16_t bg_pal256_col(uint32_t dot_h, uint32_t dot_v, struct background_t *background);
 
 void update_line_objs(uint16_t line);
 

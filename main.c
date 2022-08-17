@@ -9,6 +9,7 @@
 
 extern uint32_t interactive_mode;
 extern uint32_t animated_mode;
+extern FILE *trace_file;
 
 int main(int argc, char *argv[])
 {
@@ -81,6 +82,28 @@ int main(int argc, char *argv[])
                             }
 
                             dump_emu();
+                        }
+                        else if(!strcmp(param, "-trace"))
+                        {
+                            char file_name[64];
+                            uint32_t step_count;
+                            scanf("%s %d", file_name, &step_count);
+                            trace_file = fopen(file_name, "w");
+                            if(!trace_file)
+                            {
+                                printf("couldn't open trace file %s!\n", file_name);
+                                return -1;
+                            }
+
+                            while(step_count)
+                            {
+                                while(!(step_emu(4) & EMU_STATUS_END_OF_INSTRUCTION));
+                                write_trace();
+                                step_count--;
+                            }
+
+                            fclose(trace_file);
+                            trace_file = NULL;
                         }
                         else if(!strcmp(param, "-poke"))
                         {

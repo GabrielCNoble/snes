@@ -20,10 +20,11 @@ uint64_t        master_cycles = 0;
 //uint32_t        scanline_cycles = 0;
 int32_t         mem_refresh = 0;
 
-uint32_t window_width = 800;
-uint32_t window_height = 600;
-uint32_t interactive_mode = 0;
-uint32_t animated_mode = 0;
+uint32_t    window_width = 800;
+uint32_t    window_height = 600;
+uint32_t    interactive_mode = 0;
+uint32_t    animated_mode = 0;
+FILE *      trace_file;
 
 char *breakpoint_register_names[] =
 {
@@ -274,4 +275,9 @@ void dump_emu()
     dump_ppu();
     dump_cpu(1);
     printf("\n");
+}
+
+void write_trace()
+{
+    fprintf(trace_file, "[%llu]: %s\n", master_cycles, instruction_str(cpu_state.instruction_address));
 }

@@ -17,11 +17,20 @@ uint32_t rom_sizes[] = {
     [ROM_SIZE_33_64M]   = 0x4000000
 };
 
-uint32_t sram_sizes[] = {
+uint32_t mode_sram_sizes[] = {
     [MAP_MODE_20_SLOW] = 0x7fff,
     [MAP_MODE_20_FAST] = 0x7fff,
     [MAP_MODE_21_SLOW] = 0x2000,
     [MAP_MODE_21_FAST] = 0x2000,
+};
+
+uint32_t sram_sizes[] = {
+    [RAM_SIZE_NONE]         = 0x00000,
+    [RAM_SIZE_16KBit]       = 0x00800,
+    [RAM_SIZE_64KBit]       = 0x02000,
+    [RAM_SIZE_256KBit]      = 0x08000,
+    [RAM_SIZE_512KBit]      = 0x10000,
+    [RAM_SIZE_1MBit]        = 0x20000,
 };
 
 const char *rom_size_strs[] = {
@@ -42,12 +51,12 @@ const char *rom_size_strs[] = {
 //};
 
 const char *ram_size_strs[] = {
-    [RAM_SIZE_NONE]     = "None",
-    [RAM_SIZE_16K]      = "16K",
-    [RAM_SIZE_64K]      = "64K",
-    [RAM_SIZE_256K]     = "256K",
-    [RAM_SIZE_512K]     = "512K",
-    [RAM_SIZE_1M]       = "1M",
+    [RAM_SIZE_NONE]           = "None",
+    [RAM_SIZE_16KBit]         = "16K",
+    [RAM_SIZE_64KBit]         = "64K",
+    [RAM_SIZE_256KBit]        = "256K",
+    [RAM_SIZE_512KBit]        = "512K",
+    [RAM_SIZE_1MBit]          = "1M",
 };
 
 const char *map_mode_strs[] = {
@@ -71,6 +80,7 @@ void *(*map_mode_functions[])(uint32_t effective_address, uint32_t write) = {
 void *(*cart_pointer)(uint32_t effective_address, uint32_t write);
 uint8_t *               rom_buffer;
 uint8_t *               sram;
+uint32_t                sram_addr_mask;
 struct rom_header_t *   rom_header;
 
 // uint32_t cart_loc(uint32_t effective_address)
@@ -185,10 +195,11 @@ uint32_t load_cart(char *file_name)
     uint8_t *resized_rom_buffer = calloc(1, rom_sizes[rom_header->rom_size]);
     memcpy(resized_rom_buffer, file_buffer, file_size);
     rom_buffer = resized_rom_buffer + has_smc_header;
-    sram = calloc(1, sram_sizes[rom_header->map_mode]);
+    sram = calloc(1, mode_sram_sizes[rom_header->map_mode]);
 
     if(rom_header->ram_size != RAM_SIZE_NONE)
     {
+        sram_addr_mask = sram_sizes[rom_header->ram_size] - 1;
         strcpy(save_file, file_name);
         uint32_t index = strlen(save_file);
         while(index)
@@ -212,6 +223,10 @@ uint32_t load_cart(char *file_name)
         rewind(file);
         fread(sram, 1, file_size, file);
         fclose(file);
+    }
+    else
+    {
+        sram_addr_mask = mode_sram_sizes[rom_header->map_mode] - 1;
     }
 
     free(file_buffer);
@@ -257,7 +272,7 @@ void *mode20_cart_pointer(uint32_t effective_address, uint32_t write)
 
     if(bank >= 0x700000 && bank <= 0x7d0000 && offset < 0x8000)
     {
-        return sram + offset;
+        return sram + (offset & sram_addr_mask);
     }
 
     if(write)

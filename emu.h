@@ -88,6 +88,7 @@ uint32_t step_emu(int32_t step_cycles);
 
 void dump_emu();
 
+void write_trace();
 
 
 #endif // EMU_H
