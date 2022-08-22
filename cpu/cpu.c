@@ -57,6 +57,7 @@ extern uint8_t *    ram1_regs;
 extern uint8_t      last_bus_value;
 extern uint16_t     vcounter;
 extern uint16_t     hcounter;
+extern uint32_t     scanline_cycles;
 
 #define ALU_WIDTH_WORD 0
 #define ALU_WIDTH_BYTE 1
@@ -5901,7 +5902,7 @@ char *instruction_str2(uint32_t effective_address)
                                                                         cpu_state.regs[REG_D].word,
                                                                         cpu_state.regs[REG_DBR].byte[0], flags_str);
 
-    sprintf(instruction_str_buffer, "%06x %s %s %s V:%3d H:%4d", effective_address, opcode_str, addr_mode_str, regs_str, vcounter, (hcounter * 4) - cpu_state.uop_cycles);
+    sprintf(instruction_str_buffer, "%06x %s %s %s V:%3d H:%4d", effective_address, opcode_str, addr_mode_str, regs_str, vcounter, scanline_cycles);
 
     return instruction_str_buffer;
 }
@@ -5916,7 +5917,7 @@ int dump_cpu(int show_registers)
     address = cpu_state.instruction_address;
 
 //    op_str = instruction_str(address);
-    op_str = instruction_str2(address);
+    op_str = instruction_str(address);
 
     printf("===================== CPU ========================\n");
 
@@ -6198,13 +6199,13 @@ void next_uop()
     load_uop();
 }
 
-uint32_t step_cpu(int32_t cycle_count)
+uint32_t step_cpu(int32_t *cycle_count)
 {
     uint32_t end_of_instruction = 0;
     if(cpu_state.rdy)
     {
-        cpu_state.uop_cycles += cycle_count;
-        cpu_state.instruction_cycles += cycle_count;
+        cpu_state.uop_cycles += *cycle_count;
+        cpu_state.instruction_cycles += *cycle_count;
 
         while(cpu_state.uop->func)
         {
@@ -6317,6 +6318,8 @@ uint32_t step_cpu(int32_t cycle_count)
 
         if(!cpu_state.wai)
         {
+            *cycle_count -= cpu_state.uop_cycles;
+            cpu_state.uop_cycles = 0;
             cpu_state.interrupts[cpu_state.cur_interrupt] = 0;
             cpu_state.instruction_cycles = cpu_state.uop_cycles;
             cpu_state.instruction_address = EFFECTIVE_ADDRESS(cpu_state.regs[REG_PBR].byte[0], cpu_state.regs[REG_PC].word);

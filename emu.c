@@ -124,7 +124,7 @@ uint32_t step_emu(int32_t step_cycles)
 
     if((!ram1_regs[CPU_REG_MDMAEN] && !hdma_active))
     {
-        if(step_cpu(step_cycles))
+        if(step_cpu(&step_cycles))
         {
             status |= EMU_STATUS_END_OF_INSTRUCTION;
         }
@@ -232,6 +232,6 @@ void dump_emu()
 
 void write_trace()
 {
-//    fprintf(trace_file, "[%llu]: %s\n", master_cycles, instruction_str2(cpu_state.instruction_address));
-    fprintf(trace_file, "%s\n", instruction_str2(cpu_state.instruction_address));
+    fprintf(trace_file, "[%llu]: %s\n", master_cycles, instruction_str(cpu_state.instruction_address));
+//    fprintf(trace_file, "%s\n", instruction_str2(cpu_state.instruction_address));
 }

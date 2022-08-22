@@ -49,6 +49,7 @@
 #define H_BLANK_FLAG 0x40
 #define V_BLANK_FLAG 0x80
 
+uint16_t mhcounter = 0;
 uint16_t vcounter = 0;
 uint16_t hcounter = 0;
 uint8_t  sub_dot = 0;
@@ -400,14 +401,13 @@ uint32_t step_ppu(int32_t cycle_count)
     while(ppu_cycle_count)
     {
         sub_dot++;
-        scanline_cycles++;
-
+         scanline_cycles++;
         if(sub_dot == dot_length)
         {
             sub_dot = 0;
-//            uint32_t *obj_sizes = objsel_size_sel_sizes[ram1_regs[PPU_REG_OBJSEL] >> 5];
             hcounter++;
             cur_irq_counter--;
+//            scanline_cycles += dot_length;
 
             if(hcounter == SCANLINE_DOT_LENGTH)
             {

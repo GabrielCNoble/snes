@@ -1020,7 +1020,7 @@ void load_uop();
 
 void next_uop();
 
-uint32_t step_cpu(int32_t cycle_count);
+uint32_t step_cpu(int32_t *cycle_count);
 
 uint8_t io_read(uint32_t effective_address);
 

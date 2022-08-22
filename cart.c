@@ -112,19 +112,12 @@ struct rom_header_t *get_rom_header(void *rom)
             case MAP_MODE_23_SLOW:
             case MAP_MODE_25_FAST:
             case MAP_MODE_25_SLOW:
-                offset_index = 3;
-            break;
-
-            default:
-                /* if we're in the last iteration and we get here, it means we
-                didn't find the rom header. This may indicate a bad rom, or
-                maybe a bug on our side. */
-                header = NULL;
+                return header;
             break;
         }
     }
 
-    return header;
+    return NULL;
 }
 
 

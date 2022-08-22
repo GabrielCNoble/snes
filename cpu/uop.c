@@ -264,6 +264,12 @@ uint32_t set_p(uint32_t arg)
         cpu_state.reg_p.m = cpu_state.reg_p.m || (flags & (1 << STATUS_FLAG_M));
     }
 
+    if(cpu_state.reg_p.x)
+    {
+        cpu_state.regs[REG_X].byte[1] = 0;
+        cpu_state.regs[REG_Y].byte[1] = 0;
+    }
+
     return 1;
 }
 
