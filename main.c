@@ -95,9 +95,16 @@ int main(int argc, char *argv[])
                                 return -1;
                             }
 
-                            while(step_count)
+                            uint32_t status = 0;
+                            while(step_count && (!(status & EMU_STATUS_BREAKPOINT)))
                             {
-                                while(!(step_emu(4) & EMU_STATUS_END_OF_INSTRUCTION));
+
+                                do
+                                {
+                                    status = step_emu(4);
+                                }
+                                while(!(status & EMU_STATUS_END_OF_INSTRUCTION));
+
                                 write_trace();
                                 step_count--;
                             }

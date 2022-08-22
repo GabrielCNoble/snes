@@ -13,22 +13,22 @@ struct obj_attr_t
     uint16_t fpcn;
 };
 
-#define OBJ1_HPOS_MASK 0x01
-#define OBJ1_PAL_SHIFT 0x09
-#define OBJ1_PAL_MASK  0x07
-#define OBJ1_NAME_MASK 0x1ff
-struct obj1_t
+#define OBJ_ATTR1_HPOS_MASK 0x01
+#define OBJ_ATTR1_PAL_SHIFT 0x09
+#define OBJ_ATTR1_PAL_MASK  0x07
+#define OBJ_ATTR1_NAME_MASK 0x1ff
+struct obj_attr1_t
 {
     uint8_t h_pos;
     uint8_t v_pos;
     uint16_t fpcn;
 };
 
-#define OBJ2_HPOS_MASK 0x01
-#define OBJ2_SIZE_SHIFT 0x01
-#define OBJ2_SIZE_MASK 0x01
-#define OBJ2_DATA_MASK 0x03
-struct obj2_t
+#define OBJ_ATTR2_HPOS_MASK 0x01
+#define OBJ_ATTR2_SIZE_SHIFT 0x01
+#define OBJ_ATTR2_SIZE_MASK 0x01
+#define OBJ_ATTR2_DATA_MASK 0x03
+struct obj_attr2_t
 {
     uint16_t size_hpos;
 };
@@ -43,8 +43,8 @@ struct line_obj_t
 
 struct oam_t
 {
-    struct obj1_t table1[128];
-    struct obj2_t table2[32];
+    struct obj_attr1_t table1[128];
+    struct obj_attr2_t table2[32];
 };
 
 #define SCANLINE_DOT_LENGTH     340
@@ -97,6 +97,12 @@ struct bg_offset_t
 struct bg_sc_data_t
 {
     uint16_t data;
+};
+
+struct bg7_sc_data_t
+{
+    uint8_t name;
+    uint8_t chr;
 };
 
 struct background_t
@@ -203,6 +209,11 @@ enum PPU_STAT77_FLAGS
 {
     PPU_STAT77_FLAG_33_RANGE_OVER = 1 << 6,
     PPU_STAT77_FLAG_35_TIME_OVER = 1 << 7,
+};
+
+enum PPU_STAT78_FLAGS
+{
+    PPU_STAT78_FLAG_FIELD = 1 << 7
 };
 
 enum PPU_CHR_BITDEPTHS
@@ -341,12 +352,18 @@ struct bg_tile_t
     uint16_t pal_index;
 };
 
-struct col_t
+struct bg7_tile_t
 {
-    uint8_t r;
-    uint8_t g;
-    uint8_t b;
+    uint8_t chr_name;
+    uint8_t chr_data;
 };
+
+// struct col_t
+// {
+//     uint8_t r;
+//     uint8_t g;
+//     uint8_t b;
+// };
 
 struct mode0_cgram_t
 {
@@ -359,8 +376,11 @@ struct mode0_cgram_t
 
 struct mode12_cgram_t
 {
-    struct pal4_t       bg3_colors[8];
-    struct pal16_t      bg12_colors[8];
+    union
+    {
+        struct pal4_t       bg3_colors[8];
+        struct pal16_t      bg12_colors[8];
+    };
     struct pal16_t      obj_colors[8];
 };
 
@@ -379,6 +399,15 @@ struct mode56_cgram_t
     };
 
     struct pal16_t      obj_colors[8];
+};
+
+struct mode7_cgram_t
+{
+    union
+    {
+        struct pal256_t     bg1_colors;
+        struct pal16_t      obj_colors[8];
+    };
 };
 
 struct bg_draw_t
@@ -409,13 +438,15 @@ void shutdown_ppu();
 
 void reset_ppu();
 
-uint8_t bg_chr0_dot_col(void *chr_base, uint32_t index, uint32_t size16, uint32_t dot_h, uint32_t dot_v);
+uint8_t bg_chr0_dot_col(void *chr_base, uint32_t index, uint32_t size, uint32_t dot_h, uint32_t dot_v);
 
-uint8_t bg_chr2_dot_col(void *chr_base, uint32_t index, uint32_t size16, uint32_t dot_h, uint32_t dot_v);
+uint8_t bg_chr2_dot_col(void *chr_base, uint32_t index, uint32_t size, uint32_t dot_h, uint32_t dot_v);
 
-uint8_t bg_chr4_dot_col(void *chr_base, uint32_t index, uint32_t size16, uint32_t dot_h, uint32_t dot_v);
+uint8_t bg_chr4_dot_col(void *chr_base, uint32_t index, uint32_t size, uint32_t dot_h, uint32_t dot_v);
 
-uint8_t bg_chr8_dot_col(void *chr_base, uint32_t index, uint32_t size16, uint32_t dot_h, uint32_t dot_v);
+uint8_t bg_chr8_dot_col(void *chr_base, uint32_t index, uint32_t size, uint32_t dot_h, uint32_t dot_v);
+
+uint8_t bg7_chr8_dot_col(void *chr_base, uint32_t index, uint32_t dot_h, uint32_t dot_v);
 
 struct bg_tile_t bg_tile_entry(uint32_t dot_h, uint32_t dot_v, struct background_t *background);
 
@@ -424,6 +455,12 @@ uint16_t bg_pal4_col(uint32_t dot_h, uint32_t dot_v, struct background_t *backgr
 uint16_t bg_pal16_col(uint32_t dot_h, uint32_t dot_v, struct background_t *background);
 
 uint16_t bg_pal256_col(uint32_t dot_h, uint32_t dot_v, struct background_t *background);
+
+uint16_t bg7_pal256_col(uint32_t dot_h, uint32_t dot_v, struct background_t *background);
+
+uint16_t obj_pal16_col(uint32_t dot_h, uint32_t dot_v, struct line_obj_t *obj);
+
+//uint8_t
 
 void update_line_objs(uint16_t line);
 

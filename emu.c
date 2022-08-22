@@ -16,9 +16,10 @@ uint64_t        counter_frequency;
 uint64_t        prev_count = 0;
 SDL_atomic_t    blit_semaphore = {0};
 uint64_t        master_cycles = 0;
- uint32_t        mem_refresh_state = 0;
+//  uint32_t        mem_refresh_state = 0;
 //uint32_t        scanline_cycles = 0;
-int32_t         mem_refresh = 0;
+// int32_t         mem_refresh_cyles = 0;
+// int32_t         mem_refresh_start = 538;
 
 uint32_t    window_width = 800;
 uint32_t    window_height = 600;
@@ -74,50 +75,8 @@ void clear_breakpoints()
     printf("breakpoints cleared\n");
 }
 
-int window_thread(void *data)
-{
-    window = SDL_CreateWindow("snes", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, window_width, window_height, 0);
-    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-    SDL_RenderClear(renderer);
-    SDL_RenderPresent(renderer);
-//
-    backbuffer_texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, FRAMEBUFFER_WIDTH, FRAMEBUFFER_HEIGHT);
-
-    while(run_window_thread)
-    {
-        SDL_Event event;
-        SDL_PollEvent(&event);
-
-        if(SDL_AtomicGet(&blit_semaphore))
-        {
-            // SDL_AtomicLock(&backbuffer_texture_spinlock);
-            SDL_UpdateTexture(backbuffer_texture, NULL, framebuffer, sizeof(struct dot_t) * FRAMEBUFFER_WIDTH);
-            SDL_RenderCopy(renderer, backbuffer_texture, NULL, NULL);
-            SDL_RenderPresent(renderer);
-            SDL_AtomicSet(&blit_semaphore, 0);
-            // blit_backbuffer_texture = 0;
-            // SDL_AtomicUnlock(&backbuffer_texture_spinlock);
-            // SDL_UnlockMutex(backbuffer_texture_mutex);
-        //    uint64_t current_count = SDL_GetPerformanceCounter();
-        //    double delta = (double)(current_count - prev_count) / (double)counter_frequency;
-        //    printf("frame time: %f ms\n", delta * 1000.0);
-//
-//
-        //    prev_count = current_count;
-        }
-    }
-
-    SDL_DestroyRenderer(renderer);
-    SDL_DestroyWindow(window);
-
-    return 0;
-}
-
 void blit_backbuffer()
 {
-//    SDL_AtomicSet(&blit_semaphore, 1);
-//    while(SDL_AtomicGet(&blit_semaphore) == 1);
     SDL_UpdateTexture(backbuffer_texture, NULL, framebuffer, sizeof(struct dot_t) * FRAMEBUFFER_WIDTH);
     SDL_RenderCopy(renderer, backbuffer_texture, NULL, NULL);
     SDL_RenderPresent(renderer);
@@ -125,19 +84,15 @@ void blit_backbuffer()
 
 void init_emu()
 {
-//    SDL_DetachThread(SDL_CreateThread(window_thread, "window thread", NULL));
-
     window = SDL_CreateWindow("snes", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, window_width, window_height, 0);
     renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
     SDL_RenderPresent(renderer);
     backbuffer_texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, FRAMEBUFFER_WIDTH, FRAMEBUFFER_HEIGHT);
-
     SDL_UpdateTexture(backbuffer_texture, NULL, framebuffer, sizeof(struct dot_t) * FRAMEBUFFER_WIDTH);
     SDL_RenderCopy(renderer, backbuffer_texture, NULL, NULL);
     SDL_RenderPresent(renderer);
-//    SDL_AtomicSet(&blit_semaphore, 0);
 
     counter_frequency = SDL_GetPerformanceFrequency();
     prev_count = SDL_GetPerformanceCounter();
@@ -194,9 +149,7 @@ uint32_t step_emu(int32_t step_cycles)
         blit_backbuffer();
     }
 
-    uint32_t scanline_cycle = vcounter == 0 ? 536 : 538;
-
-    if(scanline_cycles >= scanline_cycle && scanline_cycles < scanline_cycle + 40)
+    if(scanline_cycles >= 538 && scanline_cycles < 578)
     {
         deassert_rdy(0);
     }
@@ -279,5 +232,6 @@ void dump_emu()
 
 void write_trace()
 {
-    fprintf(trace_file, "[%llu]: %s\n", master_cycles, instruction_str(cpu_state.instruction_address));
+//    fprintf(trace_file, "[%llu]: %s\n", master_cycles, instruction_str2(cpu_state.instruction_address));
+    fprintf(trace_file, "%s\n", instruction_str2(cpu_state.instruction_address));
 }

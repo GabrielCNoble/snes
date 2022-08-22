@@ -55,7 +55,8 @@ uint8_t  sub_dot = 0;
 uint8_t  dot_length = 4;
 uint16_t latched_counters[2];
 uint32_t scanline_cycles = 0;
-uint64_t irq_cycle = 0xffffffffffffffff;
+//uint64_t irq_cycle = 0xffffffff;
+int32_t  irq_hold_timer = 0;
 uint32_t cur_irq_counter = 0;
 uint32_t irq_count = 0;
 uint32_t last_draw_scanline = 0;
@@ -202,6 +203,9 @@ void reset_ppu()
 
     obj_chr_base[0] = vram;
     obj_chr_base[1] = vram;
+
+    ram1_regs[PPU_REG_STAT77] = 0;
+    ram1_regs[PPU_REG_STAT78] = 0;
 }
 
 uint8_t bg_chr0_dot_col(void *chr_base, uint32_t index, uint32_t size16, uint32_t dot_h, uint32_t dot_v)
@@ -265,6 +269,14 @@ uint8_t bg_chr8_dot_col(void *chr_base, uint32_t index, uint32_t size16, uint32_
     return color_index;
 }
 
+// uint8_t bg7_chr8_dot_col(void *chr_base, uint32_t index, uint32_t dot_h, uint32_t dot_v)
+// {
+//     uint32_t chr_dot_h = dot_h % 8;
+//     uint32_t chr_dot_v = dot_v % 8;
+//     index <<= 6;
+
+// }
+
 struct bg_tile_t bg_tile_entry(uint32_t dot_h, uint32_t dot_v, struct background_t *background)
 {
     uint32_t index_shift = 3 + background->chr_size;
@@ -276,6 +288,19 @@ struct bg_tile_t bg_tile_entry(uint32_t dot_h, uint32_t dot_v, struct background
     };
     return tile;
 }
+
+// struct bg7_tile_t bg7_tile_entry(uint32_t dot_h, uint32_t dot_v, struct background_t *background)
+// {
+//     uint32_t data_index = (dot_h >> 3) + (dot_v >> 3) * 128;
+//     struct bg7_sc_data_t *bg_data = background->data_base + data_index;
+//     struct bg7_tile_t tile = {
+//         .chr_data = bg_data->chr,
+//         .chr_name = bg_data->name
+//     };
+//     return tile;
+// }
+
+
 
 uint16_t bg_pal4_col(uint32_t dot_h, uint32_t dot_v, struct background_t *background)
 {
@@ -301,6 +326,36 @@ uint16_t bg_pal256_col(uint32_t dot_h, uint32_t dot_v, struct background_t *back
     return palletes[tile.pal_index].colors[color_index];
 }
 
+uint16_t bg7_pal256_col(uint32_t dot_h, uint32_t dot_v, struct background_t *background)
+{
+    struct bg7_sc_data_t *data_base = (struct bg7_sc_data_t *)vram;
+    struct pal256_t *pallete = (struct pal256_t *)background->pal_base;
+    uint32_t data_index = (dot_h >> 3) + (dot_v >> 3) * 128;
+    struct bg7_sc_data_t *bg_data = data_base + data_index;
+
+    uint32_t chr_dot_h = dot_h % 8;
+    uint32_t chr_dot_v = dot_v % 8;
+    uint32_t chr_index = ((uint32_t)bg_data->name << 6) + (chr_dot_v << 3) + chr_dot_h;
+
+    struct bg7_sc_data_t *chr_data = data_base + chr_index;
+    return pallete->colors[chr_data->chr];
+}
+
+uint16_t obj_pal16_col(uint32_t dot_h, uint32_t dot_v, struct line_obj_t *obj)
+{
+    struct oam_t *oam_tables = (struct oam_t *)oam;
+    struct obj_attr1_t *attr1 = oam_tables->table1 + obj->index;
+    uint32_t chr_name = attr1->fpcn & OBJ_ATTR1_NAME_MASK;
+    void *chr_base = obj_chr_base[(chr_name & 0x100) != 0];
+
+//    uint32_t chr_size = 1 << (3 + size16);
+    uint32_t chr_dot_h = dot_h % 8;
+    uint32_t chr_dot_v = dot_v % 8;
+    uint8_t color_index;
+
+    return color_index;
+}
+
 void update_line_objs(uint16_t line)
 {
     line_obj_count = 0;
@@ -309,9 +364,9 @@ void update_line_objs(uint16_t line)
 
     for(uint32_t index = 0; index < 128; index++)
     {
-        struct obj1_t *attr1 = oam_tables->table1 + index;
-        struct obj2_t *attr2 = oam_tables->table2 + (index >> 3);
-        uint16_t size_pos = (attr2->size_hpos >> ((index & 0x07) << 1)) & OBJ2_DATA_MASK;
+        struct obj_attr1_t *attr1 = oam_tables->table1 + index;
+        struct obj_attr2_t *attr2 = oam_tables->table2 + (index >> 3);
+        uint16_t size_pos = (attr2->size_hpos >> ((index & 0x07) << 1)) & OBJ_ATTR2_DATA_MASK;
         uint16_t obj_size = obj_sizes[size_pos >> 1];
 
         uint16_t hpos = (uint16_t)attr1->h_pos | ((size_pos & 1) << 8);
@@ -322,8 +377,8 @@ void update_line_objs(uint16_t line)
             line_objs[line_obj_count] = (struct line_obj_t){
                 .vpos = vpos,
                 .hpos = hpos,
-                .index = index,
-                .size = obj_size
+                .size = obj_size,
+                .index = index
             };
             line_obj_count++;
             line_chr_count += obj_size / 8;
@@ -375,6 +430,11 @@ uint32_t step_ppu(int32_t cycle_count)
             if(hcounter == H_BLANK_END_DOT)
             {
                 ram1_regs[CPU_REG_HVBJOY] &= ~CPU_HVBJOY_FLAG_HBLANK;
+
+                if(vcounter == 0)
+                {
+                    ram1_regs[PPU_REG_STAT78] ^= PPU_STAT78_FLAG_FIELD;
+                }
             }
             else if(hcounter == H_BLANK_START_DOT)
             {
@@ -382,7 +442,7 @@ uint32_t step_ppu(int32_t cycle_count)
             }
 
 
-            if(hcounter == 322 || hcounter == 326)
+            if((hcounter == 323 || hcounter == 327) && (vcounter != 240 || !(ram1_regs[PPU_REG_STAT78] & PPU_STAT78_FLAG_FIELD) ))
             {
                 dot_length = 6;
             }
@@ -394,9 +454,12 @@ uint32_t step_ppu(int32_t cycle_count)
 
             if(vcounter == V_BLANK_END_LINE)
             {
-                ram1_regs[CPU_REG_HVBJOY] &= ~CPU_HVBJOY_FLAG_VBLANK;
-                ram1_regs[CPU_REG_RDNMI] &= ~CPU_RDNMI_BLANK_NMI;
-                ram1_regs[PPU_REG_STAT77] &= ~(PPU_STAT77_FLAG_33_RANGE_OVER | PPU_STAT77_FLAG_35_TIME_OVER);
+                if(hcounter == 0)
+                {
+                    ram1_regs[CPU_REG_HVBJOY] &= ~CPU_HVBJOY_FLAG_VBLANK;
+                    ram1_regs[CPU_REG_RDNMI] &= ~CPU_RDNMI_BLANK_NMI;
+                    ram1_regs[PPU_REG_STAT77] &= ~(PPU_STAT77_FLAG_33_RANGE_OVER | PPU_STAT77_FLAG_35_TIME_OVER);
+                }
             }
             else
             {
@@ -420,14 +483,16 @@ uint32_t step_ppu(int32_t cycle_count)
             {
                 if(ram1_regs[CPU_REG_NMITIMEN] & (CPU_NMITIMEN_FLAG_HTIMER_EN | CPU_NMITIMEN_FLAG_VTIMER_EN))
                 {
-                    irq_cycle = master_cycles;
+                    ram1_regs[CPU_REG_TIMEUP] |= 1 << 7;
+                    irq_hold_timer = 8;
                 }
 
                 cur_irq_counter = irq_count;
             }
 
-            if(master_cycles - irq_cycle < 8)
+            if(irq_hold_timer > 0)
             {
+                irq_hold_timer -= cycle_count;
                 ram1_regs[CPU_REG_TIMEUP] |= 1 << 7;
             }
 
@@ -480,9 +545,9 @@ uint32_t step_ppu(int32_t cycle_count)
                         {
                             uint16_t obj_dot_x = hcounter - obj->hpos;
                             uint16_t obj_dot_y = vcounter - obj->vpos;
-                            struct obj1_t *attr1 = oam_tables->table1 + obj->index;
-                            uint32_t obj_name = attr1->fpcn & OBJ1_NAME_MASK;
-                            uint32_t obj_pal = (attr1->fpcn >> OBJ1_PAL_SHIFT) & OBJ1_PAL_MASK;
+                            struct obj_attr1_t *attr1 = oam_tables->table1 + obj->index;
+                            uint32_t obj_name = attr1->fpcn & OBJ_ATTR1_NAME_MASK;
+                            uint32_t obj_pal = (attr1->fpcn >> OBJ_ATTR1_PAL_SHIFT) & OBJ_ATTR1_PAL_MASK;
                             uint8_t color_index = bg_chr4_dot_col(obj_chr_base[0], obj_name, 1, obj_dot_x, obj_dot_y);
 
                             if(color_index)
@@ -676,6 +741,16 @@ void update_bg_state()
             last_main_background = 1;
         }
         break;
+
+        case PPU_BGMODE_MODE7:
+        {
+            struct mode7_cgram_t *mode7_cgram = (struct mode7_cgram_t *)cgram;
+            backgrounds[0].pal_base = &mode7_cgram->bg1_colors;
+
+            main_screen_backgrounds[0] = (struct bg_draw_t){.background = &backgrounds[0], .color_func = bg7_pal256_col};
+            last_main_background = 0;
+        }
+        break;
     }
 
     main_screen_bg_count = 0;
@@ -799,13 +874,23 @@ void update_irq_counter()
                 cur_irq_counter = (vtimer - vcounter) * SCANLINE_DOT_LENGTH;
 
                 /* if only virq is enabled and the time irq counter value is zero, it means either the current scanline value got
-                written to 0x4211 or virq got disabled and reenabled. In this case, the virq will be fired immediately. To make sure it'll
-                fire next frame at H=0, we subtract the current H from the count amount. */
+                written to 0x4211 or virq got disabled and reenabled. In this case, the virq may be fired immediately if H = ~3.5*/
                 if(!cur_irq_counter)
                 {
-                    irq_count -= hcounter;
-                    /* this will be decremented at the start of the ppu update and will turn 0, triggering the irq. */
-                    cur_irq_counter = 1;
+                    if(hcounter <= 3)
+                    {
+                        /* hcounter is within the refire interval, so setup cur_irq_counter to trigger an irq at the
+                        next ppu step */
+                        irq_count -= hcounter;
+                        /* this will be decremented at the start of the ppu update, triggering the irq. */
+                        cur_irq_counter = 1;
+                    }
+                    else
+                    {
+                        /* we're outside the retrigger interval, so just update cur_irq_counter to fire next
+                        frame, at H = ~3.5 */
+                        cur_irq_counter = irq_count - (hcounter + 3);
+                    }
                 }
                 else
                 {
@@ -814,7 +899,7 @@ void update_irq_counter()
             }
             else
             {
-                cur_irq_counter = irq_count - (vcounter - vtimer) * SCANLINE_DOT_LENGTH - hcounter;
+                cur_irq_counter = irq_count - (vcounter - vtimer) * SCANLINE_DOT_LENGTH - (hcounter + 3);
             }
         break;
 

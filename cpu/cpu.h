@@ -602,6 +602,8 @@ enum INSTRUCTIONS
     XCE_ACC             = 0xfb,
 
     FETCH               = 0x100,
+
+    INT_HW              = 0x101,
 };
 
 enum CPU_REGS
@@ -844,6 +846,8 @@ struct inst_t
 #define MEM_SPEED_FAST_CYCLES   6
 #define MEM_SPEED_MED_CYCLES    8
 #define MEM_SPEED_SLOW_CYCLES   12
+#define CPU_MUL_MACHINE_CYCLES  8
+#define CPU_DIV_MACHINE_CYCLES  16
 
 enum STATUS_FLAGS
 {
@@ -873,6 +877,7 @@ enum CPU_INTS
     CPU_INT_IRQ,
     CPU_INT_NMI,
     CPU_INT_COP,
+    CPU_INT_RES,
     CPU_INT_LAST
 };
 
@@ -942,6 +947,14 @@ struct cpu_state_t
     int32_t             instruction_cycles;
     uint32_t            instruction_address;
 
+    uint32_t            shifter;
+    uint32_t            run_mul;
+    int32_t             mul_cycles;
+
+    uint32_t            run_div;
+    int32_t             div_cycles;
+    uint16_t            latched_dividend;
+
     struct reg_t        regs[REG_LAST];
 };
 
@@ -956,6 +969,8 @@ struct cpu_state_t
 
 
 char *instruction_str(uint32_t effective_address);
+
+char *instruction_str2(uint32_t effective_address);
 
 int dump_cpu(int show_registers);
 
@@ -1018,6 +1033,10 @@ uint8_t timeup_read(uint32_t effective_address);
 uint8_t rdnmi_read(uint32_t effective_address);
 
 uint8_t hvbjoy_read(uint32_t effective_address);
+
+void wrmpyb_write(uint32_t effective_address, uint8_t value);
+
+void wrdivb_write(uint32_t effective_address, uint8_t value);
 
 // void step_cpu(int32_t cycle_count);
 

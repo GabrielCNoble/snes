@@ -56,7 +56,11 @@ void write_byte(uint32_t effective_address, uint8_t data);
 
 uint8_t read_byte(uint32_t effective_address);
 
+uint8_t peek_byte(uint32_t effective_address);
+
 uint16_t read_word(uint32_t effective_address);
+
+uint16_t peek_word(uint32_t effective_address);
 
 void poke(uint32_t effective_address, uint32_t *value);
 

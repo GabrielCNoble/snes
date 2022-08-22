@@ -47,13 +47,16 @@ uint16_t interrupt_vectors[][2] = {
     [CPU_INT_BRK] = {0xffe6, 0xfffe},
     [CPU_INT_IRQ] = {0xffee, 0xfffe},
     [CPU_INT_NMI] = {0xffea, 0xfffa},
-    [CPU_INT_COP] = {0xffe4, 0xfff4}
+    [CPU_INT_COP] = {0xffe4, 0xfff4},
+    [CPU_INT_RES] = {0xfffc, 0xfffc}
 };
 
 uint32_t            cpu_cycle_count = 0;
 extern uint64_t     master_cycles;
 extern uint8_t *    ram1_regs;
 extern uint8_t      last_bus_value;
+extern uint16_t     vcounter;
+extern uint16_t     hcounter;
 
 #define ALU_WIDTH_WORD 0
 #define ALU_WIDTH_BYTE 1
@@ -77,10 +80,11 @@ struct inst_t instructions[] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
             // CHK_ZN      (REG_ACCUM),
@@ -129,7 +133,7 @@ struct inst_t instructions[] = {
             MOV_LPC     (MOV_LSB, REG_BANK),
             MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
@@ -158,10 +162,11 @@ struct inst_t instructions[] = {
             ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
             // CHK_ZN      (REG_ACCUM),
@@ -208,14 +213,16 @@ struct inst_t instructions[] = {
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
             ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
             // CHK_ZN      (REG_ACCUM),
@@ -229,15 +236,16 @@ struct inst_t instructions[] = {
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
             ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_BANK),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_BANK),
             MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
             MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
@@ -282,10 +290,11 @@ struct inst_t instructions[] = {
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
             MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
             // CHK_ZN      (REG_ACCUM),
@@ -299,9 +308,10 @@ struct inst_t instructions[] = {
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
             ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
             MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
             ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
@@ -325,13 +335,13 @@ struct inst_t instructions[] = {
             ADDR_OFFR   (REG_D, 0),
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_BANK),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_BANK),
             MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            // MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
             ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
             MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
@@ -362,10 +372,11 @@ struct inst_t instructions[] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_AND, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
             // CHK_ZN      (REG_ACCUM),
@@ -414,7 +425,7 @@ struct inst_t instructions[] = {
             MOV_LPC     (MOV_LSB, REG_BANK),
             MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_AND, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
@@ -443,10 +454,11 @@ struct inst_t instructions[] = {
             ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_AND, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
             // CHK_ZN      (REG_ACCUM),
@@ -493,14 +505,16 @@ struct inst_t instructions[] = {
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
             ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_AND, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
             // CHK_ZN      (REG_ACCUM),
@@ -513,16 +527,17 @@ struct inst_t instructions[] = {
             ZEXT        (REG_ADDR),
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-        ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_BANK),
+            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_BANK),
             MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
             MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_AND, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
@@ -567,10 +582,11 @@ struct inst_t instructions[] = {
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
             MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_AND, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
             // CHK_ZN      (REG_ACCUM),
@@ -584,9 +600,10 @@ struct inst_t instructions[] = {
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
             ADDR_OFFR   (REG_D, 0),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
             MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
             ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
@@ -610,13 +627,13 @@ struct inst_t instructions[] = {
             ADDR_OFFR   (REG_D, 0),
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_BANK),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_BANK),
             MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            // MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
             ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
             MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
@@ -647,17 +664,18 @@ struct inst_t instructions[] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             IO,
             ALU_OP      (ALU_OP_SHL, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
             // CHK_ZNW     (REG_TEMP, 0),
             SKIPS       (2, STATUS_FLAG_M),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
-            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_NEXT, ADDR_OFF_SIGNED),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
         }
     },
 
@@ -697,10 +715,11 @@ struct inst_t instructions[] = {
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
             ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             IO,
             ALU_OP      (ALU_OP_SHL, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
             // CHK_ZNW     (REG_TEMP, 0),
@@ -787,10 +806,11 @@ struct inst_t instructions[] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_BIT, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
         }
     },
@@ -819,10 +839,11 @@ struct inst_t instructions[] = {
             ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_BIT, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
         }
     },
@@ -1050,10 +1071,11 @@ struct inst_t instructions[] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_CMP, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             // CHK_ZNW     (REG_TEMP, 0),
         }
@@ -1099,7 +1121,7 @@ struct inst_t instructions[] = {
             MOV_LPC     (MOV_LSB, REG_BANK),
             MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_CMP, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             // CHK_ZNW     (REG_TEMP, 0),
@@ -1126,10 +1148,11 @@ struct inst_t instructions[] = {
             ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_CMP, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             // CHK_ZNW     (REG_TEMP, 0),
         }
@@ -1173,14 +1196,16 @@ struct inst_t instructions[] = {
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
             ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_CMP, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             // CHK_ZNW     (REG_TEMP, 0),
         }
@@ -1193,15 +1218,16 @@ struct inst_t instructions[] = {
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
             ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_BANK),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_BANK),
             MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
             MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_CMP, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             // CHK_ZNW     (REG_TEMP, 0),
@@ -1243,10 +1269,11 @@ struct inst_t instructions[] = {
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
             MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_CMP, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             // CHK_ZNW     (REG_TEMP, 0),
         }
@@ -1259,9 +1286,10 @@ struct inst_t instructions[] = {
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
             ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
             MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
             ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
@@ -1284,11 +1312,12 @@ struct inst_t instructions[] = {
             ADDR_OFFR   (REG_D, 0),
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_BANK),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_BANK),
             MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
             // MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
             ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
@@ -1329,10 +1358,11 @@ struct inst_t instructions[] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_X),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_CMP, STATUS_FLAG_X, REG_X, REG_TEMP),
             // CHK_ZNW     (REG_TEMP, 0),
         }
@@ -1345,10 +1375,11 @@ struct inst_t instructions[] = {
             ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_X),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_CMP, STATUS_FLAG_X, REG_X, REG_TEMP),
             // CHK_ZN      (REG_TEMP),
         }
@@ -1372,10 +1403,11 @@ struct inst_t instructions[] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_X),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_CMP, STATUS_FLAG_X, REG_Y, REG_TEMP),
             // CHK_ZNW     (REG_TEMP, 0),
         }
@@ -1388,10 +1420,11 @@ struct inst_t instructions[] = {
             ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_X),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_CMP, STATUS_FLAG_X, REG_Y, REG_TEMP),
             // CHK_ZN      (REG_TEMP),
         }
@@ -1415,17 +1448,18 @@ struct inst_t instructions[] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             IO,
             ALU_OP      (ALU_OP_DEC, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
             // CHK_ZNW     (REG_TEMP, 0),
             SKIPS       (2, STATUS_FLAG_M),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
-            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_NEXT, ADDR_OFF_SIGNED),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
         }
     },
 
@@ -1465,17 +1499,18 @@ struct inst_t instructions[] = {
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
             ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             IO,
             ALU_OP      (ALU_OP_DEC, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
             // CHK_ZNW     (REG_TEMP, 0),
             SKIPS       (2, STATUS_FLAG_M),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_NEXT, ADDR_OFF_SIGNED),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
         }
     },
 
@@ -1536,10 +1571,11 @@ struct inst_t instructions[] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_XOR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
             // CHK_ZN      (REG_ACCUM),
@@ -1588,7 +1624,7 @@ struct inst_t instructions[] = {
             MOV_LPC     (MOV_LSB, REG_BANK),
             MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_XOR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
@@ -1618,10 +1654,11 @@ struct inst_t instructions[] = {
             ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_XOR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
             // CHK_ZN      (REG_ACCUM),
@@ -1668,14 +1705,16 @@ struct inst_t instructions[] = {
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
             ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_XOR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
             // CHK_ZN      (REG_ACCUM),
@@ -1689,15 +1728,16 @@ struct inst_t instructions[] = {
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
             ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_BANK),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_BANK),
             MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
             MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_XOR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
@@ -1742,10 +1782,11 @@ struct inst_t instructions[] = {
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
             MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_XOR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
             // CHK_ZN      (REG_ACCUM),
@@ -1759,9 +1800,10 @@ struct inst_t instructions[] = {
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
             ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
             MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
             ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
@@ -1785,11 +1827,12 @@ struct inst_t instructions[] = {
             ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_BANK),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_BANK),
             MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
             // MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
             ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
@@ -1822,17 +1865,18 @@ struct inst_t instructions[] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             IO,
             ALU_OP      (ALU_OP_INC, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
             // CHK_ZNW     (REG_TEMP, 0),
             SKIPS       (2, STATUS_FLAG_M),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
-            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_NEXT, ADDR_OFF_SIGNED),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
         }
     },
 
@@ -1872,17 +1916,18 @@ struct inst_t instructions[] = {
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
             ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             IO,
             ALU_OP      (ALU_OP_INC, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
             // CHK_ZNW     (REG_TEMP, 0),
             SKIPS       (2, STATUS_FLAG_M),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_NEXT, ADDR_OFF_SIGNED),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
         }
     },
 
@@ -1990,7 +2035,7 @@ struct inst_t instructions[] = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             MOV_LPC     (MOV_MSB, REG_ADDR),
             IO,
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_LSB, REG_ADDR, REG_PBR, REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_MSB, REG_ADDR, REG_PBR, REG_TEMP),
@@ -2045,9 +2090,9 @@ struct inst_t instructions[] = {
             DECS,
             MOV_L       (MOV_MSB, REG_PC, REG_PBR, REG_ADDR),
             IO,
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
+            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_LSB, REG_ADDR, REG_PBR, REG_TEMP),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_MSB, REG_ADDR, REG_PBR, REG_TEMP),
             MOV_RRW     (REG_TEMP, REG_PC, MOV_RRW_WORD),
         }
@@ -2062,10 +2107,11 @@ struct inst_t instructions[] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
             CHK_ZN      (REG_ACCUM),
         }
@@ -2113,7 +2159,7 @@ struct inst_t instructions[] = {
             MOV_LPC     (MOV_LSB, REG_BANK),
             MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
             CHK_ZN      (REG_ACCUM),
@@ -2142,10 +2188,11 @@ struct inst_t instructions[] = {
             ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
             CHK_ZN      (REG_ACCUM),
         }
@@ -2191,14 +2238,16 @@ struct inst_t instructions[] = {
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
             ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
             CHK_ZN      (REG_ACCUM),
         }
@@ -2211,15 +2260,16 @@ struct inst_t instructions[] = {
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
             ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_BANK),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_BANK),
             MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
             MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
             CHK_ZN      (REG_ACCUM),
@@ -2262,10 +2312,11 @@ struct inst_t instructions[] = {
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
             MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
             CHK_ZN      (REG_ACCUM),
         }
@@ -2278,9 +2329,10 @@ struct inst_t instructions[] = {
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
             ADDR_OFFR   (REG_D, 0),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
             MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
             ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
@@ -2303,11 +2355,12 @@ struct inst_t instructions[] = {
             ADDR_OFFR   (REG_D, 0),
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_BANK),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_BANK),
             MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
             // MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
             ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
@@ -2338,10 +2391,11 @@ struct inst_t instructions[] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_X),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_X),
             CHK_ZN      (REG_X),
         }
@@ -2372,10 +2426,11 @@ struct inst_t instructions[] = {
             ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_X),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_X),
             CHK_ZN      (REG_X),
         }
@@ -2417,10 +2472,11 @@ struct inst_t instructions[] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_X),
-            ADDR_OFFI   (1, 0),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_Y),
             CHK_ZN      (REG_Y),
         }
@@ -2451,10 +2507,11 @@ struct inst_t instructions[] = {
             ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_X),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_Y),
             CHK_ZN      (REG_Y),
         }
@@ -2496,17 +2553,18 @@ struct inst_t instructions[] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             IO,
             ALU_OP      (ALU_OP_SHR, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
             // CHK_ZNW     (REG_TEMP, 0),
             SKIPS       (2, STATUS_FLAG_M),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
-            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_NEXT, ADDR_OFF_SIGNED),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
         }
     },
 
@@ -2546,17 +2604,18 @@ struct inst_t instructions[] = {
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
             ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             IO,
             ALU_OP      (ALU_OP_SHR, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
             // CHK_ZNW     (REG_TEMP, 0),
             SKIPS       (2, STATUS_FLAG_M),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_NEXT, ADDR_OFF_SIGNED),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
         }
     },
 
@@ -2635,7 +2694,7 @@ struct inst_t instructions[] = {
 
     [NOP_IMP] = {
         .uops = {
-            SKIPC   (0, 0)
+            IO
         }
     },
 
@@ -2647,10 +2706,11 @@ struct inst_t instructions[] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_OR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
             // CHK_ZN      (REG_ACCUM),
@@ -2699,7 +2759,7 @@ struct inst_t instructions[] = {
             MOV_LPC     (MOV_LSB, REG_BANK),
             MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_OR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
@@ -2729,10 +2789,11 @@ struct inst_t instructions[] = {
             ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_OR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
             // CHK_ZN      (REG_ACCUM),
@@ -2779,14 +2840,16 @@ struct inst_t instructions[] = {
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
             ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_OR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
             // CHK_ZN      (REG_ACCUM),
@@ -2800,15 +2863,16 @@ struct inst_t instructions[] = {
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
             ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_BANK),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_BANK),
             MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
             MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_OR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
@@ -2853,10 +2917,11 @@ struct inst_t instructions[] = {
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
             MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_OR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
             // CHK_ZN      (REG_ACCUM),
@@ -2870,9 +2935,10 @@ struct inst_t instructions[] = {
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
             ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
             MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
             ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
@@ -2896,11 +2962,12 @@ struct inst_t instructions[] = {
             ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_BANK),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_BANK),
             MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
             // MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
             ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
@@ -2998,6 +3065,7 @@ struct inst_t instructions[] = {
 
     [PHB_S] = {
         .uops = {
+            IO,
             MOV_S       (MOV_LSB, REG_S, REG_ZERO, REG_DBR),
             DECS,
         }
@@ -3009,6 +3077,7 @@ struct inst_t instructions[] = {
 
     [PHD_S] = {
         .uops = {
+            IO,
             MOV_S       (MOV_MSB, REG_S, REG_ZERO, REG_D),
             DECS,
             MOV_S       (MOV_LSB, REG_S, REG_ZERO, REG_D),
@@ -3022,6 +3091,7 @@ struct inst_t instructions[] = {
 
     [PHK_S] = {
         .uops = {
+            IO,
             MOV_S       (MOV_LSB, REG_S, REG_ZERO, REG_PBR),
             DECS,
         }
@@ -3033,6 +3103,7 @@ struct inst_t instructions[] = {
 
     [PHP_S] = {
         .uops = {
+            IO,
             MOV_P       (REG_P, REG_TEMP),
             MOV_S       (MOV_LSB, REG_S, REG_ZERO, REG_TEMP),
             DECS,
@@ -3183,17 +3254,18 @@ struct inst_t instructions[] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             IO,
             ALU_OP      (ALU_OP_ROL, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
             // CHK_ZNW     (REG_TEMP, 0),
             SKIPS       (2, STATUS_FLAG_M),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
-            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_NEXT, ADDR_OFF_SIGNED),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
         }
     },
 
@@ -3233,17 +3305,18 @@ struct inst_t instructions[] = {
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
             ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             IO,
             ALU_OP      (ALU_OP_ROL, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
             // CHK_ZNW     (REG_TEMP, 0),
             SKIPS       (2, STATUS_FLAG_M),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_NEXT, ADDR_OFF_SIGNED),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
         }
     },
 
@@ -3278,17 +3351,18 @@ struct inst_t instructions[] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             IO,
             ALU_OP      (ALU_OP_ROR, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
             // CHK_ZNW     (REG_TEMP, 0),
             SKIPS       (2, STATUS_FLAG_M),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
-            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_NEXT, ADDR_OFF_SIGNED),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
         }
     },
 
@@ -3328,17 +3402,18 @@ struct inst_t instructions[] = {
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
             ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             IO,
             ALU_OP      (ALU_OP_ROR, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
             // CHK_ZNW     (REG_TEMP, 0),
             SKIPS       (2, STATUS_FLAG_M),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_NEXT, ADDR_OFF_SIGNED),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
         }
     },
 
@@ -3434,10 +3509,11 @@ struct inst_t instructions[] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_SUB, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
             // CHK_ZN      (REG_ACCUM),
@@ -3487,7 +3563,7 @@ struct inst_t instructions[] = {
             MOV_LPC     (MOV_LSB, REG_BANK),
             MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_SUB, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
@@ -3516,10 +3592,11 @@ struct inst_t instructions[] = {
             ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_SUB, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
             // CHK_ZN      (REG_ACCUM),
@@ -3566,14 +3643,16 @@ struct inst_t instructions[] = {
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
             ADDR_OFFR   (REG_D, 0),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_SUB, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
             // CHK_ZN      (REG_ACCUM),
@@ -3587,15 +3666,16 @@ struct inst_t instructions[] = {
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
             ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_BANK),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_BANK),
             MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
             MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
             MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_SUB, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
@@ -3640,10 +3720,11 @@ struct inst_t instructions[] = {
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
             MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_SUB, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
             MOV_RR      (REG_TEMP, REG_ACCUM),
             // CHK_ZN      (REG_ACCUM),
@@ -3657,9 +3738,10 @@ struct inst_t instructions[] = {
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
             ADDR_OFFR   (REG_D, 0),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
             MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
             ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
@@ -3683,11 +3765,12 @@ struct inst_t instructions[] = {
             ADDR_OFFR   (REG_D, 0),
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_BANK),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_BANK),
             MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
             // MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
             ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
@@ -3765,10 +3848,11 @@ struct inst_t instructions[] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_DBR, REG_ACCUM),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_ACCUM),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_DBR, REG_ACCUM),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_ACCUM),
         }
     },
     [STA_ABS_X] = {
@@ -3804,7 +3888,7 @@ struct inst_t instructions[] = {
             MOV_LPC     (MOV_LSB, REG_BANK),
             MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_ACCUM),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
             MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_ACCUM),
         }
     },
@@ -3827,10 +3911,11 @@ struct inst_t instructions[] = {
             ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_ACCUM),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_ACCUM),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_ACCUM),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_ACCUM),
         }
     },
     [STA_S_REL] = {
@@ -3869,14 +3954,16 @@ struct inst_t instructions[] = {
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
             ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_DBR, REG_ACCUM),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_ACCUM),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_DBR, REG_ACCUM),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_ACCUM),
         }
     },
 
@@ -3887,15 +3974,16 @@ struct inst_t instructions[] = {
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
             ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_BANK),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_BANK),
             MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
             MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_ACCUM),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
             MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_ACCUM),
         }
     },
@@ -3933,10 +4021,11 @@ struct inst_t instructions[] = {
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
             MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_DBR, REG_ACCUM),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_DBR, REG_ACCUM),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
         }
     },
 
@@ -3947,9 +4036,10 @@ struct inst_t instructions[] = {
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
             ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
             MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
             ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
@@ -3970,11 +4060,12 @@ struct inst_t instructions[] = {
             ADDR_OFFR   (REG_D, 0),
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_BANK),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_BANK),
             MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
             // MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
             ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
@@ -3993,10 +4084,11 @@ struct inst_t instructions[] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_DBR, REG_X),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_X),
             SKIPS       (2, STATUS_FLAG_X),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_DBR, REG_X),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_X),
         }
     },
     [STX_DIR] = {
@@ -4006,10 +4098,11 @@ struct inst_t instructions[] = {
             ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL != 0  */,
-            MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_X),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_X),
             SKIPS       (2, STATUS_FLAG_X),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_X),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_X),
         }
     },
     [STX_DIR_Y] = {
@@ -4036,10 +4129,11 @@ struct inst_t instructions[] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_DBR, REG_Y),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_Y),
             SKIPS       (2, STATUS_FLAG_X),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_DBR, REG_Y),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_Y),
         }
     },
     [STY_DIR] = {
@@ -4049,10 +4143,11 @@ struct inst_t instructions[] = {
             ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL !=0  */,
-            MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_Y),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_Y),
             SKIPS       (2, STATUS_FLAG_X),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_Y),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_Y),
         }
     },
     [STY_DIR_X] = {
@@ -4079,10 +4174,11 @@ struct inst_t instructions[] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_DBR, REG_ZERO),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_ZERO),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_DBR, REG_ZERO),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_ZERO),
         }
     },
 
@@ -4107,10 +4203,11 @@ struct inst_t instructions[] = {
             ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
             SKIPC       (1, STATUS_FLAG_DL),
             IO          /* DL !=0  */,
-            MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_ZERO),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_ZERO),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_ZERO),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_ZERO),
         }
     },
 
@@ -4175,16 +4272,17 @@ struct inst_t instructions[] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_TRB, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
             IO,
             SKIPS       (2, STATUS_FLAG_M),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
-            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP)
+            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_NEXT, ADDR_OFF_SIGNED),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP)
         }
     },
 
@@ -4193,16 +4291,17 @@ struct inst_t instructions[] = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             ZEXT        (REG_ADDR),
             ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_TRB, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
             IO,
             SKIPS       (2, STATUS_FLAG_M),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
-            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP)
+            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_NEXT, ADDR_OFF_SIGNED),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP)
         }
     },
 
@@ -4214,16 +4313,17 @@ struct inst_t instructions[] = {
         .uops = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_TSB, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
             IO,
             SKIPS       (2, STATUS_FLAG_M),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
-            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP)
+            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_NEXT, ADDR_OFF_SIGNED),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP)
         }
     },
 
@@ -4232,16 +4332,17 @@ struct inst_t instructions[] = {
             MOV_LPC     (MOV_LSB, REG_ADDR),
             ZEXT        (REG_ADDR),
             ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP),
+            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
             SKIPS       (2, STATUS_FLAG_M),
-            ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
+            ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
             ALU_OP      (ALU_OP_TSB, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
             IO,
             SKIPS       (2, STATUS_FLAG_M),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_DBR, REG_TEMP),
-            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_DBR, REG_TEMP)
+            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_NEXT, ADDR_OFF_SIGNED),
+            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP)
         }
     },
 
@@ -4403,7 +4504,31 @@ struct inst_t instructions[] = {
             MOV_LPC     (MOV_LSB, REG_INST),
             DECODE
         }
-    }
+    },
+
+    [INT_HW] = {
+        .uops = {
+            IO,
+            SKIPS       (1, STATUS_FLAG_E),
+            IO,
+            MOV_S       (MOV_LSB, REG_S, REG_ZERO, REG_PBR),
+            DECS,
+            MOV_S       (MOV_MSB, REG_S, REG_ZERO, REG_PC),
+            DECS,
+            MOV_S       (MOV_LSB, REG_S, REG_ZERO, REG_PC),
+            DECS,
+            MOV_P       (REG_P, REG_TEMP),
+            MOV_S       (MOV_LSB, REG_S, REG_ZERO, REG_TEMP),
+            DECS,
+            SET_P       (STATUS_FLAG_I),
+            BRK,
+            MOV_RRW     (REG_ADDR, REG_PC, MOV_RRW_WORD),
+            MOV_RRW     (REG_ZERO, REG_PBR, MOV_RRW_BYTE),
+            MOV_LPC     (MOV_LSB, REG_ADDR),
+            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_RRW     (REG_ADDR, REG_PC, MOV_RRW_WORD),
+        }
+    },
 };
 
 struct opcode_t opcode_matrix[256] =
@@ -5209,88 +5334,93 @@ char *instruction_str(uint32_t effective_address)
 //    char *opcode_str;
     const char *opcode_str;
     char addr_mode_str[128];
+//    char flags_str[32];
     char temp_str[64];
     int32_t width = 0;
     struct opcode_t opcode;
 
-    opcode = opcode_matrix[read_byte(effective_address)];
+    opcode = opcode_matrix[peek_byte(effective_address)];
     width = opcode_width(&opcode);
 
     switch(opcode.address_mode)
     {
         case ADDRESS_MODE_ABSOLUTE:
-            strcpy(addr_mode_str, "absolute addr (");
-            sprintf(temp_str, "DBR(%02x):", cpu_state.regs[REG_DBR].word);
-            strcat(addr_mode_str, temp_str);
+//            strcpy(addr_mode_str, "absolute addr (");
+            sprintf(addr_mode_str, "DBR(%02x):addr(%04x)", cpu_state.regs[REG_DBR].word, peek_word(effective_address + 1));
+//            strcat(addr_mode_str, temp_str);
             // for(int32_t index = width - 1; index > 0; index--)
             // {
-            sprintf(temp_str, "%04x", read_word(effective_address + 1));
-            strcat(addr_mode_str, temp_str);
+//            sprintf(temp_str, "%04x", peek_word(effective_address + 1));
+//            strcat(addr_mode_str, temp_str);
             // }
-            strcat(addr_mode_str, ")");
+//            strcat(addr_mode_str, ")");
         break;
 
         case ADDRESS_MODE_ABSOLUTE_INDEXED_INDIRECT:
         {
-            strcpy(addr_mode_str, "absolute addr ( pointer (");
-            strcat(addr_mode_str, "00:");
-            uint32_t pointer = read_word(effective_address + 1);
-            // for(int32_t index = width - 1; index > 0; index--)
-            // {
-                // sprintf(temp_str, "%02x", read_byte(effective_address + index));
-            sprintf(temp_str, "%04x", pointer);
-            strcat(addr_mode_str, temp_str);
-            // }
-
-            strcat(addr_mode_str, ") + ");
-            sprintf(temp_str, "X(%04x) ) = ", cpu_state.regs[REG_X].word);
-            strcat(addr_mode_str, temp_str);
-            sprintf(temp_str, "(%04x)", read_word(pointer));
-            strcat(addr_mode_str, temp_str);
+//            strcpy(addr_mode_str, "absolute addr ( pointer (");
+//            strcat(addr_mode_str, "00:");
+//            uint32_t pointer = peek_word(effective_address + 1);
+//            sprintf(temp_str, "%04x", pointer);
+//            strcat(addr_mode_str, temp_str);
+//            strcat(addr_mode_str, ") + ");
+//            sprintf(temp_str, "X(%04x) ) = ", cpu_state.regs[REG_X].word);
+//            strcat(addr_mode_str, temp_str);
+//            sprintf(temp_str, "(%04x)", peek_word(pointer));
+//            strcat(addr_mode_str, temp_str);
+            uint16_t address = peek_word(effective_address + 1);
+            uint16_t target = peek_word(address + cpu_state.regs[REG_X].word);
+            if(opcode.opcode == OPCODE_JMP)
+            {
+                sprintf(addr_mode_str, "[addr(%04x) + X(%04x)] => PBR(%02x):%04x", address, cpu_state.regs[REG_X].word,
+                                                                            cpu_state.regs[REG_PBR].byte[0], target);
+            }
         }
         break;
 
         case ADDRESS_MODE_ABSOLUTE_INDEXED_X:
-            strcpy(addr_mode_str, "absolute addr (");
-            sprintf(temp_str, "DBR(%02x):", cpu_state.regs[REG_DBR].word);
-            strcat(addr_mode_str, temp_str);
-            // for(int32_t index = width - 1; index > 0; index--)
-            // {
-            sprintf(temp_str, "%04x", read_word(effective_address + 1));
-            strcat(addr_mode_str, temp_str);
-            // }
-
-            strcat(addr_mode_str, ") + ");
-            sprintf(temp_str, "X(%04x) )", cpu_state.regs[REG_X].word);
-            strcat(addr_mode_str, temp_str);
+        {
+            uint16_t address = peek_word(effective_address + 1);
+            sprintf(addr_mode_str, "addr(%04x) + X(%04x) => DBR(%02x):%04x", address, cpu_state.regs[REG_X].word,
+                                                        cpu_state.regs[REG_DBR].byte[0], cpu_state.regs[REG_X].word + address);
+        }
+//            strcpy(addr_mode_str, "absolute addr (");
+//            sprintf(temp_str, "DBR(%02x):", cpu_state.regs[REG_DBR].word);
+//            strcat(addr_mode_str, temp_str);
+//            sprintf(temp_str, "%04x", peek_word(effective_address + 1));
+//            strcat(addr_mode_str, temp_str);
+//            strcat(addr_mode_str, ") + ");
+//            sprintf(temp_str, "X(%04x) )", cpu_state.regs[REG_X].word);
+//            strcat(addr_mode_str, temp_str);
         break;
 
         case ADDRESS_MODE_ABSOLUTE_INDEXED_Y:
-            strcpy(addr_mode_str, "absolute addr (");
-            sprintf(temp_str, "DBR(%02x):", cpu_state.regs[REG_DBR].word);
-            strcat(addr_mode_str, temp_str);
-            // for(int32_t index = width - 1; index > 0; index--)
-            // {
-            sprintf(temp_str, "%04x", read_word(effective_address + 1));
-            strcat(addr_mode_str, temp_str);
-            // }
-
-            strcat(addr_mode_str, ") + ");
-            sprintf(temp_str, "Y(%04x)", cpu_state.regs[REG_Y].word);
-            strcat(addr_mode_str, temp_str);
+        {
+            uint16_t address = peek_word(effective_address + 1);
+            sprintf(addr_mode_str, "addr(%04x) + Y(%04x) => DBR(%02x):%04x", address, cpu_state.regs[REG_Y].word,
+                                                        cpu_state.regs[REG_DBR].byte[0], cpu_state.regs[REG_Y].word + address);
+        }
+//            strcpy(addr_mode_str, "absolute addr (");
+//            sprintf(temp_str, "DBR(%02x):", cpu_state.regs[REG_DBR].word);
+//            strcat(addr_mode_str, temp_str);
+//            sprintf(temp_str, "%04x", peek_word(effective_address + 1));
+//            strcat(addr_mode_str, temp_str);
+//            strcat(addr_mode_str, ") + ");
+//            sprintf(temp_str, "Y(%04x)", cpu_state.regs[REG_Y].word);
+//            strcat(addr_mode_str, temp_str);
         break;
 
         case ADDRESS_MODE_ABSOLUTE_INDIRECT:
         {
             strcpy(addr_mode_str, "absolute addr ( pointer (");
-            uint32_t pointer = read_word(effective_address + 1);
+            uint32_t pointer = peek_word(effective_address + 1);
             // for(int32_t index = width - 1; index > 0; index--)
             // {
             sprintf(temp_str, "%04x", pointer);
             strcat(addr_mode_str, temp_str);
             // }
             strcat(addr_mode_str, ") ) = ");
-            sprintf(temp_str, "(%04x)", read_word(pointer));
+            sprintf(temp_str, "(%04x)", peek_word(pointer));
             strcat(addr_mode_str, temp_str);
         }
         break;
@@ -5298,8 +5428,8 @@ char *instruction_str(uint32_t effective_address)
         case ADDRESS_MODE_ABSOLUTE_LONG_INDEXED_X:
         {
             strcpy(addr_mode_str, "absolute long addr (");
-            uint32_t pointer = read_word(effective_address + 1);
-            pointer |= (uint32_t)read_byte(effective_address + 3) << 16;
+            uint32_t pointer = peek_word(effective_address + 1);
+            pointer |= (uint32_t)peek_byte(effective_address + 3) << 16;
             // for(int32_t index = width - 1; index > 0; index--)
             // {
             sprintf(temp_str, "%06x", pointer);
@@ -5314,31 +5444,29 @@ char *instruction_str(uint32_t effective_address)
 
         case ADDRESS_MODE_ABSOLUTE_LONG:
         {
-            strcpy(addr_mode_str, "absolute long addr (");
-            uint32_t pointer = read_word(effective_address + 1);
-            pointer |= (uint32_t)read_byte(effective_address + 3) << 16;
-
-            // for(int32_t index = width - 1; index > 0; index--)
-            // {
-            sprintf(temp_str, "%06x", pointer);
-            strcat(addr_mode_str, temp_str);
-            // }
-
-            strcat(addr_mode_str, ")");
+            uint32_t address = peek_word(effective_address + 1);
+            address |= (uint32_t)peek_byte(effective_address + 3) << 16;
+            sprintf(addr_mode_str, "addrl(%06x)", address);
+//            strcpy(addr_mode_str, "absolute long addr (");
+//            uint32_t pointer = peek_word(effective_address + 1);
+//            pointer |= (uint32_t)peek_byte(effective_address + 3) << 16;
+//            sprintf(temp_str, "%06x", pointer);
+//            strcat(addr_mode_str, temp_str);
+//            strcat(addr_mode_str, ")");
         }
         break;
 
         case ADDRESS_MODE_ACCUMULATOR:
             addr_mode_str[0] = '\0';
-            if(opcode.opcode != OPCODE_XCE && opcode.opcode != OPCODE_TXS && opcode.opcode != OPCODE_WDM)
+            if(opcode.opcode != OPCODE_XCE && opcode.opcode != OPCODE_TXS && opcode.opcode != OPCODE_WDM && opcode.opcode != OPCODE_WAI)
             {
                 sprintf(addr_mode_str, "accumulator(%04x)", cpu_state.regs[REG_ACCUM].word);
             }
         break;
 
         case ADDRESS_MODE_BLOCK_MOVE:
-            sprintf(addr_mode_str, "dst addr(%02x:%04x), src addr(%02x:%04x)", read_byte(effective_address + 1), cpu_state.regs[REG_Y].word,
-                                                                               read_byte(effective_address + 2), cpu_state.regs[REG_X].word);
+            sprintf(addr_mode_str, "dst addr(%02x:%04x), src addr(%02x:%04x)", peek_byte(effective_address + 1), cpu_state.regs[REG_Y].word,
+                                                                               peek_byte(effective_address + 2), cpu_state.regs[REG_X].word);
         break;
 
         case ADDRESS_MODE_DIRECT_INDEXED_INDIRECT:
@@ -5346,18 +5474,23 @@ char *instruction_str(uint32_t effective_address)
         break;
 
         case ADDRESS_MODE_DIRECT_INDEXED_X:
-            sprintf(addr_mode_str, "D(%04x) + X(%04x)", cpu_state.regs[REG_D].word, cpu_state.regs[REG_X].word);
+            sprintf(addr_mode_str, "D(%04x) + X(%04x) => 00:%04x", cpu_state.regs[REG_D].word, cpu_state.regs[REG_X].word,
+                                                                   cpu_state.regs[REG_D].word + cpu_state.regs[REG_X].word);
         break;
 
         case ADDRESS_MODE_DIRECT_INDEXED_Y:
-            sprintf(addr_mode_str, "D(%04x) + Y(%04x)", cpu_state.regs[REG_D].word, cpu_state.regs[REG_Y].word);
+            sprintf(addr_mode_str, "D(%04x) + Y(%04x) => 00:%04x", cpu_state.regs[REG_D].word, cpu_state.regs[REG_Y].word,
+                                                                   cpu_state.regs[REG_D].word + cpu_state.regs[REG_Y].word);
         break;
 
         case ADDRESS_MODE_DIRECT_INDIRECT_INDEXED:
-            uint8_t offset = read_byte(effective_address + 1);
-            uint16_t mem_address = read_word(cpu_state.regs[REG_D].word + offset);
-            sprintf(addr_mode_str, "[pointer(D(%04x) + offset(%02x))](%04x) + Y(%04x)", cpu_state.regs[REG_D].word, offset,
-                                                                                        mem_address, cpu_state.regs[REG_Y].word);
+        {
+            uint8_t offset = peek_byte(effective_address + 1);
+            uint16_t address = peek_word(cpu_state.regs[REG_D].word + offset);
+            sprintf(addr_mode_str, "DBR:(%02x):[D(%04x) + offset(%02x)]=(%04x) + Y(%04x)",  cpu_state.regs[REG_DBR].byte[0],
+                                                                                            cpu_state.regs[REG_D].word, offset,
+                                                                                            address, cpu_state.regs[REG_Y].word);
+        }
         break;
 
         case ADDRESS_MODE_DIRECT_INDIRECT_LONG_INDEXED:
@@ -5369,11 +5502,19 @@ char *instruction_str(uint32_t effective_address)
         break;
 
         case ADDRESS_MODE_DIRECT_INDIRECT:
-            sprintf(addr_mode_str, "pointer(D(%04x) + offset(%02x))", cpu_state.regs[REG_D].word, read_byte(effective_address + 1));
+        {
+            uint8_t offset = peek_byte(effective_address + 1);
+            uint16_t address = peek_word(cpu_state.regs[REG_D].word + offset);
+            sprintf(addr_mode_str, "[D(%04x) + offset(%02x)](%04x) => DBR(%02x):%04x", address, cpu_state.regs[REG_D].word, offset,
+                                                                                        cpu_state.regs[REG_DBR].word, address);
+        }
         break;
 
         case ADDRESS_MODE_DIRECT:
-            sprintf(addr_mode_str, "D(%04x) + offset(%02x)", cpu_state.regs[REG_D].word, read_byte(effective_address + 1));
+        {
+            uint8_t offset = peek_byte(effective_address + 1);
+            sprintf(addr_mode_str, "D(%04x) + offset(%02x) => 00:%04x", cpu_state.regs[REG_D].word, offset, cpu_state.regs[REG_D].word + offset);
+        }
         break;
 
         case ADDRESS_MODE_IMMEDIATE:
@@ -5381,7 +5522,7 @@ char *instruction_str(uint32_t effective_address)
 
             for(int32_t index = width - 1; index > 0; index--)
             {
-                sprintf(temp_str, "%02x", read_byte(effective_address + index));
+                sprintf(temp_str, "%02x", peek_byte(effective_address + index));
                 strcat(addr_mode_str, temp_str);
             }
             strcat(addr_mode_str, ")");
@@ -5396,24 +5537,37 @@ char *instruction_str(uint32_t effective_address)
         break;
 
         case ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE:
-            sprintf(addr_mode_str, "pc(%04x) + offset(%02x)", cpu_state.regs[REG_PC].word, read_byte(effective_address + 1));
+        {
+            uint16_t offset = peek_byte(effective_address + 1);
+            if(offset & 0x80)
+            {
+                offset |= 0xff00;
+            }
+            sprintf(addr_mode_str, "PC(%04x) + offset(%02x) => PBR(%02x):%04x", cpu_state.regs[REG_PC].word + 2, (uint8_t)offset, cpu_state.regs[REG_PBR].byte[0],
+                                                                                (uint16_t)((cpu_state.regs[REG_PC].word + 2) + offset));
+        }
         break;
 
         case ADDRESS_MODE_STACK:
             addr_mode_str[0] = '\0';
             if(opcode.opcode == OPCODE_PEA)
             {
-                sprintf(temp_str, "immediate (%04x)", read_word(effective_address + 1));
+                sprintf(temp_str, "immediate (%04x)", peek_word(effective_address + 1));
                 strcat(addr_mode_str, temp_str);
             }
         break;
 
         case ADDRESS_MODE_STACK_RELATIVE:
-            sprintf(addr_mode_str, "S(%04x) + offset(%02x)", cpu_state.regs[REG_S].word, read_byte(effective_address + 1));
+            sprintf(addr_mode_str, "S(%04x) + offset(%02x)", cpu_state.regs[REG_S].word, peek_byte(effective_address + 1));
         break;
 
         case ADDRESS_MODE_STACK_RELATIVE_INDIRECT_INDEXED:
-            strcpy(addr_mode_str, "stack relative indirect indexed - (d,s),y");
+        {
+            uint8_t offset = peek_byte(effective_address + 1);
+            uint16_t pointer = peek_word(cpu_state.regs[REG_S].word + offset) + cpu_state.regs[REG_Y].word;
+            sprintf(addr_mode_str, "[S(%04x) + offset(%02x)]=(%04x) + Y(%04x)", cpu_state.regs[REG_S].word, offset, pointer, cpu_state.regs[REG_Y].word);
+        }
+//            strcpy(addr_mode_str, "stack relative indirect indexed - (d,s),y");
         break;
 
         default:
@@ -5426,13 +5580,16 @@ char *instruction_str(uint32_t effective_address)
 
     sprintf(instruction_str_buffer, "[%02x:%04x]: ", (effective_address >> 16) & 0xff, effective_address & 0xffff);
 
+    uint32_t instruction_bytes = 0;
     for(int32_t i = 0; i < width; i++)
     {
-        sprintf(temp_str, "%02x", read_byte(effective_address + i));
-        strcat(instruction_str_buffer, temp_str);
+        instruction_bytes <<= 8;
+        instruction_bytes |= peek_byte(effective_address + i);
     }
+    sprintf(temp_str, "%-8x", instruction_bytes);
+    strcat(instruction_str_buffer, temp_str);
 
-    strcat(instruction_str_buffer, "; ");
+    strcat(instruction_str_buffer, "| ");
     strcat(instruction_str_buffer, opcode_str);
 
     if(addr_mode_str[0])
@@ -5444,21 +5601,322 @@ char *instruction_str(uint32_t effective_address)
     return instruction_str_buffer;
 }
 
+char *instruction_str2(uint32_t effective_address)
+{
+    //    char *opcode_str;
+    char opcode_str[16];
+    char addr_mode_str[32] = "";
+    char flags_str[32] = "";
+    char temp_str[32] = "";
+    char regs_str[64] = "";
+    int32_t width = 0;
+    struct opcode_t opcode;
+    uint32_t show_computed_address = 0;
+    uint32_t computed_effective_address = 0;
+
+    opcode = opcode_matrix[peek_byte(effective_address)];
+    width = opcode_width(&opcode);
+
+    switch(opcode.address_mode)
+    {
+        case ADDRESS_MODE_ABSOLUTE:
+        {
+            uint16_t address = peek_word(effective_address + 1);
+            sprintf(addr_mode_str, "$%04x", address);
+            computed_effective_address = ((uint32_t)cpu_state.regs[REG_DBR].byte[0] << 16) | address;
+            show_computed_address = 1;
+        }
+        break;
+
+        case ADDRESS_MODE_ABSOLUTE_INDEXED_INDIRECT:
+        {
+//            uint16_t address = peek_word(effective_address + 1);
+//            uint16_t target = peek_word(address + cpu_state.regs[REG_X].word);
+//            if(opcode.opcode == OPCODE_JMP)
+//            {
+//
+//                sprintf(addr_mode_str, "[addr(%04x) + X(%04x)] => PBR(%02x):%04x", address, cpu_state.regs[REG_X].word,
+//                                                                            cpu_state.regs[REG_PBR].byte[0], target);
+//            }
+        }
+        break;
+
+        case ADDRESS_MODE_ABSOLUTE_INDEXED_X:
+        {
+            show_computed_address = 1;
+            uint16_t address = peek_word(effective_address + 1);
+            sprintf(addr_mode_str, "$%04x,x", address);
+            computed_effective_address = (((uint32_t)cpu_state.regs[REG_DBR].byte[0] << 16) | address) + cpu_state.regs[REG_X].word;
+        }
+        break;
+
+        case ADDRESS_MODE_ABSOLUTE_INDEXED_Y:
+        {
+            show_computed_address = 1;
+            uint16_t address = peek_word(effective_address + 1);
+            sprintf(addr_mode_str, "$%04x,y", address);
+            computed_effective_address = (((uint32_t)cpu_state.regs[REG_DBR].byte[0] << 16) | address) + cpu_state.regs[REG_Y].word;
+        }
+        break;
+
+        case ADDRESS_MODE_ABSOLUTE_INDIRECT:
+        {
+//            strcpy(addr_mode_str, "absolute addr ( pointer (");
+//            uint32_t pointer = peek_word(effective_address + 1);
+//            // for(int32_t index = width - 1; index > 0; index--)
+//            // {
+//            sprintf(temp_str, "%04x", pointer);
+//            strcat(addr_mode_str, temp_str);
+//            // }
+//            strcat(addr_mode_str, ") ) = ");
+//            sprintf(temp_str, "(%04x)", peek_word(pointer));
+//            strcat(addr_mode_str, temp_str);
+        }
+        break;
+
+        case ADDRESS_MODE_ABSOLUTE_LONG_INDEXED_X:
+        {
+            show_computed_address = 1;
+            uint32_t address = peek_word(effective_address + 1);
+            address |= (uint32_t)peek_byte(effective_address + 3) << 16;
+            sprintf(addr_mode_str, "$%06x,x", address);
+            computed_effective_address = (((uint32_t)cpu_state.regs[REG_DBR].byte[0] << 16) | address) + cpu_state.regs[REG_X].word;
+        }
+        break;
+
+        case ADDRESS_MODE_ABSOLUTE_LONG:
+        {
+            show_computed_address = 1;
+            uint32_t address = peek_word(effective_address + 1);
+            address |= (uint32_t)peek_byte(effective_address + 3) << 16;
+            sprintf(addr_mode_str, "$%06x", address);
+            computed_effective_address = ((uint32_t)cpu_state.regs[REG_DBR].byte[0] << 16) | address;
+        }
+        break;
+
+        case ADDRESS_MODE_ACCUMULATOR:
+            // addr_mode_str[0] = '\0';
+            if(opcode.opcode != OPCODE_XCE && opcode.opcode != OPCODE_TXS && opcode.opcode != OPCODE_WDM && opcode.opcode != OPCODE_WAI)
+            {
+                // sprintf(addr_mode_str, "accumulator(%04x)", cpu_state.regs[REG_ACCUM].word);
+                strcpy(addr_mode_str, "a");
+            }
+        break;
+
+        case ADDRESS_MODE_BLOCK_MOVE:
+            // sprintf(addr_mode_str, "dst addr(%02x:%04x), src addr(%02x:%04x)", peek_byte(effective_address + 1), cpu_state.regs[REG_Y].word,
+            //                                                                    peek_byte(effective_address + 2), cpu_state.regs[REG_X].word);
+        break;
+
+        case ADDRESS_MODE_DIRECT_INDEXED_INDIRECT:
+            // strcpy(addr_mode_str, "direct indexed indirect - (d,x)");
+        break;
+
+        case ADDRESS_MODE_DIRECT_INDEXED_X:
+        {
+            uint8_t offset = peek_byte(effective_address + 1);
+            sprintf(addr_mode_str, "$%02x,x", offset);
+            computed_effective_address = (cpu_state.regs[REG_D].word + offset) + cpu_state.regs[REG_X].word;
+            show_computed_address = 1;
+        }
+        break;
+
+        case ADDRESS_MODE_DIRECT_INDEXED_Y:
+        {
+            uint8_t offset = peek_byte(effective_address + 1);
+            sprintf(addr_mode_str, "$%02x,y", offset);
+            computed_effective_address = (cpu_state.regs[REG_D].word + offset) + cpu_state.regs[REG_Y].word;
+            show_computed_address = 1;
+        }
+        break;
+
+        case ADDRESS_MODE_DIRECT_INDIRECT_INDEXED:
+        // {
+        //     uint8_t offset = peek_byte(effective_address + 1);
+        //     uint16_t address = peek_word(cpu_state.regs[REG_D].word + offset);
+        //     sprintf(addr_mode_str, "DBR:(%02x):[D(%04x) + offset(%02x)]=(%04x) + Y(%04x)",  cpu_state.regs[REG_DBR].byte[0],
+        //                                                                                     cpu_state.regs[REG_D].word, offset,
+        //                                                                                     address, cpu_state.regs[REG_Y].word);
+        // }
+        break;
+
+        case ADDRESS_MODE_DIRECT_INDIRECT_LONG_INDEXED:
+            // strcpy(addr_mode_str, "direct indirect long indexed - [d],y");
+        break;
+
+        case ADDRESS_MODE_DIRECT_INDIRECT_LONG:
+            // strcpy(addr_mode_str, "direct indirect long - [d]");
+        break;
+
+        case ADDRESS_MODE_DIRECT_INDIRECT:
+        // {
+        //     uint8_t offset = peek_byte(effective_address + 1);
+        //     uint16_t address = peek_word(cpu_state.regs[REG_D].word + offset);
+        //     sprintf(addr_mode_str, "[D(%04x) + offset(%02x)](%04x) => DBR(%02x):%04x", address, cpu_state.regs[REG_D].word, offset,
+        //                                                                                 cpu_state.regs[REG_DBR].word, address);
+        // }
+        break;
+
+        case ADDRESS_MODE_DIRECT:
+        {
+            uint8_t offset = peek_byte(effective_address + 1);
+            sprintf(addr_mode_str, "$%02x", offset);
+            computed_effective_address = cpu_state.regs[REG_D].word + offset;
+            show_computed_address = 1;
+        }
+        // {
+        //     uint8_t offset = peek_byte(effective_address + 1);
+        //     sprintf(addr_mode_str, "D(%04x) + offset(%02x) => 00:%04x", cpu_state.regs[REG_D].word, offset, cpu_state.regs[REG_D].word + offset);
+        // }
+        break;
+
+        case ADDRESS_MODE_IMMEDIATE:
+        {
+            strcpy(addr_mode_str, "#$");
+//            uint32_t immediate = 0;
+            for(int32_t index = width - 1; index > 0; index--)
+            {
+                sprintf(temp_str, "%02x", peek_byte(effective_address + index));
+                strcat(addr_mode_str, temp_str);
+//                immediate <<= 8;
+//                immediate |= peek_byte(effective_address + index);
+            }
+
+//            sprintf(addr_mode_str, "#$%04x", immediate);
+        }
+        break;
+
+        case ADDRESS_MODE_IMPLIED:
+            // strcpy(addr_mode_str, "");
+        break;
+
+        case ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE_LONG:
+            // strcpy(addr_mode_str, "program counter relative long - rl");
+        break;
+
+        case ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE:
+        {
+            uint16_t offset = peek_byte(effective_address + 1);
+            if(offset & 0x80)
+            {
+                offset |= 0xff00;
+            }
+
+            computed_effective_address = ((uint32_t)cpu_state.regs[REG_PBR].word << 16) | ((cpu_state.regs[REG_PC].word + offset + 2) & 0xffff);
+            show_computed_address = 1;
+            sprintf(addr_mode_str, "$%04x", computed_effective_address & 0xffff);
+        //     sprintf(addr_mode_str, "PC(%04x) + offset(%02x) => PBR(%02x):%04x", cpu_state.regs[REG_PC].word + 2, (uint8_t)offset, cpu_state.regs[REG_PBR].byte[0],
+        //                                                                         (uint16_t)((cpu_state.regs[REG_PC].word + 2) + offset));
+        }
+        break;
+
+        case ADDRESS_MODE_STACK:
+            // addr_mode_str[0] = '\0';
+            // if(opcode.opcode == OPCODE_PEA)
+            // {
+            //     sprintf(temp_str, "immediate (%04x)", peek_word(effective_address + 1));
+            //     strcat(addr_mode_str, temp_str);
+            // }
+        break;
+
+        case ADDRESS_MODE_STACK_RELATIVE:
+        {
+            uint16_t offset = peek_byte(effective_address + 1);
+            if(offset & 0x80)
+            {
+                offset |= 0xff00;
+            }
+            computed_effective_address = cpu_state.regs[REG_S].word + offset;
+            show_computed_address = 1;
+            sprintf(addr_mode_str, "$%02x,s", offset);
+        }
+            // sprintf(addr_mode_str, "S(%04x) + offset(%02x)", cpu_state.regs[REG_S].word, peek_byte(effective_address + 1));
+        break;
+
+        case ADDRESS_MODE_STACK_RELATIVE_INDIRECT_INDEXED:
+        // {
+        //     uint8_t offset = peek_byte(effective_address + 1);
+        //     uint16_t pointer = peek_word(cpu_state.regs[REG_S].word + offset) + cpu_state.regs[REG_Y].word;
+        //     sprintf(addr_mode_str, "[S(%04x) + offset(%02x)]=(%04x) + Y(%04x)", cpu_state.regs[REG_S].word, offset, pointer, cpu_state.regs[REG_Y].word);
+        // }
+//            strcpy(addr_mode_str, "stack relative indirect indexed - (d,s),y");
+        break;
+
+        default:
+        // case ADDRESS_MODE_UNKNOWN:
+        //     strcpy(addr_mode_str, "unknown");
+        // break;
+    }
+
+    uint32_t addr_mode_str_len = strlen(addr_mode_str);
+    while(addr_mode_str_len < 18)
+    {
+        addr_mode_str[addr_mode_str_len] = ' ';
+        addr_mode_str_len++;
+    }
+
+    addr_mode_str[addr_mode_str_len] = '\0';
+
+    // opcode_str = opcode_strs[opcode.opcode];
+
+    uint32_t index = 0;
+    while(opcode_strs[opcode.opcode][index])
+    {
+        opcode_str[index] = tolower(opcode_strs[opcode.opcode][index]);
+        index++;
+    }
+    opcode_str[index] = '\0';
+
+    if(show_computed_address)
+    {
+        sprintf(addr_mode_str + 10, "[%06x]", computed_effective_address);
+    }
+
+    if(cpu_state.reg_p.e)
+    {
+        sprintf(flags_str, "%c%c1%c%c%c%c%c", cpu_state.reg_p.n ? 'N' : 'n',
+                                               cpu_state.reg_p.v ? 'V' : 'v',
+                                               cpu_state.reg_p.b ? 'B' : 'b',
+                                               cpu_state.reg_p.d ? 'D' : 'd',
+                                               cpu_state.reg_p.i ? 'I' : 'i',
+                                               cpu_state.reg_p.z ? 'Z' : 'z',
+                                               cpu_state.reg_p.c ? 'C' : 'c');
+    }
+    else
+    {
+        sprintf(flags_str, "%c%c%c%c%c%c%c%c", cpu_state.reg_p.n ? 'N' : 'n',
+                                               cpu_state.reg_p.v ? 'V' : 'v',
+                                               cpu_state.reg_p.m ? 'M' : 'm',
+                                               cpu_state.reg_p.x ? 'X' : 'x',
+                                               cpu_state.reg_p.d ? 'D' : 'd',
+                                               cpu_state.reg_p.i ? 'I' : 'i',
+                                               cpu_state.reg_p.z ? 'Z' : 'z',
+                                               cpu_state.reg_p.c ? 'C' : 'c');
+    }
+
+    sprintf(regs_str, "A:%04x X:%04x Y:%04x S:%04x D:%04x DB:%02x %s", cpu_state.regs[REG_ACCUM].word,
+                                                                        cpu_state.regs[REG_X].word,
+                                                                        cpu_state.regs[REG_Y].word,
+                                                                        cpu_state.regs[REG_S].word,
+                                                                        cpu_state.regs[REG_D].word,
+                                                                        cpu_state.regs[REG_DBR].byte[0], flags_str);
+
+    sprintf(instruction_str_buffer, "%06x %s %s %s V:%3d H:%4d", effective_address, opcode_str, addr_mode_str, regs_str, vcounter, (hcounter * 4) - cpu_state.uop_cycles);
+
+    return instruction_str_buffer;
+}
+
 int dump_cpu(int show_registers)
 {
     uint32_t address;
     int opcode_offset;
     struct opcode_t opcode;
-//    unsigned char opcode_byte;
-//    int i;
     char *op_str;
     unsigned char *opcode_address;
-
-    // address = EFFECTIVE_ADDRESS(cpu_state.regs[REG_PBR].byte[0], cpu_state.regs[REG_PC].word);
     address = cpu_state.instruction_address;
-//    opcode_address = memory_pointer(address);
-//    opcode = opcode_matrix[opcode_address[0]];
-    op_str = instruction_str(address);
+
+//    op_str = instruction_str(address);
+    op_str = instruction_str2(address);
 
     printf("===================== CPU ========================\n");
 
@@ -5487,7 +5945,7 @@ int dump_cpu(int show_registers)
         printf("D:%d Z:%d I:%d C:%d]\n", cpu_state.reg_p.d, cpu_state.reg_p.z, cpu_state.reg_p.i, cpu_state.reg_p.c);
         printf("  [E: %02x] | [PC: %04x]", cpu_state.reg_p.e, cpu_state.regs[REG_PC].word);
 
-        if(cpu_state.regs[REG_INST].word == BRK_S)
+        if(cpu_state.regs[REG_INST].word == BRK_S || cpu_state.regs[REG_INST].word == INT_HW)
         {
             char *interrupt_str = "";
             switch(cpu_state.cur_interrupt)
@@ -5506,6 +5964,10 @@ int dump_cpu(int show_registers)
 
                 case CPU_INT_COP:
                     interrupt_str = "COP";
+                break;
+
+                case CPU_INT_RES:
+                    interrupt_str = "RES";
                 break;
             }
 
@@ -5635,7 +6097,8 @@ void deassert_rdy(uint8_t bit)
 
 void reset_cpu()
 {
-    cpu_state.regs[REG_PC].word = read_word(0xfffc);
+//    cpu_state.regs[REG_PC].word = read_word(0xfffc);
+    cpu_state.regs[REG_PC].word = 0xfffc;
     cpu_state.regs[REG_DBR].byte[0] = 0;
     cpu_state.regs[REG_PBR].byte[0] = 0;
     cpu_state.regs[REG_D].word = 0;
@@ -5666,14 +6129,14 @@ void reset_cpu()
     cpu_state.irq = 0;
     cpu_state.rdy = 1;
 
-    cpu_state.cur_interrupt = CPU_INT_BRK;
-
+    cpu_state.cur_interrupt = CPU_INT_RES;
+    cpu_state.interrupts[cpu_state.cur_interrupt] = 1;
     cpu_state.instruction_address = EFFECTIVE_ADDRESS(cpu_state.regs[REG_PBR].byte[0], cpu_state.regs[REG_PC].word);
-    cpu_state.regs[REG_INST].word = FETCH;
+    cpu_state.regs[REG_INST].word = INT_HW;
     load_instruction();
-//    cpu_state.instruction = instructions + FETCH;
-//    cpu_state.cur_uop_index = 0;
-//    cpu_state.cur_uop = cpu_state.instruction->uops + cpu_state.cur_uop_index;
+    /* elusive CPU delay at startup. Ripped off from bsnes. Wish I
+    knew why this is needed... */
+    cpu_state.uop_cycles = -22 * CPU_MASTER_CYCLES;
 
     ram1_regs[CPU_REG_MEMSEL] = 0;
     ram1_regs[CPU_REG_TIMEUP] = 0;
@@ -5745,30 +6208,10 @@ uint32_t step_cpu(int32_t cycle_count)
 
         while(cpu_state.uop->func)
         {
-//            uint8_t prev_pbr = cpu_state.regs[REG_PBR].byte[0];
+            int32_t prev_uop_cycles = cpu_state.uop_cycles;
 
-            if(!cpu_state.uop->func(cpu_state.uop->arg))
-            {
-                break;
-            }
-
-//            if(cpu_state.regs[REG_PBR].byte[0] == 0x74)
-//            {
-//                printf("oh shit!\n");
-//            }
-
-            // if(cpu_state.reg_p.e)
-            // {
-            //     cpu_state.reg_p.m = 1;
-            //     cpu_state.reg_p.x = 1;
-            //     cpu_state.regs[REG_S].byte[1] = 0x01;
-            // }
-
-            // if(cpu_state.reg_p.x)
-            // {
-            //     cpu_state.regs[REG_X].byte[1] = 0;
-            //     cpu_state.regs[REG_Y].byte[1] = 0;
-            // }
+            cpu_state.run_mul = cpu_state.mul_cycles > 0;
+            cpu_state.run_div = cpu_state.div_cycles > 0;
 
             if(cpu_state.last_uop)
             {
@@ -5778,17 +6221,64 @@ uint32_t step_cpu(int32_t cycle_count)
                 }
             }
 
+            if(!cpu_state.uop->func(cpu_state.uop->arg))
+            {
+                break;
+            }
+
+            uint32_t spent_cycle = (cpu_state.uop_cycles - prev_uop_cycles) != 0;
+
+            if(spent_cycle)
+            {
+                if(cpu_state.run_mul)
+                {
+                    cpu_state.mul_cycles--;
+                    uint16_t current_product = (uint16_t)ram1_regs[CPU_REG_RDMPYL] | ((uint16_t)ram1_regs[CPU_REG_RDMPYH] << 8);
+                    uint32_t shift = CPU_MUL_MACHINE_CYCLES - cpu_state.mul_cycles;
+                    uint16_t quotient = (uint16_t)ram1_regs[CPU_REG_RDDIVL] | ((uint16_t)ram1_regs[CPU_REG_RDDIVH] << 8);
+
+                    if(quotient & 0x01)
+                    {
+                        current_product += cpu_state.shifter;
+                    }
+
+                    quotient >>= 1;
+                    cpu_state.shifter <<= 1;
+
+                    ram1_regs[CPU_REG_RDMPYL] = current_product & 0xff;
+                    ram1_regs[CPU_REG_RDMPYH] = (current_product >> 8) & 0xff;
+                    ram1_regs[CPU_REG_RDDIVL] = quotient & 0xff;
+                    ram1_regs[CPU_REG_RDDIVH] = (quotient >> 8) & 0xff;
+                }
+
+                if(cpu_state.run_div)
+                {
+                    cpu_state.div_cycles--;
+                    uint16_t current_quotient = (uint16_t)ram1_regs[CPU_REG_RDDIVL] | ((uint16_t)ram1_regs[CPU_REG_RDDIVH] << 8);
+                    uint16_t product = (uint16_t)ram1_regs[CPU_REG_RDMPYL] | ((uint16_t)ram1_regs[CPU_REG_RDMPYH] << 8);
+                    current_quotient <<= 1;
+                    cpu_state.shifter >>= 1;
+                    if(product >= cpu_state.shifter)
+                    {
+                        product -= cpu_state.shifter;
+                        current_quotient |= 1;
+                    }
+
+                    ram1_regs[CPU_REG_RDDIVL] = current_quotient & 0xff;
+                    ram1_regs[CPU_REG_RDDIVH] = (current_quotient >> 8) & 0xff;
+                    ram1_regs[CPU_REG_RDMPYL] = product & 0xff;
+                    ram1_regs[CPU_REG_RDMPYH] = (product >> 8) & 0xff;
+                }
+            }
+
             cpu_state.reg_p.dl = cpu_state.regs[REG_D].byte[0] != 0;
             cpu_state.reg_p.am = cpu_state.regs[REG_ACCUM].word == 0xffff;
             next_uop();
         }
     }
-    else if(cpu_state.wai)
+    else if(cpu_state.wai && cpu_state.irq && !cpu_state.interrupts[CPU_INT_NMI])
     {
-        if(cpu_state.irq && !cpu_state.reg_p.i && !cpu_state.interrupts[CPU_INT_NMI])
-        {
-            cpu_state.interrupts[CPU_INT_IRQ] = 1;
-        }
+        cpu_state.interrupts[CPU_INT_IRQ] = 1;
     }
 
     if(!cpu_state.uop->func)
@@ -5796,13 +6286,13 @@ uint32_t step_cpu(int32_t cycle_count)
         if(cpu_state.interrupts[CPU_INT_NMI])
         {
             cpu_state.rdy = 1;
-            cpu_state.regs[REG_INST].word = BRK_S;
+            cpu_state.regs[REG_INST].word = INT_HW;
             cpu_state.cur_interrupt = CPU_INT_NMI;
             cpu_state.interrupts[CPU_INT_NMI] = 0;
         }
         else if(cpu_state.interrupts[CPU_INT_IRQ])
         {
-            if(cpu_state.wai)
+            if(cpu_state.reg_p.i)
             {
                 cpu_state.wai = 0;
                 cpu_state.rdy = 1;
@@ -5812,9 +6302,11 @@ uint32_t step_cpu(int32_t cycle_count)
             }
             else
             {
-                cpu_state.regs[REG_INST].word = BRK_S;
+                cpu_state.regs[REG_INST].word = INT_HW;
                 cpu_state.cur_interrupt = CPU_INT_IRQ;
             }
+            cpu_state.rdy = 1;
+            cpu_state.wai = 0;
             cpu_state.interrupts[CPU_INT_IRQ] = 0;
         }
         else
@@ -5885,7 +6377,42 @@ uint8_t hvbjoy_read(uint32_t effective_address)
     return value | (last_bus_value & 0x3e);
 }
 
+void wrmpyb_write(uint32_t effective_address, uint8_t value)
+{
+    if(cpu_state.mul_cycles == 0)
+    {
+        ram1_regs[CPU_REG_WRMPYB] = value;
+        cpu_state.shifter = ram1_regs[CPU_REG_WRMPYB];
+        ram1_regs[CPU_REG_RDDIVL] = ram1_regs[CPU_REG_WRMPYA];
+        ram1_regs[CPU_REG_RDDIVH] = ram1_regs[CPU_REG_WRMPYB];
+        cpu_state.mul_cycles = CPU_MUL_MACHINE_CYCLES;
+        /* setting this to zero here guarantees there will be a delay of a single
+        machine cycle before the multiplication begins, which is necessary for timing */
+        cpu_state.run_mul = 0;
+    }
 
+    ram1_regs[CPU_REG_RDMPYL] = 0;
+    ram1_regs[CPU_REG_RDMPYH] = 0;
+}
+
+void wrdivb_write(uint32_t effective_address, uint8_t value)
+{
+    if(cpu_state.div_cycles == 0)
+    {
+        ram1_regs[CPU_REG_WRDIVB] = value;
+        cpu_state.shifter = (uint32_t)ram1_regs[CPU_REG_WRDIVB] << 16;
+        cpu_state.div_cycles = CPU_DIV_MACHINE_CYCLES;
+        /* setting this to zero here guarantees there will be a delay of a single
+        machine cycle before the division begins, which is necessary for timing */
+        cpu_state.run_div = 0;
+//        cpu_state.latched_dividend = (uint16_t)ram1_regs[CPU_REG_WRDIVL] | ((uint16_t)ram1_regs[CPU_REG_WRDIVH] << 8);
+    }
+
+    ram1_regs[CPU_REG_RDMPYL] = ram1_regs[CPU_REG_WRDIVL];
+    ram1_regs[CPU_REG_RDMPYH] = ram1_regs[CPU_REG_WRDIVH];
+//    ram1_regs[CPU_REG_RDMPYL] = cpu_state.latched_dividend & 0xff;
+//    ram1_regs[CPU_REG_RDMPYH] = (cpu_state.latched_dividend >> 8) & 0xff;
+}
 
 
 

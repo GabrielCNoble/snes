@@ -43,6 +43,8 @@ void init_mem()
     reg_writes[CPU_REG_HTIMEH].write = vhtime_write;
     reg_writes[CPU_REG_VTIMEL].write = vhtime_write;
     reg_writes[CPU_REG_VTIMEH].write = vhtime_write;
+    reg_writes[CPU_REG_WRMPYB].write = wrmpyb_write;
+    reg_writes[CPU_REG_WRDIVB].write = wrdivb_write;
 
     reg_reads[CPU_REG_JOYA].read = ctrl_read;
     reg_reads[CPU_REG_JOYB].read = ctrl_read;
@@ -226,10 +228,45 @@ uint8_t read_byte(uint32_t effective_address)
     return data;
 }
 
+uint8_t peek_byte(uint32_t effective_address)
+{
+    uint32_t access = access_location(effective_address);
+    uint8_t data = 0;
+
+    if(access == ACCESS_RAM2)
+    {
+        uint32_t offset = effective_address - RAM2_START;
+        data = ram2[offset];
+    }
+    else if(access == ACCESS_REGS)
+    {
+        uint32_t offset = (effective_address & 0xffff) - RAM1_REGS_START;
+        data = ram1_regs[offset];
+    }
+    else if(access == ACCESS_RAM1)
+    {
+        uint32_t offset = (effective_address & 0xffff) - RAM1_REGS_START;
+        data = ram1_regs[offset];
+    }
+    else if(access == ACCESS_CART)
+    {
+        data = cart_read(effective_address);
+    }
+
+    return data;
+}
+
 uint16_t read_word(uint32_t effective_address)
 {
     uint16_t data;
     data = (uint16_t)read_byte(effective_address) | ((uint16_t)read_byte(effective_address + 1) << 8);
+    return data;
+}
+
+uint16_t peek_word(uint32_t effective_address)
+{
+    uint16_t data;
+    data = (uint16_t)peek_byte(effective_address) | ((uint16_t)peek_byte(effective_address + 1) << 8);
     return data;
 }
 
@@ -241,10 +278,10 @@ void poke(uint32_t effective_address, uint32_t *value)
 
     // if(memory)
     {
-        uint8_t byte0 = read_byte(effective_address);
-        uint8_t byte1 = read_byte(effective_address + 1);
-        uint8_t byte2 = read_byte(effective_address + 2);
-        uint8_t byte3 = read_byte(effective_address + 3);
+        uint8_t byte0 = peek_byte(effective_address);
+        uint8_t byte1 = peek_byte(effective_address + 1);
+        uint8_t byte2 = peek_byte(effective_address + 2);
+        uint8_t byte3 = peek_byte(effective_address + 3);
 
         printf("[%02x:%04x] %02x %02x %02x %02x ", (effective_address >> 16) & 0xff, effective_address & 0xffff, byte0, byte1, byte2, byte3);
 
@@ -280,10 +317,10 @@ void poke(uint32_t effective_address, uint32_t *value)
                  write_byte(effective_address, write_value);
              }
 
-             byte0 = read_byte(effective_address);
-             byte1 = read_byte(effective_address + 1);
-             byte2 = read_byte(effective_address + 2);
-             byte3 = read_byte(effective_address + 3);
+             byte0 = peek_byte(effective_address);
+             byte1 = peek_byte(effective_address + 1);
+             byte2 = peek_byte(effective_address + 2);
+             byte3 = peek_byte(effective_address + 3);
 
              printf("-> %02x %02x %02x %02x ", byte0, byte1, byte2, byte3);
          }
