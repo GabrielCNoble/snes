@@ -375,7 +375,7 @@ uint32_t addr_offr(uint32_t arg)
     }
 
     cpu_state.reg_p.page = ((prev_addr ^ addr) & 0x00ff00) && 1;
-    cpu_state.reg_p.bank = ((prev_addr ^ addr) & 0xff0000) && 1;
+    cpu_state.reg_p.bank = ((prev_addr ^ addr) & 0xff0000) && bank_wrap;
     return 1;
 }
 
@@ -400,7 +400,7 @@ uint32_t addr_offi(uint32_t arg)
     }
 
     cpu_state.reg_p.page = ((prev_addr ^ addr) & 0x00ff00) && 1;
-    cpu_state.reg_p.bank = ((prev_addr ^ addr) & 0xff0000) && 1;
+    cpu_state.reg_p.bank = ((prev_addr ^ addr) & 0xff0000) && bank_wrap;
     return 1;
 }
 
@@ -586,6 +586,14 @@ uint32_t cop(uint32_t arg)
     cpu_state.interrupts[CPU_INT_COP] = 1;
     decode(0);
     return 1;
+}
+
+uint32_t stp(uint32_t arg)
+{
+    cpu_state.stp = 1;
+    cpu_state.rdy = 0;
+    cpu_state.cur_interrupt = CPU_INT_RES;
+    cpu_state.interrupts[CPU_INT_RES] = 1;
 }
 
 uint32_t unimplemented(uint32_t arg)

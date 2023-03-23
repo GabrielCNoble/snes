@@ -1,12 +1,13 @@
-SRC := $(wildcard *.c)
-INC := $(wildcard *.s)
+SRC := $(wildcard *.c) $(wildcard */*.c)
+INC := $(wildcard *.s) $(wildcard */*.h)
 OBJ := $(SRC:.c=.o)
 
 %.o: %.c
-	gcc -c $< -I"SDL/include" -o $@
+	gcc -c $< -I"SDL/include" -g -o $@
 
 all: $(OBJ) $(INC)
-	gcc $(OBJ) -L"SDL/lib" -lSDL2main -lSDL2 -o snes.exe
+	gcc $(OBJ) -g -L"SDL/lib" -lSDL2main -lSDL2 -o snes.exe
+	cv2pdb -s. snes.exe
 
 clean:
-	del $(OBJ)
+	rm $(OBJ)

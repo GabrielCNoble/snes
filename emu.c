@@ -26,6 +26,8 @@ uint32_t    window_height = 600;
 uint32_t    interactive_mode = 0;
 uint32_t    animated_mode = 0;
 FILE *      trace_file;
+uint64_t    frame = 0;
+float       accum_time = 0;
 
 char *breakpoint_register_names[] =
 {
@@ -90,6 +92,7 @@ void init_emu()
     SDL_RenderClear(renderer);
     SDL_RenderPresent(renderer);
     backbuffer_texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, FRAMEBUFFER_WIDTH, FRAMEBUFFER_HEIGHT);
+    SDL_SetTextureScaleMode(backbuffer_texture, SDL_ScaleModeLinear);
     SDL_UpdateTexture(backbuffer_texture, NULL, framebuffer, sizeof(struct dot_t) * FRAMEBUFFER_WIDTH);
     SDL_RenderCopy(renderer, backbuffer_texture, NULL, NULL);
     SDL_RenderPresent(renderer);
@@ -118,7 +121,6 @@ void reset_emu()
 
 uint32_t step_emu(int32_t step_cycles)
 {
-//    int32_t step_cycles = 0;
     uint32_t status = 0;
     uint32_t hdma_active = ram1_regs[CPU_REG_HDMAEN] && ((ram1_regs[CPU_REG_HVBJOY] & (CPU_HVBJOY_FLAG_HBLANK | CPU_HVBJOY_FLAG_VBLANK)) == CPU_HVBJOY_FLAG_HBLANK);
 
@@ -131,7 +133,6 @@ uint32_t step_emu(int32_t step_cycles)
     }
     else
     {
-//        end_of_instruction = 1;
         status |= EMU_STATUS_END_OF_INSTRUCTION;
     }
 
@@ -142,15 +143,24 @@ uint32_t step_emu(int32_t step_cycles)
 
     if(step_ppu(step_cycles) || animated_mode)
     {
+        frame++;
         uint64_t cur_count = SDL_GetPerformanceCounter();
-        float delta = (float)(cur_count - prev_count) / (float)counter_frequency;
-        printf("frame time: %f ms\n", delta * 1000.0);
+        accum_time += (float)(cur_count - prev_count) / (float)counter_frequency;
+//        printf("frame time: %f ms\n", delta * 1000.0);
         prev_count = cur_count;
+
+        if(frame >= 60)
+        {
+            frame = 0;
+            accum_time /= 60.0;
+            printf("frame time: %f ms\n", accum_time * 1000.0);
+        }
         blit_backbuffer();
     }
 
     if(scanline_cycles >= 538 && scanline_cycles < 578)
     {
+        /* dram refresh */
         deassert_rdy(0);
     }
     else
@@ -232,6 +242,6 @@ void dump_emu()
 
 void write_trace()
 {
-    fprintf(trace_file, "[%llu]: %s\n", master_cycles, instruction_str(cpu_state.instruction_address));
-//    fprintf(trace_file, "%s\n", instruction_str2(cpu_state.instruction_address));
+//    fprintf(trace_file, "[%llu]: %s\n", master_cycles, instruction_str(cpu_state.instruction_address));
+    fprintf(trace_file, "%s\n", instruction_str2(cpu_state.instruction_address));
 }

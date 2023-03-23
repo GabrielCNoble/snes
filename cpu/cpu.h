@@ -550,6 +550,8 @@ enum INSTRUCTIONS
     STA_DIR_IND_Y       = 0x91,
     STA_DIR_INDL_Y      = 0x97,
 
+    STP_IMP             = 0xdb,
+
     STX_ABS             = 0x8e,
     STX_DIR             = 0x86,
     STX_DIR_Y           = 0x96,
@@ -897,6 +899,8 @@ struct cpu_state_t
     uint8_t nmi1;
     uint8_t irq;
     uint8_t wai;
+    uint8_t stp;
+    uint8_t res;
     uint8_t rdy;
     uint8_t cur_interrupt;
     /* interrupts waiting to be serviced */
@@ -993,6 +997,8 @@ uint16_t alu(uint32_t operand0, uint32_t operand1, uint32_t op, uint32_t width);
 uint32_t check_int();
 
 void reset_cpu();
+
+void reset_core();
 
 void assert_nmi(uint8_t bit);
 

@@ -4080,6 +4080,18 @@ struct inst_t instructions[] = {
     /**************************************************************************************/
     /*                                      STX                                           */
     /**************************************************************************************/
+    
+    [STP_IMP] = {
+        .uops = {
+            IO,
+            IO,
+            STP,
+        }
+    },
+
+    /**************************************************************************************/
+    /*                                      STX                                           */
+    /**************************************************************************************/
 
     [STX_ABS] = {
         .uops = {
@@ -5371,7 +5383,7 @@ char *instruction_str(uint32_t effective_address)
 //            strcat(addr_mode_str, temp_str);
             uint16_t address = peek_word(effective_address + 1);
             uint16_t target = peek_word(address + cpu_state.regs[REG_X].word);
-            if(opcode.opcode == OPCODE_JMP)
+            if(opcode.opcode == OPCODE_JMP || opcode.opcode == OPCODE_JSR)
             {
                 sprintf(addr_mode_str, "[addr(%04x) + X(%04x)] => PBR(%02x):%04x", address, cpu_state.regs[REG_X].word,
                                                                             cpu_state.regs[REG_PBR].byte[0], target);
@@ -5580,15 +5592,25 @@ char *instruction_str(uint32_t effective_address)
     opcode_str = opcode_strs[opcode.opcode];
 
     sprintf(instruction_str_buffer, "[%02x:%04x]: ", (effective_address >> 16) & 0xff, effective_address & 0xffff);
-
-    uint32_t instruction_bytes = 0;
-    for(int32_t i = 0; i < width; i++)
+    uint32_t index;
+    for(index = 0; index < width; index++)
     {
-        instruction_bytes <<= 8;
-        instruction_bytes |= peek_byte(effective_address + i);
+        sprintf(temp_str, "%02x ", peek_byte(effective_address + index));
+        strcat(instruction_str_buffer, temp_str);
     }
-    sprintf(temp_str, "%-8x", instruction_bytes);
-    strcat(instruction_str_buffer, temp_str);
+
+    for(; index < 4; index++)
+    {
+        strcat(instruction_str_buffer, "   ");
+    }
+//    uint32_t instruction_bytes = 0;
+//    for(int32_t i = 0; i < width; i++)
+//    {
+//        instruction_bytes <<= 8;
+//        instruction_bytes |= peek_byte(effective_address + i);
+//    }
+//    sprintf(temp_str, "%-8x", instruction_bytes);
+//    strcat(instruction_str_buffer, temp_str);
 
     strcat(instruction_str_buffer, "| ");
     strcat(instruction_str_buffer, opcode_str);
@@ -6085,7 +6107,7 @@ void deassert_irq(uint8_t bit)
 
 void assert_rdy(uint8_t bit)
 {
-    if(!cpu_state.wai)
+    if(!cpu_state.wai && !cpu_state.stp)
     {
         cpu_state.rdy |= 1 << bit;
     }
@@ -6098,7 +6120,23 @@ void deassert_rdy(uint8_t bit)
 
 void reset_cpu()
 {
-//    cpu_state.regs[REG_PC].word = read_word(0xfffc);
+    reset_core();
+    /* elusive CPU delay at startup. Ripped off from bsnes. Wish I
+    knew why this is needed... */
+    cpu_state.uop_cycles = -22 * CPU_MASTER_CYCLES;
+
+    ram1_regs[CPU_REG_MEMSEL] = 0;
+    ram1_regs[CPU_REG_TIMEUP] = 0;
+    ram1_regs[CPU_REG_HTIMEL] = 0xff;
+    ram1_regs[CPU_REG_HTIMEH] = 0x01;
+    ram1_regs[CPU_REG_VTIMEL] = 0xff;
+    ram1_regs[CPU_REG_VTIMEH] = 0x01;
+    ram1_regs[CPU_REG_MDMAEN] = 0;
+    ram1_regs[CPU_REG_HDMAEN] = 0;
+}
+
+void reset_core()
+{
     cpu_state.regs[REG_PC].word = 0xfffc;
     cpu_state.regs[REG_DBR].byte[0] = 0;
     cpu_state.regs[REG_PBR].byte[0] = 0;
@@ -6113,15 +6151,6 @@ void reset_cpu()
     cpu_state.reg_p.x = 1;
     cpu_state.reg_p.m = 1;
 
-    // cpu_state.in_rdy = 1;
-    // cpu_state.in_irqb = 1;
-    // cpu_state.in_nmib = 1;
-    // cpu_state.in
-
-    // cpu_state.pins[CPU_PIN_IRQ] = 1;
-    // cpu_state.pins[CPU_PIN_NMI] = 1;
-    // cpu_state.pins[CPU_PIN_RDY] = 1;
-
     cpu_state.interrupts[CPU_INT_BRK] = 0;
     cpu_state.interrupts[CPU_INT_IRQ] = 0;
     cpu_state.interrupts[CPU_INT_NMI] = 0;
@@ -6129,24 +6158,14 @@ void reset_cpu()
     cpu_state.nmi1 = 0;
     cpu_state.irq = 0;
     cpu_state.rdy = 1;
+    cpu_state.res = 0;
+    cpu_state.stp = 0;
 
     cpu_state.cur_interrupt = CPU_INT_RES;
     cpu_state.interrupts[cpu_state.cur_interrupt] = 1;
     cpu_state.instruction_address = EFFECTIVE_ADDRESS(cpu_state.regs[REG_PBR].byte[0], cpu_state.regs[REG_PC].word);
     cpu_state.regs[REG_INST].word = INT_HW;
     load_instruction();
-    /* elusive CPU delay at startup. Ripped off from bsnes. Wish I
-    knew why this is needed... */
-    cpu_state.uop_cycles = -22 * CPU_MASTER_CYCLES;
-
-    ram1_regs[CPU_REG_MEMSEL] = 0;
-    ram1_regs[CPU_REG_TIMEUP] = 0;
-    ram1_regs[CPU_REG_HTIMEL] = 0xff;
-    ram1_regs[CPU_REG_HTIMEH] = 0x01;
-    ram1_regs[CPU_REG_VTIMEL] = 0xff;
-    ram1_regs[CPU_REG_VTIMEH] = 0x01;
-    ram1_regs[CPU_REG_MDMAEN] = 0;
-    ram1_regs[CPU_REG_HDMAEN] = 0;
 }
 
 // void assert_pin(uint32_t pin)
@@ -6202,7 +6221,8 @@ void next_uop()
 uint32_t step_cpu(int32_t *cycle_count)
 {
     uint32_t end_of_instruction = 0;
-    if(cpu_state.rdy)
+    uint32_t run_step = cpu_state.rdy & (!cpu_state.stp);
+    if(run_step)
     {
         cpu_state.uop_cycles += *cycle_count;
         cpu_state.instruction_cycles += *cycle_count;
@@ -6287,6 +6307,7 @@ uint32_t step_cpu(int32_t *cycle_count)
         if(cpu_state.interrupts[CPU_INT_NMI])
         {
             cpu_state.rdy = 1;
+            cpu_state.wai = 0;
             cpu_state.regs[REG_INST].word = INT_HW;
             cpu_state.cur_interrupt = CPU_INT_NMI;
             cpu_state.interrupts[CPU_INT_NMI] = 0;
@@ -6295,9 +6316,6 @@ uint32_t step_cpu(int32_t *cycle_count)
         {
             if(cpu_state.reg_p.i)
             {
-                cpu_state.wai = 0;
-                cpu_state.rdy = 1;
-                cpu_state.interrupts[CPU_INT_IRQ] = 0;
                 cpu_state.regs[REG_INST].word = FETCH;
                 cpu_state.cur_interrupt = CPU_INT_BRK;
             }
@@ -6306,6 +6324,7 @@ uint32_t step_cpu(int32_t *cycle_count)
                 cpu_state.regs[REG_INST].word = INT_HW;
                 cpu_state.cur_interrupt = CPU_INT_IRQ;
             }
+
             cpu_state.rdy = 1;
             cpu_state.wai = 0;
             cpu_state.interrupts[CPU_INT_IRQ] = 0;
@@ -6320,7 +6339,7 @@ uint32_t step_cpu(int32_t *cycle_count)
         {
             *cycle_count -= cpu_state.uop_cycles;
             cpu_state.uop_cycles = 0;
-            cpu_state.interrupts[cpu_state.cur_interrupt] = 0;
+            // cpu_state.interrupts[cpu_state.cur_interrupt] = 0;
             cpu_state.instruction_cycles = cpu_state.uop_cycles;
             cpu_state.instruction_address = EFFECTIVE_ADDRESS(cpu_state.regs[REG_PBR].byte[0], cpu_state.regs[REG_PC].word);
             cpu_state.uop_index = 0;

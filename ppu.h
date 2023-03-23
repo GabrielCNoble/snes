@@ -13,15 +13,24 @@ struct obj_attr_t
     uint16_t fpcn;
 };
 
-#define OBJ_ATTR1_HPOS_MASK 0x01
-#define OBJ_ATTR1_PAL_SHIFT 0x09
-#define OBJ_ATTR1_PAL_MASK  0x07
-#define OBJ_ATTR1_NAME_MASK 0x1ff
-struct obj_attr1_t
+#define OBJ_ATTR1_HPOS_MASK     0x01
+#define OBJ_ATTR1_PAL_SHIFT     0x09
+#define OBJ_ATTR1_PAL_MASK      0x07
+#define OBJ_ATTR1_NAME_MASK     0x1ff
+#define OBJ_ATTR1_HFLIP         0x4000
+#define OBJ_ATTR1_VFLIP         0x8000
+#define OBJ_ATTR1_PRI_SHIFT     0x0c
+#define OBJ_ATTR1_PRI_MASK      0x03
+union obj_attr1_t
 {
-    uint8_t h_pos;
-    uint8_t v_pos;
-    uint16_t fpcn;
+    struct
+    {
+        uint8_t     h_pos;
+        uint8_t     v_pos;
+        uint16_t    fpcn;
+    };
+
+    uint32_t        word;
 };
 
 #define OBJ_ATTR2_HPOS_MASK 0x01
@@ -33,18 +42,60 @@ struct obj_attr2_t
     uint16_t size_hpos;
 };
 
-struct line_obj_t
+struct obj_t
 {
-    uint16_t vpos;
-    uint16_t hpos;
-    uint16_t size;
-    uint16_t index;
+    int16_t     hpos;
+    int16_t     vpos;
+    uint16_t    name;
+    uint8_t     size;
+    uint8_t     pal;
+//    uint8_t     vflip : 1;
+//    uint8_t     hflip : 1;
 };
 
-struct oam_t
+struct dot_objs_t
 {
-    struct obj_attr1_t table1[128];
-    struct obj_attr2_t table2[32];
+    uint8_t         objects[128];
+    uint16_t        count;
+};
+
+#define OBJ_PRIORITIES 4
+struct dot_obj_priorities_t
+{
+    struct dot_objs_t priorities[OBJ_PRIORITIES];
+};
+
+#define BG_PRIORITIES 2
+struct dot_bg_priorities_t
+{
+    uint8_t           chr_name[BG_PRIORITIES];
+};
+
+struct tile_dot_priorities_t
+{
+    /* all objects that touch the current scanline */
+    struct dot_priorities_t *       objs;
+
+    /* all tiles of all backgrounds that touch the current dot at the current scanline */
+    struct dot_bg_priorities_t *    bgs[4];
+    uint32_t                        bg_count;
+};
+
+#define PPU_OAM_TABLE1_START 0x0000
+#define PPU_OAM_TABLE2_START 0x0200
+#define PPU_OAM_SIZE 0x220
+#define PPU_CGRAM_SIZE 0x200
+#define PPU_VRAM_SIZE 0xffff
+
+struct oam_tables_t
+{
+    union obj_attr1_t table1    [128];
+    struct obj_attr2_t table2   [32];
+};
+union oam_t
+{
+    struct oam_tables_t             tables;
+    uint8_t                         bytes[sizeof(struct oam_tables_t)];
 };
 
 #define SCANLINE_DOT_LENGTH     340
@@ -60,8 +111,8 @@ struct oam_t
     area described there is 256x224 or 256x239. H-blank starts at dot 274 and ends
     at dot 1. So, there's 21 dots that fall outside the left side of the screen...
 */
-#define DRAW_START_DOT          22
-#define DRAW_END_DOT            273
+#define DRAW_START_DOT          0
+#define DRAW_END_DOT            255
 #define DRAW_START_LINE         1
 //#define DRAW_END_LINE           224
 
@@ -70,9 +121,7 @@ struct oam_t
 #define FRAMEBUFFER_WIDTH SCANLINE_DOT_LENGTH
 #define FRAMEBUFFER_HEIGHT SCANLINE_COUNT
 #define PPU_CYCLES_PER_DOT 4
-#define PPU_OAM_SIZE 0x420
-#define PPU_CGRAM_SIZE 0x200
-#define PPU_VRAM_SIZE 0xffff
+//#define PPU_OAM_SIZE 0x420
 struct dot_t
 {
     uint8_t a;
@@ -108,7 +157,7 @@ struct bg7_sc_data_t
 struct background_t
 {
     struct bg_offset_t      offset;
-    struct bg_sc_data_t *   data_base;
+    struct bg_sc_data_t *   data_base[4];
     void *                  chr_base;
     void *                  pal_base;
     uint16_t                chr_size;
@@ -301,6 +350,10 @@ enum PPU_TSUB_FLAGS
     PPU_TSUB_FLAG_OBJ = 1 << 4,
 };
 
+/*
+    addressing goes from [<chr base address> + name * 8] to
+    [from <chr base address> + name * 8 + 7].
+*/
 struct chr2_t
 {
     uint16_t p01[8];
@@ -348,8 +401,12 @@ struct col_entry_t
 
 struct bg_tile_t
 {
-    uint16_t chr_index;
-    uint16_t pal_index;
+    uint16_t    chr_index;
+    uint16_t    pal_index;
+    int16_t     tile_dot_x;
+    int16_t     tile_dot_y;
+    uint16_t    hflip : 1;
+    uint16_t    vflip : 1;
 };
 
 struct bg7_tile_t
@@ -458,11 +515,19 @@ uint16_t bg_pal256_col(uint32_t dot_h, uint32_t dot_v, struct background_t *back
 
 uint16_t bg7_pal256_col(uint32_t dot_h, uint32_t dot_v, struct background_t *background);
 
-uint16_t obj_pal16_col(uint32_t dot_h, uint32_t dot_v, struct line_obj_t *obj);
+uint16_t obj_pal16_col(uint32_t dot_h, uint32_t dot_v, struct obj_t *obj);
 
 //uint8_t
 
+void update_objs();
+
 void update_line_objs(uint16_t line);
+
+void clear_scanline_obj_tiles();
+
+void update_scanline_obj_tiles(uint16_t line);
+
+void update_scanline_bg_tiles(uint16_t line, uint16_t dot);
 
 uint32_t step_ppu(int32_t cycle_count);
 

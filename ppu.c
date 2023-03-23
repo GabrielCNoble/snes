@@ -130,7 +130,8 @@ int32_t             ppu_cycle_count = 0;
 uint16_t            oam_addr = 0;
 uint16_t            draw_oam_addr = 0;
 uint8_t             oam_byte = 0;
-uint8_t *           oam;
+union oam_t         oam;
+//uint8_t *           oam;
 
 uint16_t            cgram_addr = 0;
 uint8_t *           cgram = NULL;
@@ -141,15 +142,28 @@ uint8_t *           vram = NULL;
 
 uint32_t            bg_bitdepth = 0;
 struct background_t backgrounds[4];
+float               cur_brightness = 0.0;
+struct dot_t        cur_backdrop = {};
 
-uint32_t            main_screen_bg_count = 0;
-struct bg_draw_t    main_screen[5];
-uint32_t            sub_screen_bg_count = 0;
-struct bg_draw_t    sub_screen[5];
+uint32_t                            main_screen_bg_count = 0;
+struct bg_draw_t                    main_screen[5];
+uint32_t                            sub_screen_bg_count = 0;
+struct bg_draw_t                    sub_screen[5];
+
+struct obj_t                        objects[128];
+struct dot_objs_t *                 line_objects;
+struct dot_obj_priorities_t *       scanline_objs;
+
+struct tile_dot_priorities_t        main_screen_tiles;
+uint32_t                            vram_offset = 0;
+//struct layer_dot_priorities_t   main_screen;
+//struct layer_dot_priorities_t   sub_screen;
+
+
 
 uint32_t            line_obj_count = 0;
 uint32_t            line_chr_count = 0;
-struct line_obj_t   line_objs[128];
+//struct line_obj_t   line_objs[128];
 struct chr4_t *     obj_chr_base[2];
 // void  *             obj_chr_base[2];
 // uint8_t             line_objs[128];
@@ -161,7 +175,7 @@ struct chr4_t *     obj_chr_base[2];
 uint32_t vmadd_increment_shifts[] = {
     [PPU_VMADD_INC1]    = 0,
     [PPU_VMADD_INC32]   = 5,
-    [PPU_VMADD_INC64]   = 7,
+    [PPU_VMADD_INC64]   = 6,
     [PPU_VMADD_INC128]  = 7,
 };
 
@@ -179,9 +193,11 @@ uint32_t obj_sizes[2] = {8, 16};
 void init_ppu()
 {
     framebuffer = calloc(FRAMEBUFFER_WIDTH * FRAMEBUFFER_HEIGHT, sizeof(struct dot_t));
-    oam = calloc(1, PPU_OAM_SIZE);
+//    oam = calloc(1, PPU_OAM_SIZE);
     cgram = calloc(1, PPU_CGRAM_SIZE);
     vram = calloc(1, PPU_VRAM_SIZE << 1);
+    line_objects = calloc(256, sizeof(struct dot_objs_t));
+    scanline_objs = calloc(SCANLINE_DOT_LENGTH, sizeof(struct dot_obj_priorities_t));
     last_draw_scanline = 224;
 }
 
@@ -202,11 +218,13 @@ void reset_ppu()
     backgrounds[2] = (struct background_t){.chr_base = vram, .data_base = (struct bg_sc_data_t *)vram, .pal_base = vram};
     backgrounds[3] = (struct background_t){.chr_base = vram, .data_base = (struct bg_sc_data_t *)vram, .pal_base = vram};
 
-    obj_chr_base[0] = vram;
-    obj_chr_base[1] = vram;
+    obj_chr_base[0] = (struct chr4_t *)vram;
+    obj_chr_base[1] = (struct chr4_t *)vram;
 
     ram1_regs[PPU_REG_STAT77] = 0;
     ram1_regs[PPU_REG_STAT78] = 0;
+
+    clear_scanline_obj_tiles();
 }
 
 uint8_t bg_chr0_dot_col(void *chr_base, uint32_t index, uint32_t size16, uint32_t dot_h, uint32_t dot_v)
@@ -214,9 +232,10 @@ uint8_t bg_chr0_dot_col(void *chr_base, uint32_t index, uint32_t size16, uint32_
     return 0;
 }
 
-uint8_t bg_chr2_dot_col(void *chr_base, uint32_t index, uint32_t size16, uint32_t dot_h, uint32_t dot_v)
+uint8_t bg_chr2_dot_col(void *chr_base, uint32_t index, uint32_t size, uint32_t dot_h, uint32_t dot_v)
 {
-    uint32_t chr_size = 1 << (3 + size16);
+//    uint32_t chr_size = 1 << (3 + size16);
+    uint32_t chr_size = size;
     uint32_t chr_dot_h = dot_h % 8;
     uint32_t chr_dot_v = dot_v % 8;
     uint8_t color_index;
@@ -230,9 +249,10 @@ uint8_t bg_chr2_dot_col(void *chr_base, uint32_t index, uint32_t size16, uint32_
     return color_index;
 }
 
-uint8_t bg_chr4_dot_col(void *chr_base, uint32_t index, uint32_t size16, uint32_t dot_h, uint32_t dot_v)
+uint8_t bg_chr4_dot_col(void *chr_base, uint32_t index, uint32_t size, uint32_t dot_h, uint32_t dot_v)
 {
-    uint32_t chr_size = 1 << (3 + size16);
+//    uint32_t chr_size = 1 << (3 + size16);
+    uint32_t chr_size = size;
     uint32_t chr_dot_h = dot_h % 8;
     uint32_t chr_dot_v = dot_v % 8;
     uint8_t color_index;
@@ -248,9 +268,10 @@ uint8_t bg_chr4_dot_col(void *chr_base, uint32_t index, uint32_t size16, uint32_
     return color_index;
 }
 
-uint8_t bg_chr8_dot_col(void *chr_base, uint32_t index, uint32_t size16, uint32_t dot_h, uint32_t dot_v)
+uint8_t bg_chr8_dot_col(void *chr_base, uint32_t index, uint32_t size, uint32_t dot_h, uint32_t dot_v)
 {
-    uint32_t chr_size = 1 << (3 + size16);
+//    uint32_t chr_size = 1 << (3 + size16);
+    uint32_t chr_size = size;
     uint32_t chr_dot_h = dot_h % 8;
     uint32_t chr_dot_v = dot_v % 8;
     uint8_t color_index;
@@ -280,12 +301,39 @@ uint8_t bg_chr8_dot_col(void *chr_base, uint32_t index, uint32_t size16, uint32_
 
 struct bg_tile_t bg_tile_entry(uint32_t dot_h, uint32_t dot_v, struct background_t *background)
 {
-    uint32_t index_shift = 3 + background->chr_size;
-    uint32_t data_index = (dot_h >> index_shift) + (dot_v >> index_shift) * 32;
-    struct bg_sc_data_t *bg_data = background->data_base + data_index;
+    int16_t tile_dot_x = dot_h & (background->chr_size - 1);
+    int16_t tile_dot_y = dot_v & (background->chr_size - 1);
+    uint32_t tile_x = (dot_h / background->chr_size) & 0x3f;
+    uint32_t tile_y = (dot_v / background->chr_size) & 0x3f;
+    uint32_t screen = (tile_x > 32) + ((tile_y > 32) << 1);
+
+    tile_x &= 0x1f;
+    tile_y &= 0x1f;
+
+    uint32_t data_index = tile_x + tile_y * 32;
+    struct bg_sc_data_t *bg_data = background->data_base[screen] + data_index;
+
+//    int16_t tile_dot_x = tile_x & (background->chr_size - 1);
+//    int16_t tile_dot_y = tile_y & (background->chr_size - 1);
+
+    if(bg_data->data & (BG_SC_DATA_FLIP_MASK << BG_SC_DATA_H_FLIP_SHIFT))
+    {
+        tile_dot_x = (background->chr_size - 1) - tile_dot_x;
+    }
+
+    if(bg_data->data & (BG_SC_DATA_FLIP_MASK << BG_SC_DATA_V_FLIP_SHIFT))
+    {
+        tile_dot_y = (background->chr_size - 1) - tile_dot_y;
+    }
+
+//    tile_dot_x = dot_h;
+//    tile_dot_y = dot_v;
+
     struct bg_tile_t tile = {
-        .chr_index = bg_data->data & BG_SC_DATA_NAME_MASK,
-        .pal_index = (bg_data->data >> BG_SC_DATA_PAL_SHIFT) & BG_SC_DATA_PAL_MASK
+        .chr_index      = bg_data->data & BG_SC_DATA_NAME_MASK,
+        .pal_index      = (bg_data->data >> BG_SC_DATA_PAL_SHIFT) & BG_SC_DATA_PAL_MASK,
+        .tile_dot_x     = tile_dot_x,
+        .tile_dot_y     = tile_dot_y,
     };
     return tile;
 }
@@ -307,7 +355,14 @@ uint16_t bg_pal4_col(uint32_t dot_h, uint32_t dot_v, struct background_t *backgr
 {
     struct pal4_t *palletes = (struct pal4_t *)background->pal_base;
     struct bg_tile_t tile = bg_tile_entry(dot_h, dot_v, background);
-    uint8_t color_index = bg_chr2_dot_col(background->chr_base, tile.chr_index, background->chr_size, dot_h, dot_v);
+//    uint8_t color_index = bg_chr2_dot_col(background->chr_base, tile.chr_index, background->chr_size, dot_h, dot_v);
+    uint8_t color_index = bg_chr2_dot_col(background->chr_base, tile.chr_index, background->chr_size, tile.tile_dot_x, tile.tile_dot_y);
+
+    if(color_index == 0)
+    {
+        return 0xffff;
+    }
+
     return palletes[tile.pal_index].colors[color_index];
 }
 
@@ -315,7 +370,14 @@ uint16_t bg_pal16_col(uint32_t dot_h, uint32_t dot_v, struct background_t *backg
 {
     struct pal16_t *palletes = (struct pal16_t *)background->pal_base;
     struct bg_tile_t tile = bg_tile_entry(dot_h, dot_v, background);
-    uint8_t color_index = bg_chr4_dot_col(background->chr_base, tile.chr_index, background->chr_size, dot_h, dot_v);
+//    uint8_t color_index = bg_chr4_dot_col(background->chr_base, tile.chr_index, background->chr_size, dot_h, dot_v);
+    uint8_t color_index = bg_chr4_dot_col(background->chr_base, tile.chr_index, background->chr_size, tile.tile_dot_x, tile.tile_dot_y);
+
+    if(color_index == 0)
+    {
+        return 0xffff;
+    }
+
     return palletes[tile.pal_index].colors[color_index];
 }
 
@@ -323,7 +385,14 @@ uint16_t bg_pal256_col(uint32_t dot_h, uint32_t dot_v, struct background_t *back
 {
     struct pal256_t *palletes = (struct pal256_t *)background->pal_base;
     struct bg_tile_t tile = bg_tile_entry(dot_h, dot_v, background);
-    uint8_t color_index = bg_chr8_dot_col(background->chr_base, tile.chr_index, background->chr_size, dot_h, dot_v);
+//    uint8_t color_index = bg_chr8_dot_col(background->chr_base, tile.chr_index, background->chr_size, dot_h, dot_v);
+    uint8_t color_index = bg_chr8_dot_col(background->chr_base, tile.chr_index, background->chr_size, tile.tile_dot_x, tile.tile_dot_y);
+
+    if(color_index == 0)
+    {
+        return 0xffff;
+    }
+
     return palletes[tile.pal_index].colors[color_index];
 }
 
@@ -342,66 +411,219 @@ uint16_t bg7_pal256_col(uint32_t dot_h, uint32_t dot_v, struct background_t *bac
     return pallete->colors[chr_data->chr];
 }
 
-uint16_t obj_pal16_col(uint32_t dot_h, uint32_t dot_v, struct line_obj_t *obj)
+uint16_t obj_pal16_col(uint32_t dot_h, uint32_t dot_v, struct obj_t *obj)
 {
-    struct oam_t *oam_tables = (struct oam_t *)oam;
-    struct obj_attr1_t *attr1 = oam_tables->table1 + obj->index;
-    uint32_t chr_name = attr1->fpcn & OBJ_ATTR1_NAME_MASK;
-    void *chr_base = obj_chr_base[(chr_name & 0x100) != 0];
-
-//    uint32_t chr_size = 1 << (3 + size16);
-    uint32_t chr_dot_h = dot_h % 8;
-    uint32_t chr_dot_v = dot_v % 8;
-    uint8_t color_index;
-
-    return color_index;
+//    struct oam_t *oam_tables = (struct oam_t *)oam;
+//    struct obj_attr1_t *attr1 = oam_tables->table1 + obj->index;
+//    uint32_t chr_name = attr1->fpcn & OBJ_ATTR1_NAME_MASK;
+//    void *chr_base = obj_chr_base[(chr_name & 0x100) != 0];
+//
+////    uint32_t chr_size = 1 << (3 + size16);
+//    uint32_t chr_dot_h = dot_h % 8;
+//    uint32_t chr_dot_v = dot_v % 8;
+//    uint8_t color_index;
+//
+//    return color_index;
 }
 
-void update_line_objs(uint16_t line)
-{
-    line_obj_count = 0;
-    line_chr_count = 0;
-    struct oam_t *oam_tables = (struct oam_t *)oam;
+//void update_objs()
+//{
+//    struct oam_t *oam_tables = (struct oam_t *)oam;
+//
+//    for(uint32_t index = 0; index < 128; index++)
+//    {
+//        struct obj_attr1_t *attr1 = oam_tables->table1 + index;
+//        struct obj_attr2_t *attr2 = oam_tables->table2 + (index >> 3);
+//        struct obj_t *obj = objects + index;
+//        uint16_t size_pos = (attr2->size_hpos >> ((index & 0x07) << 1)) & OBJ_ATTR2_DATA_MASK;
+//
+//        obj->hpos = (uint16_t)attr1->h_pos | ((size_pos & 1) << 8);
+//        obj->vpos = attr1->v_pos;
+//        obj->name = attr1->fpcn & OBJ_ATTR1_NAME_MASK;
+//        obj->size = obj_sizes[size_pos >> 1];
+//        obj->vflip = (attr1->fpcn & OBJ_ATTR1_VFLIP) && 1;
+//        obj->hflip = (attr1->fpcn & OBJ_ATTR1_HFLIP) && 1;
+//        obj->pal = (attr1->fpcn >> OBJ_ATTR1_PAL_SHIFT) & OBJ_ATTR1_PAL_MASK;
+//
+//        int16_t obj_end_hpos = obj->hpos + obj->size;
+//        int16_t obj_end_vpos = obj->vpos + obj->size;
+//
+//        if(obj->hpos > DRAW_END_DOT || obj_end_hpos < DRAW_START_DOT ||
+//           obj->vpos > last_draw_scanline || obj_end_vpos < DRAW_START_LINE)
+//        {
+//            obj->size = 0;
+//            continue;
+//        }
+//
+//        int16_t start_dot = obj->hpos - DRAW_START_DOT;
+//
+//        if(start_dot < 0)
+//        {
+//            obj->start_dot = 0;
+//        }
+//        else
+//        {
+//            obj->start_dot = start_dot;
+//        }
+//
+//        int16_t end_dot = start_dot + obj->size;
+//
+//        if(end_dot > DRAW_END_DOT - DRAW_START_DOT)
+//        {
+//            obj->end_dot = DRAW_END_DOT - DRAW_START_DOT;
+//        }
+//        else
+//        {
+//            obj->end_dot = end_dot;
+//        }
+//    }
+//}
 
+void clear_scanline_obj_tiles()
+{
+    for(uint32_t index = 0; index < SCANLINE_DOT_LENGTH; index++)
+    {
+        scanline_objs[index].priorities[0].count = 0;
+        scanline_objs[index].priorities[1].count = 0;
+        scanline_objs[index].priorities[2].count = 0;
+        scanline_objs[index].priorities[3].count = 0;
+    }
+}
+
+void update_scanline_obj_tiles(uint16_t line)
+{
     for(uint32_t index = 0; index < 128; index++)
     {
-        struct obj_attr1_t *attr1 = oam_tables->table1 + index;
-        struct obj_attr2_t *attr2 = oam_tables->table2 + (index >> 3);
+        union obj_attr1_t *attr1 = oam.tables.table1 + index;
+        struct obj_attr2_t *attr2 = oam.tables.table2 + (index >> 3);
+//        union obj_attr1_t *attr1 = table1 + index;
+//        struct obj_attr2_t *attr2 = table2 + (index >> 3);
+        struct obj_t *obj = objects + index;
         uint16_t size_pos = (attr2->size_hpos >> ((index & 0x07) << 1)) & OBJ_ATTR2_DATA_MASK;
-        uint16_t obj_size = obj_sizes[size_pos >> 1];
 
-        uint16_t hpos = (uint16_t)attr1->h_pos | ((size_pos & 1) << 8);
-        uint16_t vpos = attr1->v_pos;
+        obj->hpos = (uint16_t)attr1->h_pos | ((size_pos & 1) << 8);
 
-        if(line >= vpos && line < vpos + obj_size && hpos + obj_size > DRAW_START_DOT && hpos < DRAW_END_DOT)
+        if(obj->hpos & 0x100)
         {
-            line_objs[line_obj_count] = (struct line_obj_t){
-                .vpos = vpos,
-                .hpos = hpos,
-                .size = obj_size,
-                .index = index
-            };
-            line_obj_count++;
-            line_chr_count += obj_size / 8;
+            obj->hpos = -obj->hpos;
+        }
+
+        obj->vpos = (uint16_t)attr1->v_pos;
+        obj->name = attr1->fpcn & OBJ_ATTR1_NAME_MASK;
+        obj->size = obj_sizes[size_pos >> 1];
+//        obj->vflip = (attr1->fpcn & OBJ_ATTR1_VFLIP) && 1;
+//        obj->hflip = (attr1->fpcn & OBJ_ATTR1_HFLIP) && 1;
+        obj->pal = (attr1->fpcn >> OBJ_ATTR1_PAL_SHIFT) & OBJ_ATTR1_PAL_MASK;
+        uint8_t priority = (attr1->fpcn >> OBJ_ATTR1_PRI_SHIFT) & OBJ_ATTR1_PRI_MASK;
+
+        int16_t obj_end_hpos = obj->hpos + (obj->size);
+        int16_t obj_end_vpos = obj->vpos + (obj->size);
+
+        if(obj->hpos > DRAW_END_DOT || obj_end_hpos <= DRAW_START_DOT ||
+           obj->vpos > line || obj_end_vpos <= line)
+        {
+            obj->size = 0;
+            continue;
+        }
+
+        int16_t start_dot = obj->hpos - DRAW_START_DOT;
+
+        if(start_dot < 0)
+        {
+            start_dot = 0;
+        }
+
+        int16_t end_dot = start_dot + obj->size;
+
+        if(end_dot > DRAW_END_DOT - DRAW_START_DOT)
+        {
+            end_dot = DRAW_END_DOT - DRAW_START_DOT;
+        }
+
+        for(uint32_t dot = start_dot; dot < end_dot; dot++)
+        {
+            struct dot_objs_t *dot_objs = scanline_objs[dot].priorities + priority;
+            dot_objs->objects[dot_objs->count] = index;
+            dot_objs->count++;
+        }
+
+        /* move the obj position forward by its size in case it's flipped.
+        This allows computing mirrored obj pixel coords without condintionals. */
+        if(attr1->fpcn & OBJ_ATTR1_HFLIP)
+        {
+            obj->hpos += obj->size - 1;
+        }
+
+        if(attr1->fpcn & OBJ_ATTR1_VFLIP)
+        {
+            obj->vpos += obj->size - 1;
         }
     }
 }
+
+void update_scanline_bg_tiles(uint16_t line, uint16_t dot)
+{
+
+}
+
+//void update_dot_objs(uint16_t line)
+//{
+//    // line_obj_count = 0;
+//    line_chr_count = 0;
+//
+//    for(uint32_t index = 0; index < 128; index++)
+//    {
+//        // struct obj_attr1_t *attr1 = oam_tables->table1 + index;
+//        // struct obj_attr2_t *attr2 = oam_tables->table2 + (index >> 3);
+//        // uint16_t size_pos = (attr2->size_hpos >> ((index & 0x07) << 1)) & OBJ_ATTR2_DATA_MASK;
+//        // uint16_t obj_size = obj_sizes[size_pos >> 1];
+//
+//        // uint16_t hpos = (uint16_t)attr1->h_pos | ((size_pos & 1) << 8);
+//        // uint16_t vpos = attr1->v_pos;
+//
+//        struct obj_t *object = objects + index;
+//
+//        if(object->size && line >= object->vpos && line < object->vpos + object->size)
+//        {
+////            uint32_t start_index = object->hpos - DRAW_START_DOT;
+////            uint32_t end_index = start_index + object->size;
+////            if(end_index > DRAW_END_DOT)
+////            {
+////                end_index = DRAW_END_DOT;
+////            }
+//
+//            for(int32_t dot_index = object->start_dot; dot_index < object->end_dot; dot_index++)
+//            {
+//                struct dot_objs_t *dot_objects = line_objects + dot_index;
+//                dot_objects->objects[dot_objects->count] = index;
+//                dot_objects->count++;
+//            }
+//        }
+//
+//
+//        // if(line >= vpos && line < vpos + obj_size && hpos + obj_size > DRAW_START_DOT && hpos < DRAW_END_DOT)
+//        // {
+//        //     line_objs[line_obj_count] = (struct line_obj_t){
+//        //         .vpos = vpos,
+//        //         .hpos = hpos,
+//        //         .size = obj_size,
+//        //         .index = index
+//        //     };
+//        //     line_obj_count++;
+//        //     line_chr_count += obj_size / 8;
+//        // }
+//    }
+//}
 
 uint32_t step_ppu(int32_t cycle_count)
 {
     ppu_cycle_count += cycle_count;
     uint32_t vblank = 0;
 
-//    struct oam_t *oam_tables = (struct oam_t *)oam;
-//    uint32_t obj_size = (ram1_regs[PPU_REG_OBJSEL] >> PPU_OBJSEL_SIZE_SHIFT) & PPU_OBJSEL_SIZE_MASK;
-//    uint32_t *obj_sizes = objsel_size_sel_sizes + obj_size;
-
-
-
     while(ppu_cycle_count)
     {
         sub_dot++;
-         scanline_cycles++;
+        scanline_cycles++;
         if(sub_dot == dot_length)
         {
             sub_dot = 0;
@@ -414,7 +636,6 @@ uint32_t step_ppu(int32_t cycle_count)
                 vcounter = (vcounter + 1) % SCANLINE_COUNT;
                 hcounter = 0;
                 scanline_cycles = 0;
-                update_line_objs(vcounter);
 
                 if(line_obj_count > 32)
                 {
@@ -427,30 +648,10 @@ uint32_t step_ppu(int32_t cycle_count)
                 }
             }
 
-            if(hcounter == H_BLANK_END_DOT)
+            if(hcounter == 0 && vcounter < last_draw_scanline)
             {
-                ram1_regs[CPU_REG_HVBJOY] &= ~CPU_HVBJOY_FLAG_HBLANK;
-
-                if(vcounter == 0)
-                {
-                    ram1_regs[PPU_REG_STAT78] ^= PPU_STAT78_FLAG_FIELD;
-                }
+                update_scanline_obj_tiles(vcounter);
             }
-            else if(hcounter == H_BLANK_START_DOT)
-            {
-                ram1_regs[CPU_REG_HVBJOY] |= CPU_HVBJOY_FLAG_HBLANK;
-            }
-
-
-            if((hcounter == 323 || hcounter == 327) && (vcounter != 240 || !(ram1_regs[PPU_REG_STAT78] & PPU_STAT78_FLAG_FIELD) ))
-            {
-                dot_length = 6;
-            }
-            else
-            {
-                dot_length = 4;
-            }
-
 
             if(vcounter == V_BLANK_END_LINE)
             {
@@ -479,6 +680,30 @@ uint32_t step_ppu(int32_t cycle_count)
                 }
             }
 
+            if(hcounter == H_BLANK_END_DOT)
+            {
+                ram1_regs[CPU_REG_HVBJOY] &= ~CPU_HVBJOY_FLAG_HBLANK;
+
+                if(vcounter == 0)
+                {
+                    ram1_regs[PPU_REG_STAT78] ^= PPU_STAT78_FLAG_FIELD;
+                }
+            }
+            else if(hcounter == H_BLANK_START_DOT)
+            {
+                ram1_regs[CPU_REG_HVBJOY] |= CPU_HVBJOY_FLAG_HBLANK;
+            }
+
+
+            if((hcounter == 323 || hcounter == 327) && (vcounter != 240 || !(ram1_regs[PPU_REG_STAT78] & PPU_STAT78_FLAG_FIELD) ))
+            {
+                dot_length = 6;
+            }
+            else
+            {
+                dot_length = 4;
+            }
+
             if(!cur_irq_counter)
             {
                 if(ram1_regs[CPU_REG_NMITIMEN] & (CPU_NMITIMEN_FLAG_HTIMER_EN | CPU_NMITIMEN_FLAG_VTIMER_EN))
@@ -499,11 +724,12 @@ uint32_t step_ppu(int32_t cycle_count)
             uint8_t hvbjoy = ram1_regs[CPU_REG_HVBJOY];
 
             if(!(hvbjoy & CPU_HVBJOY_FLAG_VBLANK) && vcounter >= DRAW_START_LINE
-               && hcounter >= DRAW_START_DOT && hcounter <= DRAW_END_DOT)
+               && vcounter < last_draw_scanline && hcounter <= DRAW_END_DOT)
             {
                 uint8_t inidisp = ram1_regs[PPU_REG_INIDISP];
-                float brightness = (float)(inidisp & 0xf) / 15.0;
-                uint32_t dot_x = hcounter - DRAW_START_DOT;
+//                float brightness = (float)(inidisp & 0xf) / 15.0;
+                float brightness = cur_brightness;
+                uint32_t dot_x = hcounter;
                 uint32_t dot_y = vcounter - DRAW_START_LINE;
 
                 if(ram1_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK)
@@ -513,55 +739,119 @@ uint32_t step_ppu(int32_t cycle_count)
 
                 struct mode0_cgram_t *mode0_cgram = (struct mode0_cgram_t *)cgram;
                 struct dot_t *dot = framebuffer + dot_y * FRAMEBUFFER_WIDTH + dot_x;
-                uint16_t backdrop = mode0_cgram->bg1_colors[0].colors[0];
 
-                dot->r = color_lut[(backdrop >> COL_DATA_R_SHIFT) & COL_DATA_MASK];
-                dot->g = color_lut[(backdrop >> COL_DATA_G_SHIFT) & COL_DATA_MASK];
-                dot->b = color_lut[(backdrop >> COL_DATA_B_SHIFT) & COL_DATA_MASK];
-                dot->a = 255;
+                *dot = cur_backdrop;
 
                 for(uint32_t index = 0; index < main_screen_bg_count; index++)
                 {
                     struct bg_draw_t *bg_draw = main_screen + index;
-                    uint16_t chr_size = 1 << (3 + bg_draw->background->chr_size);
+                    uint16_t chr_size = bg_draw->background->chr_size;
                     uint16_t bg_size = chr_size << 5;
-                    uint16_t bg_dot_x = (dot_x + bg_draw->background->offset.offsets[0]) % bg_size;
-                    uint16_t bg_dot_y = (dot_y + bg_draw->background->offset.offsets[1]) % bg_size;
-                    uint16_t color = bg_draw->color_func(bg_dot_x, bg_dot_y, bg_draw->background);
-                    dot->r = color_lut[(color >> COL_DATA_R_SHIFT) & COL_DATA_MASK];
-                    dot->g = color_lut[(color >> COL_DATA_G_SHIFT) & COL_DATA_MASK];
-                    dot->b = color_lut[(color >> COL_DATA_B_SHIFT) & COL_DATA_MASK];
-                }
+                    int16_t bg_dot_x = ((int16_t)hcounter + (int16_t)bg_draw->background->offset.offsets[0]);
+                    int16_t bg_dot_y = ((int16_t)vcounter + (int16_t)bg_draw->background->offset.offsets[1]);
 
-                struct oam_t *oam_tables = (struct oam_t *)oam;
-
-                if(ram1_regs[PPU_REG_TMAIN] & PPU_TMAIN_FLAG_OBJ)
-                {
-                    for(uint32_t index = 0; index < line_obj_count; index++)
+                    if(bg_dot_x >= 0 && bg_dot_y >= 0)
                     {
-                        struct line_obj_t *obj = line_objs + index;
+                        uint16_t color = bg_draw->color_func(bg_dot_x, bg_dot_y, bg_draw->background);
 
-                        if(hcounter >= obj->hpos && hcounter <= obj->hpos + obj->size)
+                        if(color != 0xffff)
                         {
-                            uint16_t obj_dot_x = hcounter - obj->hpos;
-                            uint16_t obj_dot_y = vcounter - obj->vpos;
-                            struct obj_attr1_t *attr1 = oam_tables->table1 + obj->index;
-                            uint32_t obj_name = attr1->fpcn & OBJ_ATTR1_NAME_MASK;
-                            uint32_t obj_pal = (attr1->fpcn >> OBJ_ATTR1_PAL_SHIFT) & OBJ_ATTR1_PAL_MASK;
-                            uint8_t color_index = bg_chr4_dot_col(obj_chr_base[0], obj_name, 1, obj_dot_x, obj_dot_y);
-
-                            if(color_index)
-                            {
-                                uint16_t color = mode0_cgram->obj_colors[obj_pal].colors[color_index];
-                                dot->r = color_lut[(color >> COL_DATA_R_SHIFT) & COL_DATA_MASK];
-                                dot->g = color_lut[(color >> COL_DATA_G_SHIFT) & COL_DATA_MASK];
-                                dot->b = color_lut[(color >> COL_DATA_B_SHIFT) & COL_DATA_MASK];
-                            }
-
+                            dot->r = color_lut[(color >> COL_DATA_R_SHIFT) & COL_DATA_MASK];
+                            dot->g = color_lut[(color >> COL_DATA_G_SHIFT) & COL_DATA_MASK];
+                            dot->b = color_lut[(color >> COL_DATA_B_SHIFT) & COL_DATA_MASK];
                             break;
                         }
                     }
                 }
+
+//                struct oam_t *oam_tables = (struct oam_t *)oam;
+
+//                if(ram1_regs[PPU_REG_TMAIN] & PPU_TMAIN_FLAG_OBJ)
+//                {
+                for(uint32_t priority = 4; priority > 0;)
+                {
+                    priority--;
+                    struct dot_objs_t *dot_objects = scanline_objs[dot_x].priorities + priority;
+
+                    for(int32_t dot_obj_index = 0; dot_obj_index < dot_objects->count; dot_obj_index++)
+                    {
+                        uint32_t object_index = dot_objects->objects[dot_obj_index];
+                        struct obj_t *object = objects + object_index;
+
+                        int16_t obj_dot_x = abs((int16_t)hcounter - object->hpos);
+                        int16_t obj_dot_y = abs((int16_t)vcounter - object->vpos);
+
+//                        if(object->hflip)
+//                        {
+//                            obj_dot_x = (object->size - 1) - obj_dot_x;
+//                        }
+//
+//                        if(object->vflip)
+//                        {
+//                            obj_dot_y = (object->size - 1) - obj_dot_y;
+//                        }
+
+                        uint8_t color_index = bg_chr4_dot_col(obj_chr_base[0], object->name, object->size, obj_dot_x, obj_dot_y);
+
+                        if(color_index)
+                        {
+                            uint16_t color = mode0_cgram->obj_colors[object->pal].colors[color_index];
+                            dot->r = color_lut[(color >> COL_DATA_R_SHIFT) & COL_DATA_MASK];
+                            dot->g = color_lut[(color >> COL_DATA_G_SHIFT) & COL_DATA_MASK];
+                            dot->b = color_lut[(color >> COL_DATA_B_SHIFT) & COL_DATA_MASK];
+                            priority = 0;
+                            break;
+                        }
+                    }
+                }
+
+                for(uint32_t priority = 0; priority < 4; priority++)
+                {
+                    scanline_objs[dot_x].priorities[priority].count = 0;
+                }
+
+
+//                    for(uint32_t dot_obj_index = 0; dot_obj_index < dot_objects->count; dot_obj_index++)
+//                    {
+//                        // struct line_obj_t *obj = line_objs + index;
+//                        uint32_t object_index = dot_objects->objects[dot_obj_index];
+//                        struct obj_t *object = objects + object_index;
+////                        struct obj_t *object = dot_objects->objects[dot_obj_index];
+//                        // if(hcounter >= obj->hpos && hcounter <= obj->hpos + obj->size)
+////                        {
+//                        uint16_t obj_dot_x = (int16_t)hcounter - object->hpos;
+//                        uint16_t obj_dot_y = vcounter - object->vpos;
+////                            uint32_t obj_name = object->name;
+////                            uint32_t obj_pal = object->pal;
+//                            // struct obj_attr1_t *attr1 = oam_tables->table1 + obj->index;
+//                            // uint32_t obj_name = attr1->fpcn & OBJ_ATTR1_NAME_MASK;
+//                            // uint32_t obj_pal = (attr1->fpcn >> OBJ_ATTR1_PAL_SHIFT) & OBJ_ATTR1_PAL_MASK;
+//
+//                        if(object->hflip)
+//                        {
+//                            obj_dot_x = (object->size - 1) - obj_dot_x;
+//                        }
+//
+//                        if(object->vflip)
+//                        {
+//                            obj_dot_y = (object->size - 1) - obj_dot_y;
+//                        }
+//
+//                        uint8_t color_index = bg_chr4_dot_col(obj_chr_base[0], object->name, 1, obj_dot_x, obj_dot_y);
+//
+//                        if(color_index)
+//                        {
+//                            uint16_t color = mode0_cgram->obj_colors[object->pal].colors[color_index];
+//                            dot->r = color_lut[(color >> COL_DATA_R_SHIFT) & COL_DATA_MASK];
+//                            dot->g = color_lut[(color >> COL_DATA_G_SHIFT) & COL_DATA_MASK];
+//                            dot->b = color_lut[(color >> COL_DATA_B_SHIFT) & COL_DATA_MASK];
+//                            break;
+//                        }
+////                        }
+//                    }
+
+//                    dot_objects->count = 0;
+//                }
 
                 dot->r *= brightness;
                 dot->g *= brightness;
@@ -589,6 +879,7 @@ void dump_ppu()
 void inidisp_write(uint32_t effective_address, uint8_t value)
 {
     ram1_regs[PPU_REG_INIDISP] = value;
+    cur_brightness = (float)(value & 0xf) / 15.0;
 }
 
 void objsel_write(uint32_t effective_address, uint8_t value)
@@ -623,7 +914,7 @@ void vmadd_write(uint32_t effective_address, uint8_t value)
 {
     uint32_t reg = effective_address & 0xffff;
     ram1_regs[reg] = value;
-    vram_addr = (uint16_t)ram1_regs[PPU_REG_VMADDL] | ((uint16_t)ram1_regs[PPU_REG_VMADDH] << 8);
+    vram_addr = (uint16_t)ram1_regs[PPU_REG_VMADDL] | (((uint16_t)ram1_regs[PPU_REG_VMADDH]) << 8);
 }
 
 void vmdata_write(uint32_t effective_address, uint8_t value)
@@ -635,7 +926,7 @@ void vmdata_write(uint32_t effective_address, uint8_t value)
 
     if((ram1_regs[CPU_REG_HVBJOY] & CPU_HVBJOY_FLAG_VBLANK) || (ram1_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK))
     {
-        write_addr += PPU_REG_VMDATAWH == reg;
+        write_addr |= PPU_REG_VMDATAWH == reg;
         vram[write_addr] = value;
         vram_addr += ((write_order == PPU_VMDATA_ADDR_INC_LH && reg == PPU_REG_VMDATAWH) ||
                       (write_order == PPU_VMDATA_ADDR_INC_HL && reg == PPU_REG_VMDATAWL)) << increment_shift;
@@ -647,14 +938,14 @@ uint8_t vmdata_read(uint32_t effective_address)
 {
     uint32_t read_order = ram1_regs[PPU_REG_VMAINC] & 0x80;
     uint32_t reg = effective_address & 0xffff;
-    uint32_t addr = vram_addr * 2;
+    uint32_t read_addr = vram_addr << 1;
     uint32_t increment_shift = vmadd_increment_shifts[ram1_regs[PPU_REG_VMAINC] & 0x3];
     uint8_t value;
 
-    if(ram1_regs[CPU_REG_HVBJOY] & V_BLANK_FLAG || ram1_regs[CPU_REG_HVBJOY] & H_BLANK_FLAG)
+    if((ram1_regs[CPU_REG_HVBJOY] & V_BLANK_FLAG) || (ram1_regs[CPU_REG_HVBJOY] & H_BLANK_FLAG))
     {
-        addr += PPU_REG_VMDATARH - reg;
-        value = vram[addr];
+        read_addr |= PPU_REG_VMDATARH == reg;
+        value = vram[read_addr];
         vram_addr += ((read_order == PPU_VMDATA_ADDR_INC_LH && reg == PPU_REG_VMDATARH) ||
                       (read_order == PPU_VMDATA_ADDR_INC_HL && reg == PPU_REG_VMDATARL)) << increment_shift;
         vram_addr &= 0x7fff;
@@ -667,13 +958,31 @@ void oamadd_write(uint32_t effective_address, uint8_t value)
 {
     uint32_t reg = effective_address & 0xffff;
     ram1_regs[reg] = value;
-    oam_addr = ((uint16_t)ram1_regs[PPU_REG_OAMADDL] | ((uint16_t)ram1_regs[PPU_REG_OAMADDH] << 8)) & 0x01ff;
+    oam_addr = ((uint16_t)ram1_regs[PPU_REG_OAMADDL] | (((uint16_t)ram1_regs[PPU_REG_OAMADDH] << 8)) & 0x01ff);
     oam_addr <<= 1;
 }
 
 void oamdata_write(uint32_t effective_address, uint8_t value)
 {
-    oam[oam_addr] = value;
+    oam.bytes[oam_addr] = value;
+    // uint32_t obj_index;
+
+    // if(oam_addr < PPU_OAM_TABLE2_START)
+    // {
+    //     obj_index = oam_addr / sizeof(struct obj_attr1_t);
+    // }
+    // else
+    // {
+    //     obj_index = (oam_addr / (sizeof(struct obj_attr2_t) * 8)) + (oam_addr & 0x7);
+    // }
+
+    // struct oam_t *oam_tables = (struct oam_t *)oam;
+    // struct obj_t *obj = objects + obj_index;
+    // struct obj_attr1_t *attr1 = oam_tables->table1 + obj_index;
+    // struct obj_attr2_t *attr2 = oam_tables->table2 + obj_index;
+
+    // obj->vpos = oam_tables->table1[obj_index].;
+
     oam_addr = (oam_addr + 1) % PPU_OAM_SIZE;
 }
 
@@ -687,10 +996,10 @@ void update_bg_state()
     struct bg_draw_t main_screen_backgrounds[5];
     struct bg_draw_t sub_backgrounds[5];
 
-    backgrounds[0].chr_size = (bg_mode >> PPU_BGMODE_BG1_CHR_SIZE_SHIFT) && PPU_BGMODE_BG_CHR_SIZE_MASK;
-    backgrounds[1].chr_size = (bg_mode >> PPU_BGMODE_BG2_CHR_SIZE_SHIFT) && PPU_BGMODE_BG_CHR_SIZE_MASK;
-    backgrounds[2].chr_size = (bg_mode >> PPU_BGMODE_BG3_CHR_SIZE_SHIFT) && PPU_BGMODE_BG_CHR_SIZE_MASK;
-    backgrounds[3].chr_size = (bg_mode >> PPU_BGMODE_BG4_CHR_SIZE_SHIFT) && PPU_BGMODE_BG_CHR_SIZE_MASK;
+    backgrounds[0].chr_size = 8 << ((bg_mode >> PPU_BGMODE_BG1_CHR_SIZE_SHIFT) & PPU_BGMODE_BG_CHR_SIZE_MASK);
+    backgrounds[1].chr_size = 8 << ((bg_mode >> PPU_BGMODE_BG2_CHR_SIZE_SHIFT) & PPU_BGMODE_BG_CHR_SIZE_MASK);
+    backgrounds[2].chr_size = 8 << ((bg_mode >> PPU_BGMODE_BG3_CHR_SIZE_SHIFT) & PPU_BGMODE_BG_CHR_SIZE_MASK);
+    backgrounds[3].chr_size = 8 << ((bg_mode >> PPU_BGMODE_BG4_CHR_SIZE_SHIFT) & PPU_BGMODE_BG_CHR_SIZE_MASK);
 
     bg_mode &= PPU_BGMODE_MODE_MASK;
 
@@ -775,10 +1084,41 @@ void bgsc_write(uint32_t effective_address, uint8_t value)
 {
     uint32_t reg = effective_address & 0xffff;
     ram1_regs[reg] = value;
-    uint32_t offset = (((uint32_t)(value & 0xfc) << 8) & 0x7fff) << 1;
+    value = (value >> 2) & 0x3f;
+    uint32_t offset = ((uint32_t)value * 0x800);
+//    uint32_t offset = (((uint32_t)(value & 0xfc) << 8) & 0x7fff) << 1;
 
     uint32_t background_index = reg - PPU_REG_BG1SC;
-    backgrounds[background_index].data_base = (struct bg_sc_data_t *)(vram + offset);
+    struct background_t *background = backgrounds + background_index;
+    background->data_base[0] = (struct bg_sc_data_t *)(vram + offset);
+
+    /* snes programmer manual, vol 1, page A-14 */
+    switch(value & 0x3)
+    {
+        case 0:
+            background->data_base[1] = background->data_base[0];
+            background->data_base[2] = background->data_base[0];
+            background->data_base[3] = background->data_base[0];
+        break;
+
+        case 1:
+            background->data_base[1] = (struct bg_sc_data_t *)((uintptr_t)(background->data_base[0]) + 0x800);
+            background->data_base[2] = background->data_base[0];
+            background->data_base[3] = background->data_base[1];
+        break;
+
+        case 2:
+            background->data_base[1] = background->data_base[0];
+            background->data_base[2] = (struct bg_sc_data_t *)((uintptr_t)(background->data_base[0]) + 0x800);
+            background->data_base[3] = background->data_base[2];
+        break;
+
+        case 3:
+            background->data_base[1] = (struct bg_sc_data_t *)((uintptr_t)(background->data_base[0]) + 0x800);
+            background->data_base[2] = (struct bg_sc_data_t *)((uintptr_t)(background->data_base[0]) + 0x1000);
+            background->data_base[3] = (struct bg_sc_data_t *)((uintptr_t)(background->data_base[0]) + 0x1800);
+        break;
+    }
 }
 
 void bgnba_write(uint32_t effective_address, uint8_t value)
@@ -787,12 +1127,14 @@ void bgnba_write(uint32_t effective_address, uint8_t value)
     uint32_t background_index = (reg - PPU_REG_BG12NBA) << 1;
     ram1_regs[reg] = value;
 
-    uint32_t offset = (((uint32_t)(value & 0x0f) << 12) & 0x7fff) << 1;
+//    uint32_t offset = (((uint32_t)(value & 0x0f) << 12) & 0x7fff) << 1;
+    uint32_t offset = (uint32_t)(value & 0x0f) * 0x2000;
     struct background_t *background = backgrounds + background_index;
     background_index++;
     background->chr_base = vram + offset;
-
-    offset = (((uint32_t)(value & 0xf0) << 8) & 0x7fff) << 1;
+    value >>= 4;
+//    offset = (((uint32_t)(value & 0xf0) << 8) & 0x7fff) << 1;
+    offset = (uint32_t)value * 0x2000;
     background = backgrounds + background_index;
     background->chr_base = vram + offset;
 }
@@ -955,6 +1297,20 @@ void cgdata_write(uint32_t effective_address, uint8_t value)
     {
         cgram[cgram_addr] = value;
         cgram_addr = (cgram_addr + 1) % PPU_CGRAM_SIZE;
+
+        /* snes programmer manual, vol 1, page A-17 */
+        if(cgram_addr <= 2)
+        {
+            /* address 0 of cgram is background, so recompute the backdrop color whenever
+            the first two bytes of the cgram are modified */
+            struct mode0_cgram_t *mode0_cgram = (struct mode0_cgram_t *)cgram;
+            uint16_t backdrop = mode0_cgram->bg1_colors[0].colors[0];
+
+            cur_backdrop.r = color_lut[(backdrop >> COL_DATA_R_SHIFT) & COL_DATA_MASK];
+            cur_backdrop.g = color_lut[(backdrop >> COL_DATA_G_SHIFT) & COL_DATA_MASK];
+            cur_backdrop.b = color_lut[(backdrop >> COL_DATA_B_SHIFT) & COL_DATA_MASK];
+            cur_backdrop.a = 255;
+        }
     }
 }
 

@@ -11,4 +11,6 @@ tests
 *.dll
 *.txt
 *.trace
+*.pdb
+*.swp
 .vscode

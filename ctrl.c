@@ -7,6 +7,7 @@
 uint32_t controller_read = 0;
 uint32_t button_index = 0;
 extern uint8_t *ram1_regs;
+extern uint32_t vram_offset;
 
 SDL_GameController *game_controller;
 
@@ -42,6 +43,22 @@ void step_ctrl(int32_t cycle_count)
                     case SDL_CONTROLLERDEVICEREMOVED:
                     {
                         SDL_GameControllerClose(game_controller);
+                    }
+                    break;
+
+                    case SDL_KEYDOWN:
+                    {
+                        if(event.key.keysym.scancode == SDL_SCANCODE_1)
+                        {
+                            vram_offset += 0x1;
+                        }
+                        if(event.key.keysym.scancode == SDL_SCANCODE_2)
+                        {
+                            if(vram_offset >= 0x1)
+                            {
+                                vram_offset -= 0x1;
+                            }
+                        }
                     }
                     break;
 
