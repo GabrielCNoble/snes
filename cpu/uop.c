@@ -1,5 +1,6 @@
 #include "uop.h"
 #include "../mem.h"
+#include <stdio.h>
 
 extern struct cpu_state_t   cpu_state;
 extern uint64_t             master_cycles;
@@ -374,7 +375,9 @@ uint32_t addr_offr(uint32_t arg)
         cpu_state.regs[REG_BANK].byte[0] = (addr >> 16) & 0xff;
     }
 
+    /* crossed page boundary */
     cpu_state.reg_p.page = ((prev_addr ^ addr) & 0x00ff00) && 1;
+    /* crossed bank boundary */
     cpu_state.reg_p.bank = ((prev_addr ^ addr) & 0xff0000) && bank_wrap;
     return 1;
 }
@@ -399,7 +402,9 @@ uint32_t addr_offi(uint32_t arg)
         cpu_state.regs[REG_BANK].byte[0] = (addr >> 16) & 0xff;
     }
 
+    /* crossed page boundary */
     cpu_state.reg_p.page = ((prev_addr ^ addr) & 0x00ff00) && 1;
+    /* crossed bank boundary */
     cpu_state.reg_p.bank = ((prev_addr ^ addr) & 0xff0000) && bank_wrap;
     return 1;
 }
@@ -496,15 +501,15 @@ uint32_t alu_op(uint32_t arg)
         break;
 
         case ALU_OP_AND:
-            result = (operand0 & operand1) | (carry << carry_shift);
+            result = (operand0 & operand1) /* | (carry << carry_shift) */;
         break;
 
         case ALU_OP_OR:
-            result = (operand0 | operand1) | (carry << carry_shift);
+            result = (operand0 | operand1) /* | (carry << carry_shift) */;
         break;
 
         case ALU_OP_XOR:
-            result = (operand0 ^ operand1) | (carry << carry_shift);
+            result = (operand0 ^ operand1) /* | (carry << carry_shift) */;
         break;
 
         case ALU_OP_INC:
@@ -594,6 +599,7 @@ uint32_t stp(uint32_t arg)
     cpu_state.rdy = 0;
     cpu_state.cur_interrupt = CPU_INT_RES;
     cpu_state.interrupts[CPU_INT_RES] = 1;
+    return 1;
 }
 
 uint32_t unimplemented(uint32_t arg)

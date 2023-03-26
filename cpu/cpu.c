@@ -2658,12 +2658,13 @@ struct inst_t instructions[] = {
             IO,
             INC_RW      (REG_Y),
             DEC_RW      (REG_ACCUM),
-            SKIPS       (3, STATUS_FLAG_AM),
+            SKIPS       (1, STATUS_FLAG_AM),
             /* we're not done copying stuff yet, so reset PC
             to the start of the instruction */
-            DEC_RW      (REG_PC),
-            DEC_RW      (REG_PC),
-            DEC_RW      (REG_PC),
+            INC_PC      (0xfffd)
+//            DEC_RW      (REG_PC),
+//            DEC_RW      (REG_PC),
+//            DEC_RW      (REG_PC),
         }
     },
 
@@ -2681,12 +2682,13 @@ struct inst_t instructions[] = {
             IO,
             DEC_RW      (REG_Y),
             DEC_RW      (REG_ACCUM),
-            SKIPS       (3, STATUS_FLAG_AM),
+            SKIPS       (1, STATUS_FLAG_AM),
             /* we're not done copying stuff yet, so reset PC
             to the start of the instruction */
-            DEC_RW      (REG_PC),
-            DEC_RW      (REG_PC),
-            DEC_RW      (REG_PC),
+            INC_PC      (0xfffd)
+//            DEC_RW      (REG_PC),
+//            DEC_RW      (REG_PC),
+//            DEC_RW      (REG_PC),
         }
     },
     /**************************************************************************************/
@@ -4080,7 +4082,7 @@ struct inst_t instructions[] = {
     /**************************************************************************************/
     /*                                      STX                                           */
     /**************************************************************************************/
-    
+
     [STP_IMP] = {
         .uops = {
             IO,

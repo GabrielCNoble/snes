@@ -7,7 +7,7 @@
 uint32_t controller_read = 0;
 uint32_t button_index = 0;
 extern uint8_t *ram1_regs;
-extern uint32_t vram_offset;
+extern int32_t vram_offset;
 
 SDL_GameController *game_controller;
 
@@ -54,7 +54,7 @@ void step_ctrl(int32_t cycle_count)
                         }
                         if(event.key.keysym.scancode == SDL_SCANCODE_2)
                         {
-                            if(vram_offset >= 0x1)
+//                            if(vram_offset >= 0x1)
                             {
                                 vram_offset -= 0x1;
                             }

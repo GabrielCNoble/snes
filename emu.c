@@ -8,7 +8,7 @@ struct breakpoint_t breakpoints[512];
 
 SDL_Window *    window = NULL;
 SDL_Renderer *  renderer = NULL;
-SDL_Texture *   backbuffer_texture = NULL;
+SDL_Texture *   backbuffer_textures[2] = {};
 uint32_t        run_window_thread = 1;
 uint32_t        blit_backbuffer_texture = 0;
 uint32_t        get_input = 0;
@@ -29,6 +29,11 @@ FILE *      trace_file;
 uint64_t    frame = 0;
 float       accum_time = 0;
 
+uint32_t    read_address_buffer[ADDRESS_BUFFER_SIZE];
+uint32_t    read_address_count = 0;
+uint32_t    write_address_buffer[ADDRESS_BUFFER_SIZE];
+uint32_t    write_address_count = 0;
+
 char *breakpoint_register_names[] =
 {
     [BREAKPOINT_REGISTER_Y] = "Y",
@@ -42,6 +47,8 @@ extern uint8_t *                ram2;
 extern struct mem_write_t *     reg_writes;
 extern struct mem_read_t *      reg_reads;
 extern struct dot_t *           framebuffer;
+uint32_t                        cur_framebuffer = 0;
+struct dot_t *                  framebuffers[2];
 extern uint32_t                 cpu_cycle_count;
 extern uint8_t                  active_channels;
 extern uint16_t                 hcounter;
@@ -71,6 +78,24 @@ void set_register_breakpoint(uint32_t reg, uint32_t value)
     printf("breakpoint set on register %s, for value %x\n", breakpoint_register_names[reg], value);
 }
 
+void set_read_write_breakpoint(uint32_t type, uint32_t address)
+{
+    struct breakpoint_t *breakpoint = breakpoints + breakpoint_count;
+    breakpoint_count++;
+
+    breakpoint->type = type;
+    breakpoint->value = address;
+
+    if(type == BREAKPOINT_TYPE_READ)
+    {
+        printf("breakpoint set for reads from address %x\n", address);
+    }
+    else
+    {
+        printf("breakpoint set for writes to address %x\n", address);
+    }
+}
+
 void clear_breakpoints()
 {
     breakpoint_count = 0;
@@ -79,9 +104,11 @@ void clear_breakpoints()
 
 void blit_backbuffer()
 {
-    SDL_UpdateTexture(backbuffer_texture, NULL, framebuffer, sizeof(struct dot_t) * FRAMEBUFFER_WIDTH);
-    SDL_RenderCopy(renderer, backbuffer_texture, NULL, NULL);
+    SDL_UpdateTexture(backbuffer_textures[cur_framebuffer], NULL, framebuffer, sizeof(struct dot_t) * FRAMEBUFFER_WIDTH);
+    SDL_RenderCopy(renderer, backbuffer_textures[cur_framebuffer], NULL, NULL);
     SDL_RenderPresent(renderer);
+    cur_framebuffer ^= 1;
+    framebuffer = framebuffers[cur_framebuffer];
 }
 
 void init_emu()
@@ -91,10 +118,18 @@ void init_emu()
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
     SDL_RenderPresent(renderer);
-    backbuffer_texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, FRAMEBUFFER_WIDTH, FRAMEBUFFER_HEIGHT);
-    SDL_SetTextureScaleMode(backbuffer_texture, SDL_ScaleModeLinear);
-    SDL_UpdateTexture(backbuffer_texture, NULL, framebuffer, sizeof(struct dot_t) * FRAMEBUFFER_WIDTH);
-    SDL_RenderCopy(renderer, backbuffer_texture, NULL, NULL);
+
+    framebuffers[0] = calloc(FRAMEBUFFER_WIDTH * FRAMEBUFFER_HEIGHT, sizeof(struct dot_t));
+    framebuffers[1] = calloc(FRAMEBUFFER_WIDTH * FRAMEBUFFER_HEIGHT, sizeof(struct dot_t));
+
+    framebuffer = framebuffers[cur_framebuffer];
+
+    backbuffer_textures[0] = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, FRAMEBUFFER_WIDTH, FRAMEBUFFER_HEIGHT);
+    backbuffer_textures[1] = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, FRAMEBUFFER_WIDTH, FRAMEBUFFER_HEIGHT);
+    SDL_SetTextureScaleMode(backbuffer_textures[0], SDL_ScaleModeLinear);
+    SDL_SetTextureScaleMode(backbuffer_textures[1], SDL_ScaleModeLinear);
+    SDL_UpdateTexture(backbuffer_textures[cur_framebuffer], NULL, framebuffer, sizeof(struct dot_t) * FRAMEBUFFER_WIDTH);
+    SDL_RenderCopy(renderer, backbuffer_textures[cur_framebuffer], NULL, NULL);
     SDL_RenderPresent(renderer);
 
     counter_frequency = SDL_GetPerformanceFrequency();
@@ -108,6 +143,8 @@ void init_emu()
 void shutdown_emu()
 {
     run_window_thread = 0;
+    free(framebuffers[0]);
+    free(framebuffers[1]);
     shutdown_ppu();
     shutdown_mem();
 }
@@ -181,6 +218,12 @@ uint32_t step_emu(int32_t step_cycles)
 
     if(status & EMU_STATUS_END_OF_INSTRUCTION)
     {
+        uint32_t read_count = read_address_count;
+        uint32_t write_count = write_address_count;
+
+        write_address_count = 0;
+        read_address_count = 0;
+
         for(uint32_t breakpoint_index = 0; breakpoint_index < breakpoint_count; breakpoint_index++)
         {
             struct breakpoint_t *breakpoint = breakpoints + breakpoint_index;
@@ -221,6 +264,30 @@ uint32_t step_emu(int32_t step_cycles)
                     if(breakpoint->value == reg_value)
                     {
                         return status | EMU_STATUS_BREAKPOINT;
+                    }
+                }
+                break;
+
+                case BREAKPOINT_TYPE_READ:
+                {
+                    for(uint32_t index = 0; index < read_count; index++)
+                    {
+                        if(breakpoint->value == read_address_buffer[index])
+                        {
+                            return status | EMU_STATUS_BREAKPOINT;
+                        }
+                    }
+                }
+                break;
+
+                case BREAKPOINT_TYPE_WRITE:
+                {
+                    for(uint32_t index = 0; index < write_count; index++)
+                    {
+                        if(breakpoint->value == write_address_buffer[index])
+                        {
+                            return status | EMU_STATUS_BREAKPOINT;
+                        }
                     }
                 }
                 break;

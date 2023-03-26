@@ -158,13 +158,13 @@ int main(int argc, char *argv[])
                         {
                             scanf("%s", param);
 
-                            if(!strcmp(param, "e"))
+                            if(!strcmp(param, "exec"))
                             {
                                 uint32_t address;
                                 scanf("%x", &address);
                                 set_execution_breakpoint(address);
                             }
-                            else if(!strcmp(param, "r"))
+                            else if(!strcmp(param, "reg"))
                             {
                                 uint32_t value;
                                 scanf("%s", param);
@@ -178,7 +178,19 @@ int main(int argc, char *argv[])
                                     set_register_breakpoint(BREAKPOINT_REGISTER_X, value);
                                 }
                             }
-                            else if(!strcmp(param, "c"))
+                            else if(!strcmp(param, "read"))
+                            {
+                                uint32_t value;
+                                scanf("%x", &value);
+                                set_read_write_breakpoint(BREAKPOINT_TYPE_READ, value);
+                            }
+                            else if(!strcmp(param, "write"))
+                            {
+                                uint32_t value;
+                                scanf("%x", &value);
+                                set_read_write_breakpoint(BREAKPOINT_TYPE_WRITE, value);
+                            }
+                            else if(!strcmp(param, "clear"))
                             {
                                 clear_breakpoints();
                             }

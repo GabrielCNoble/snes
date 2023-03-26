@@ -869,6 +869,7 @@ enum STATUS_FLAGS
     STATUS_FLAG_PAGE,
     /* extra flag set when reg D LSB is not zero */
     STATUS_FLAG_DL,
+    /* extra flag set when the accumulator is 0xffff (used for MVN and MVP instructions) */
     STATUS_FLAG_AM,
     STATUS_FLAG_LAST,
 };

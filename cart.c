@@ -79,7 +79,9 @@ void *(*map_mode_functions[])(uint32_t effective_address, uint32_t write) = {
 
 void *(*cart_pointer)(uint32_t effective_address, uint32_t write);
 uint8_t *               rom_buffer;
+FILE *                  sram_file;
 uint8_t *               sram;
+uint32_t                sram_size;
 uint32_t                sram_addr_mask;
 struct rom_header_t *   rom_header;
 
@@ -192,7 +194,8 @@ uint32_t load_cart(char *file_name)
 
     if(rom_header->ram_size != RAM_SIZE_NONE)
     {
-        sram_addr_mask = sram_sizes[rom_header->ram_size] - 1;
+        sram_size = sram_sizes[rom_header->ram_size];
+        sram_addr_mask = sram_size - 1;
         strcpy(save_file, file_name);
         uint32_t index = strlen(save_file);
         while(index)
@@ -205,22 +208,28 @@ uint32_t load_cart(char *file_name)
             index--;
         }
         strcat(save_file, ".srm");
-        file = fopen(save_file, "rb");
-        if(!file)
+        sram_file = fopen(save_file, "r+b");
+        if(!sram_file)
         {
             printf("couldn't open save file %s\n", save_file);
+            sram_file = fopen(save_file, "w+b");
         }
+        else
+        {
+            fseek(sram_file, 0, SEEK_END);
+            file_size = ftell(sram_file);
+            rewind(sram_file);
+            fread(sram, 1, file_size, sram_file);
 
-        fseek(file, 0, SEEK_END);
-        file_size = ftell(file);
-        rewind(file);
-        fread(sram, 1, file_size, file);
-        fclose(file);
+//            fclose(sram_file);
+        }
     }
     else
     {
-        sram_addr_mask = mode_sram_sizes[rom_header->map_mode] - 1;
+        sram_size = mode_sram_sizes[rom_header->map_mode];
     }
+
+    sram_addr_mask = sram_size - 1;
 
     free(file_buffer);
     return 1;
@@ -304,16 +313,6 @@ void *mode21_cart_pointer(uint32_t effective_address, uint32_t write)
     return rom_buffer + effective_address;
 }
 
-// void *cart_pointer(uint32_t effective_address)
-// {
-//     if(cart_pointer_function)
-//     {
-//         return cart_pointer_function(effective_address);
-//     }
-
-//     return NULL;
-// }
-
 uint8_t cart_read(uint32_t effective_address)
 {
     return *(uint8_t *)cart_pointer(effective_address, 0);
@@ -326,6 +325,16 @@ void cart_write(uint32_t effective_address, uint8_t data)
     if(pointer)
     {
         *pointer = data;
+
+        if(pointer >= sram && pointer < sram + sram_size)
+        {
+            /* this is probably fine, since writes will be done to the disk
+            cache, but I'd still rather flush the entire sram at once instead
+            of at each byte write */
+            uint32_t sram_offset = pointer - sram;
+            fseek(sram_file, sram_offset, SEEK_SET);
+            fwrite(pointer, 1, 1, sram_file);
+        }
     }
 }
 

@@ -23,6 +23,11 @@ uint8_t                 last_bus_value;
 struct mem_write_t *    reg_writes;
 struct mem_read_t *     reg_reads;
 
+extern uint32_t         read_address_buffer[];
+extern uint32_t         read_address_count;
+extern uint32_t         write_address_buffer[];
+extern uint32_t         write_address_count;
+
 void init_mem()
 {
     /* 8KB of wram1 + cpu,ppu,etc regs */
@@ -188,12 +193,18 @@ void write_byte(uint32_t effective_address, uint8_t data)
     {
         cart_write(effective_address, data);
     }
+
+//    write_address_buffer[write_address_count] = effective_address;
+//    write_address_count++;
 }
 
 uint8_t read_byte(uint32_t effective_address)
 {
     uint32_t access = access_location(effective_address);
     uint8_t data = 0;
+
+//    read_address_buffer[read_address_count] = effective_address;
+//    read_address_count++;
 
     if(access == ACCESS_RAM2)
     {

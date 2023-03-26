@@ -38,6 +38,8 @@
     (187.957841 ns).
 */
 
+#define ADDRESS_BUFFER_SIZE 64
+
 enum BREAKPOINT_REGISTER
 {
     BREAKPOINT_REGISTER_X,
@@ -54,6 +56,8 @@ enum BREAKPOINT_TYPE
 {
     BREAKPOINT_TYPE_EXECUTION = 0,
     BREAKPOINT_TYPE_REGISTER,
+    BREAKPOINT_TYPE_READ,
+    BREAKPOINT_TYPE_WRITE,
 };
 
 enum EMU_STATUS
@@ -73,6 +77,8 @@ struct breakpoint_t
 void set_execution_breakpoint(uint32_t effective_address);
 
 void set_register_breakpoint(uint32_t reg, uint32_t value);
+
+void set_read_write_breakpoint(uint32_t type, uint32_t address);
 
 void clear_breakpoints();
 

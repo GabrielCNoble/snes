@@ -3,15 +3,15 @@
 
 #include <stdint.h>
 
-struct obj_attr_t
-{
-    uint8_t h_pos;
-    uint8_t v_pos;
-    /* f -> flip, p -> priority, c -> color, n-> name. If the arrangement
-    of bit fields in memory wasn't implementation defined this would
-    be a nice use of them.  */
-    uint16_t fpcn;
-};
+//struct obj_attr_t
+//{
+//    uint8_t h_pos;
+//    uint8_t v_pos;
+//    /* f -> flip, p -> priority, c -> color, n-> name. If the arrangement
+//    of bit fields in memory wasn't implementation defined this would
+//    be a nice use of them.  */
+//    uint16_t fpcn;
+//};
 
 #define OBJ_ATTR1_HPOS_MASK     0x01
 #define OBJ_ATTR1_PAL_SHIFT     0x09
@@ -42,6 +42,8 @@ struct obj_attr2_t
     uint16_t size_hpos;
 };
 
+#define MAX_OBJ_COUNT 128
+#define TILE_SIZE 8
 struct obj_t
 {
     int16_t     hpos;
@@ -53,32 +55,68 @@ struct obj_t
 //    uint8_t     hflip : 1;
 };
 
-struct dot_objs_t
-{
-    uint8_t         objects[128];
-    uint16_t        count;
-};
+//struct dot_objs_t
+//{
+//    uint8_t         objects[128];
+//    uint16_t        count;
+//};
 
 #define OBJ_PRIORITIES 4
-struct dot_obj_priorities_t
-{
-    struct dot_objs_t priorities[OBJ_PRIORITIES];
-};
+//struct dot_obj_priorities_t
+//{
+//    struct dot_objs_t priorities[OBJ_PRIORITIES];
+//};
 
 #define BG_PRIORITIES 2
-struct dot_bg_priorities_t
+//struct dot_bg_priorities_t
+//{
+//    uint8_t           chr_name[BG_PRIORITIES];
+//};
+
+//struct tile_dot_priorities_t
+//{
+//    /* all objects that touch the current scanline */
+//    struct dot_priorities_t *       objs;
+//
+//    /* all tiles of all backgrounds that touch the current dot at the current scanline */
+//    struct dot_bg_priorities_t *    bgs[4];
+//    uint32_t                        bg_count;
+//};
+
+enum COLOR_FUNCS
 {
-    uint8_t           chr_name[BG_PRIORITIES];
+    COLOR_FUNC_CHR0,
+    COLOR_FUNC_CHR2,
+    COLOR_FUNC_CHR4,
+    COLOR_FUNC_CHR8,
 };
 
-struct tile_dot_priorities_t
+struct draw_tile_t
 {
-    /* all objects that touch the current scanline */
-    struct dot_priorities_t *       objs;
+    uint16_t    name;
+    uint16_t    start_x;
+    uint8_t     start_y;
+    uint8_t     pallete     : 4;
+    uint8_t     color_func  : 4;
+};
 
-    /* all tiles of all backgrounds that touch the current dot at the current scanline */
-    struct dot_bg_priorities_t *    bgs[4];
-    uint32_t                        bg_count;
+struct dot_obj_tiles_t
+{
+    uint16_t                tiles[MAX_OBJ_COUNT];
+    uint16_t                tile_count;
+};
+
+struct dot_bg_tiles_t
+{
+    /* there will be at most 2 tiles overlapping the same dot per priority */
+    uint16_t                tiles[2];
+    uint16_t                tile_count;
+};
+
+struct dot_tiles_t
+{
+    struct dot_obj_tiles_t  obj_tiles[OBJ_PRIORITIES];
+    struct dot_bg_tiles_t   bg_tiles[OBJ_PRIORITIES];
 };
 
 #define PPU_OAM_TABLE1_START 0x0000
@@ -161,6 +199,8 @@ struct background_t
     void *                  chr_base;
     void *                  pal_base;
     uint16_t                chr_size;
+
+    uint16_t           (*   color_func)(uint32_t dot_h, uint32_t dot_v, struct background_t *background);
 };
 
 enum PPU_REGS
@@ -228,6 +268,7 @@ enum PPU_REGS
     PPU_REG_TMAINWM         = 0x212e,
     PPU_REG_TSUBWM          = 0x212f,
     PPU_REG_CGSWSEL         = 0x2130,
+    PPU_REG_CGADSUB         = 0x2131,
     PPU_REG_COLDATA         = 0x2132,
     PPU_REG_SETINI          = 0x2133,
     PPU_REG_SLVH            = 0x2137,
@@ -378,6 +419,7 @@ struct chr8_t
 #define COL_DATA_G_SHIFT 5
 #define COL_DATA_B_SHIFT 10
 
+
 struct pal4_t
 {
     uint16_t colors[4];
@@ -386,6 +428,16 @@ struct pal4_t
 struct pal16_t
 {
     uint16_t colors[16];
+};
+
+struct pal16e_t
+{
+    struct
+    {
+        uint8_t r;
+        uint8_t g;
+        uint8_t b;
+    } colors[16];
 };
 
 struct pal256_t
@@ -497,11 +549,19 @@ void reset_ppu();
 
 uint8_t bg_chr0_dot_col(void *chr_base, uint32_t index, uint32_t size, uint32_t dot_h, uint32_t dot_v);
 
+uint8_t chr0_dot_col(void *chr_base, uint32_t name, uint32_t dot_x, uint32_t dot_y);
+
 uint8_t bg_chr2_dot_col(void *chr_base, uint32_t index, uint32_t size, uint32_t dot_h, uint32_t dot_v);
+
+uint8_t chr2_dot_col(void *chr_base, uint32_t name, uint32_t dot_x, uint32_t dot_y);
 
 uint8_t bg_chr4_dot_col(void *chr_base, uint32_t index, uint32_t size, uint32_t dot_h, uint32_t dot_v);
 
+uint8_t chr4_dot_col(void *chr_base, uint32_t name, uint32_t dot_x, uint32_t dot_y);
+
 uint8_t bg_chr8_dot_col(void *chr_base, uint32_t index, uint32_t size, uint32_t dot_h, uint32_t dot_v);
+
+uint8_t chr8_dot_col(void *chr_base, uint32_t name, uint32_t dot_x, uint32_t dot_y);
 
 uint8_t bg7_chr8_dot_col(void *chr_base, uint32_t index, uint32_t dot_h, uint32_t dot_v);
 
@@ -515,7 +575,7 @@ uint16_t bg_pal256_col(uint32_t dot_h, uint32_t dot_v, struct background_t *back
 
 uint16_t bg7_pal256_col(uint32_t dot_h, uint32_t dot_v, struct background_t *background);
 
-uint16_t obj_pal16_col(uint32_t dot_h, uint32_t dot_v, struct obj_t *obj);
+//uint16_t obj_pal16_col(uint32_t dot_h, uint32_t dot_v, struct obj_t *obj);
 
 //uint8_t
 
@@ -523,7 +583,9 @@ void update_objs();
 
 void update_line_objs(uint16_t line);
 
-void clear_scanline_obj_tiles();
+void clear_scanline_objs();
+
+void update_scanline_objs(uint16_t line);
 
 void update_scanline_obj_tiles(uint16_t line);
 
@@ -544,6 +606,8 @@ uint8_t opct_read(uint32_t effective_address);
 void vmadd_write(uint32_t effective_address, uint8_t value);
 
 void vmdata_write(uint32_t effective_address, uint8_t value);
+
+void vram_read_prefetch();
 
 uint8_t vmdata_read(uint32_t effective_address);
 
