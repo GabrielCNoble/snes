@@ -172,11 +172,47 @@ void init_mem()
     reg_writes[PPU_REG_WCOLOBJLOG].write = wcolobjlog_write;
     reg_reads[PPU_REG_WCOLOBJLOG].read = wcolobjlog_read;
 
-    reg_writes[PPU_REG_TMAIN].write = tmain_write;
-    reg_reads[PPU_REG_TMAIN].read = tmain_read;
+    reg_writes[PPU_REG_TMAIN].write = tmainsub_write;
+    reg_reads[PPU_REG_TMAIN].read = tmainsub_read;
 
-    reg_writes[PPU_REG_TSUB].write = tsub_write;
-    reg_reads[PPU_REG_TSUB].read = tsub_read;
+    reg_writes[PPU_REG_TSUB].write = tmainsub_write;
+    reg_reads[PPU_REG_TSUB].read = tmainsub_read;
+
+    reg_writes[PPU_REG_TMAINWM].write = tmainsubwm_write;
+    reg_reads[PPU_REG_TMAINWM].read = tmainsubwm_read;
+
+    reg_writes[PPU_REG_TSUBWM].write = tmainsubwm_write;
+    reg_reads[PPU_REG_TSUBWM].read = tmainsubwm_read;
+
+    reg_writes[PPU_REG_CGSWSEL].write = cgswsel_write;
+    reg_reads[PPU_REG_CGSWSEL].read = cgswsel_read;
+
+    reg_writes[PPU_REG_CGADSUB].write = cgadsub_write;
+    reg_reads[PPU_REG_CGADSUB].read = cgadsub_read;
+
+    reg_writes[PPU_REG_CGSWSEL].write = cgswsel_write;
+    reg_reads[PPU_REG_CGSWSEL].read = cgswsel_read;
+
+    reg_writes[PPU_REG_COLDATA].write = coldata_write;
+    reg_reads[PPU_REG_COLDATA].read = coldata_read;
+
+    reg_writes[PPU_REG_CGSWSEL].write = cgswsel_write;
+    reg_reads[PPU_REG_CGSWSEL].read = cgswsel_read;
+
+    reg_writes[PPU_REG_SETINI].write = setinit_write;
+    reg_reads[PPU_REG_SETINI].read = setinit_read;
+
+    reg_reads[PPU_REG_SLVH].read = slhv_read;
+
+    reg_reads[PPU_REG_CGDATAR].read = cgdatar_read;
+
+    reg_reads[PPU_REG_OPHCT].read = opct_read;
+
+    reg_reads[PPU_REG_OPVCT].read = opct_read;
+
+    reg_reads[PPU_REG_STAT77].read = stat77_read;
+
+    reg_reads[PPU_REG_STAT78].read = stat78_read;
 
 
     reg_writes[CPU_REG_MDMAEN].write = mdmaen_write;
@@ -196,17 +232,6 @@ void init_mem()
     reg_reads[CPU_REG_RDNMI].read = rdnmi_read;
     reg_reads[CPU_REG_HVBJOY].read = hvbjoy_read;
 
-
-//    reg_reads[CPU_REG_JOYB].read = io_read;
-
-
-    reg_writes[PPU_REG_SETINI].write = setinit_write;
-
-    reg_writes[PPU_REG_COLDATA].write = coldata_write;
-
-
-    reg_reads[PPU_REG_CGDATAR].read = cgdata_read;
-
     reg_writes[APU_REG_IO0].write = apuio_write;
     reg_writes[APU_REG_IO1].write = apuio_write;
     reg_writes[APU_REG_IO2].write = apuio_write;
@@ -218,11 +243,6 @@ void init_mem()
     reg_writes[PPU_REG_WMDATA].write = wmdata_write;
     reg_reads[PPU_REG_WMDATA].read = wmdata_read;
 
-
-
-    reg_reads[PPU_REG_SLVH].read = slhv_read;
-    reg_reads[PPU_REG_OPHCT].read = opct_read;
-    reg_reads[PPU_REG_OPVCT].read = opct_read;
     reg_reads[PPU_REG_VMDATARL].read = vmdatar_read;
     reg_reads[PPU_REG_VMDATARH].read = vmdatar_read;
 
@@ -231,7 +251,7 @@ void init_mem()
     reg_reads[PPU_REG_MPYL].read = mpy_read;
     reg_reads[PPU_REG_MPYM].read = mpy_read;
     reg_reads[PPU_REG_MPYH].read = mpy_read;
-    reg_reads[PPU_REG_STAT77].read = stat77_read;
+
     reg_reads[APU_REG_IO0].read = apuio_read;
     reg_reads[APU_REG_IO1].read = apuio_read;
     reg_reads[APU_REG_IO2].read = apuio_read;

@@ -1268,13 +1268,6 @@ uint8_t oamadd_read(uint32_t effective_address)
 ==================================================================================
 */
 
-uint8_t slhv_read(uint32_t effective_address)
-{
-    latched_counters[0] = hcounter;
-    latched_counters[1] = vcounter;
-    return 0;
-}
-
 uint8_t opct_read(uint32_t effective_address)
 {
     uint32_t reg = effective_address & 0xffff;
@@ -1881,13 +1874,14 @@ uint8_t wcolobjlog_read(uint32_t effective_address)
 ==================================================================================
 */
 
-void tmain_write(uint32_t effective_address, uint8_t value)
+void tmainsub_write(uint32_t effective_address, uint8_t value)
 {
-    ram1_regs[PPU_REG_TMAIN] = value;
+    uint32_t reg = (effective_address & 0xffff) - PPU_REG_TMAIN;
+    ram1_regs[reg] = value;
     update_bg_state();
 }
 
-uint8_t tmain_read(uint32_t effective_address)
+uint8_t tmainsub_read(uint32_t effective_address)
 {
     return last_bus_value;
 }
@@ -1898,15 +1892,151 @@ uint8_t tmain_read(uint32_t effective_address)
 ==================================================================================
 */
 
-void tsub_write(uint32_t effective_address, uint8_t value)
+void tmainsubwm_write(uint32_t effective_address, uint8_t value)
 {
-    ram1_regs[PPU_REG_TSUB] = value;
-    update_bg_state();
+    uint32_t reg = (effective_address & 0xffff) - PPU_REG_TMAINWM;
+    ram1_regs[reg] = value;
 }
 
-uint8_t tsub_read(uint32_t effective_address)
+uint8_t tmainsubwm_read(uint32_t effective_address)
 {
     return last_bus_value;
+}
+
+/*
+==================================================================================
+==================================================================================
+==================================================================================
+*/
+
+void cgswsel_write(uint32_t effective_address, uint8_t value)
+{
+
+}
+
+uint8_t cgswsel_read(uint32_t effective_address)
+{
+    return last_bus_value;
+}
+
+/*
+==================================================================================
+==================================================================================
+==================================================================================
+*/
+
+void cgadsub_write(uint32_t effective_address, uint8_t value)
+{
+
+}
+
+uint8_t cgadsub_read(uint32_t effective_address)
+{
+    return last_bus_value;
+}
+
+/*
+==================================================================================
+==================================================================================
+==================================================================================
+*/
+
+void coldata_write(uint32_t effective_address, uint8_t value)
+{
+    ram1_regs[PPU_REG_COLDATA] = value;
+}
+
+uint8_t coldata_read(uint32_t effective_address)
+{
+    return last_bus_value;
+}
+
+/*
+==================================================================================
+==================================================================================
+==================================================================================
+*/
+
+void setinit_write(uint32_t effective_address, uint8_t value)
+{
+    ram1_regs[PPU_REG_SETINI] = value;
+    if(value & PPU_SETINI_FLAG_BGV_SEL)
+    {
+        last_draw_scanline = 239;
+    }
+    else
+    {
+        last_draw_scanline = 224;
+    }
+}
+
+uint8_t setinit_read(uint32_t effective_address)
+{
+    return last_bus_value;
+}
+
+/*
+==================================================================================
+==================================================================================
+==================================================================================
+*/
+
+uint8_t slhv_read(uint32_t effective_address)
+{
+    latched_counters[0] = hcounter;
+    latched_counters[1] = vcounter;
+    return last_bus_value;
+}
+
+/*
+==================================================================================
+==================================================================================
+==================================================================================
+*/
+
+uint8_t cgdatar_read(uint32_t effective_address)
+{
+    uint8_t value = 0;
+
+    if((ram1_regs[CPU_REG_HVBJOY] & (CPU_HVBJOY_FLAG_HBLANK | CPU_HVBJOY_FLAG_VBLANK)) || (ram1_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK))
+    {
+        value = cgram[cgram_addr];
+
+        if(cgram_addr & 1)
+        {
+            value |= ppu2_last_bus_value & 0x80;
+        }
+
+        ppu2_last_bus_value = value;
+
+        cgram_addr = (cgram_addr + 1) % PPU_CGRAM_SIZE;
+    }
+
+    return value;
+}
+
+/*
+==================================================================================
+==================================================================================
+==================================================================================
+*/
+
+uint8_t stat77_read(uint32_t effective_address)
+{
+    ppu1_last_bus_value = ram1_regs[PPU_REG_STAT77] | (ppu1_last_bus_value & 0x10);
+    return ppu1_last_bus_value;
+}
+
+/*
+==================================================================================
+==================================================================================
+==================================================================================
+*/
+
+uint8_t stat78_read(uint32_t effective_address)
+{
+    ppu2_last_bus_value = ram1_regs[PPU_REG_STAT78] | (ppu2_last_bus_value & 0x20);
+    return ppu2_last_bus_value;
 }
 
 /*
@@ -1956,13 +2086,6 @@ uint8_t vmdatar_read(uint32_t effective_address)
     return ppu1_last_bus_value;
 }
 
-
-
-
-void coldata_write(uint32_t effective_address, uint8_t value)
-{
-    ram1_regs[PPU_REG_COLDATA] = value;
-}
 
 void update_irq_counter()
 {
@@ -2070,37 +2193,6 @@ void vhtime_write(uint32_t effective_address, uint8_t value)
 }
 
 
-uint8_t cgdata_read(uint32_t effective_address)
-{
-    uint8_t value = 0;
-
-    if((ram1_regs[CPU_REG_HVBJOY] & (CPU_HVBJOY_FLAG_HBLANK | CPU_HVBJOY_FLAG_VBLANK)) || (ram1_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK))
-    {
-        value = cgram[cgram_addr];
-        cgram_addr = (cgram_addr + 1) % PPU_CGRAM_SIZE;
-    }
-
-    return value;
-}
-
-uint8_t stat77_read(uint32_t effective_address)
-{
-    ppu1_last_bus_value = ram1_regs[PPU_REG_STAT77] | (ppu1_last_bus_value & 0x10);
-    return ppu1_last_bus_value;
-}
-
-void setinit_write(uint32_t effective_address, uint8_t value)
-{
-    ram1_regs[PPU_REG_SETINI] = value;
-    if(value & PPU_SETINI_FLAG_BGV_SEL)
-    {
-        last_draw_scanline = 239;
-    }
-    else
-    {
-        last_draw_scanline = 224;
-    }
-}
 
 uint8_t mpy_read(uint32_t effective_address)
 {

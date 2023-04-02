@@ -638,6 +638,73 @@ void dump_ppu();
 void dump_vram(uint32_t start, uint32_t end);
 
 
+
+/*
+    Open bus behavior (on reads) of ppu registers, as described by problemkaputt.
+    Reads from those registers will return the last value present in the main bus,
+    ppu1 bus or ppu2 bus.
+
+    2100 (INIDISP)     - main bus
+    2101 (OBJSEL)      - main bus
+    2102 (OAMADDL)     - main bus
+    2103 (OAMADDH)     - main bus
+    2104 (OAMDATAW)    - ppu1 bus
+    2105 (BGMODE)      - ppu1 bus
+    2106 (MOSAIC)      - ppu1 bus
+    2107 (BG1SC)       - main bus
+    2108 (BG2SC)       - ppu1 bus
+    2109 (BG3SC)       - ppu1 bus
+    210a (BG4SC)       - ppu1 bus
+    210b (BG12NBA)     - main bus
+    210c (BG34NBA)     - main bus
+    210d (BG1HOFS)     - main bus
+    210e (BG1VOFS)     - main bus
+    210f (BG2HOFS)     - main bus
+    2110 (BG2VOFS)     - main bus
+    2111 (BG3HOFS)     - main bus
+    2112 (BG3VOFS)     - main bus
+    2113 (BG4HOFS)     - main bus
+    2114 (BG4VOFS)     - ppu1 bus
+    2115 (VMAINC)      - ppu1 bus
+    2116 (VMADDL)      - ppu1 bus
+    2117 (VMADDH)      - main bus
+    2118 (VMDATAWL)    - ppu1 bus
+    2119 (VMDATAWH)    - ppu1 bus
+    211a (M7SEL)       - ppu1 bus
+    211b (M7A)         - main bus
+    211c (M7B)         - main bus
+    211d (M7C)         - main bus
+    211e (M7D)         - main bus
+    211f (M7X)         - main bus
+    2120 (M7Y)         - main bus
+    2121 (CGADD)       - main bus
+    2122 (CGDATAW)     - main bus
+    2123 (W12SEL)      - main bus
+    2124 (W34SEL)      - ppu1 bus
+    2125 (WCOLOBJSEL)  - ppu1 bus
+    2126 (W1L)         - ppu1 bus
+    2127 (W1R)         - main bus
+    2128 (W2L)         - ppu1 bus
+    2129 (W2R)         - ppu1 bus
+    212a (WBGLOG)      - ppu1 bus
+    212b (WCOLOBJLOG)  - main bus
+    212c (TMAIN)       - main bus
+    212d (TSUB)        - main bus
+    212e (TMAINWM)     - main bus
+    212f (TSUBWM)      - main bus
+    2130 (CGWSEL)      - main bus
+    2131 (CGADSUB)     - main bus
+    2132 (COLDATA)     - main bus
+    2133 (SETINI)      - main bus
+    2137 (SLHV)        - main bus
+    213b (CGDATAR)     - ppu2 bus (bit 7, second read)
+    213c (OPHCT)       - ppu2 bus (bits 1-7, second read)
+    213d (OPVCT)       - ppu2 bus (bits 1-7, second read)
+    213e (STAT77)      - ppu1 bus
+    213f (STAT78)      - ppu2 bus (bit 5)
+*/
+
+
 void    inidisp_write(uint32_t effective_address, uint8_t value);
 uint8_t inidisp_read(uint32_t effective_address);
 
@@ -726,16 +793,46 @@ void    wcolobjlog_write(uint32_t effective_address, uint8_t value);
 uint8_t wcolobjlog_read(uint32_t effective_address);
 
 
-void    tmain_write(uint32_t effective_address, uint8_t value);
-uint8_t tmain_read(uint32_t effective_address);
+void    tmainsub_write(uint32_t effective_address, uint8_t value);
+uint8_t tmainsub_read(uint32_t effective_address);
 
 
-void    tsub_write(uint32_t effective_address, uint8_t value);
-uint8_t tsub_read(uint32_t effective_address);
+void    tmainsubwm_write(uint32_t effective_address, uint8_t value);
+uint8_t tmainsubwm_read(uint32_t effective_address);
+
+
+void    cgswsel_write(uint32_t effective_address, uint8_t value);
+uint8_t cgswsel_read(uint32_t effective_address);
+
+
+void    cgadsub_write(uint32_t effective_address, uint8_t value);
+uint8_t cgadsub_read(uint32_t effective_address);
+
+
+void    coldata_write(uint32_t effective_address, uint8_t value);
+uint8_t coldata_read(uint32_t effective_address);
+
+
+void    setinit_write(uint32_t effective_address, uint8_t value);
+uint8_t setinit_read(uint32_t effective_address);
+
 
 uint8_t slhv_read(uint32_t effective_address);
 
+
+uint8_t cgdatar_read(uint32_t effective_address);
+
+
 uint8_t opct_read(uint32_t effective_address);
+
+
+uint8_t stat77_read(uint32_t effective_address);
+
+
+uint8_t stat78_read(uint32_t effective_address);
+
+
+
 
 
 
@@ -754,9 +851,6 @@ void vram_read_prefetch();
 uint8_t vmdatar_read(uint32_t effective_address);
 
 
-
-void coldata_write(uint32_t effective_address, uint8_t value);
-
 void update_irq_counter();
 
 void vhtime_write(uint32_t effective_address, uint8_t value);
@@ -764,11 +858,6 @@ void vhtime_write(uint32_t effective_address, uint8_t value);
 
 
 
-uint8_t cgdata_read(uint32_t effective_address);
-
-uint8_t stat77_read(uint32_t effective_address);
-
-void setinit_write(uint32_t effective_address, uint8_t value);
 
 uint8_t mpy_read(uint32_t effective_address);
 
