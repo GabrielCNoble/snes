@@ -1700,7 +1700,7 @@ uint8_t m7sel_read(uint32_t effective_address)
 
 void mrot_write(uint32_t effective_address, uint8_t value)
 {
-    uint32_t reg = (effective_address & 0xffff) - PPU_REG_M7A;
+    uint32_t reg = effective_address & 0xffff;
     rot_values[reg] = ((uint16_t)value << 8) | ((rot_values[reg] & 0xff00) >> 8);
 }
 
@@ -1876,7 +1876,7 @@ uint8_t wcolobjlog_read(uint32_t effective_address)
 
 void tmainsub_write(uint32_t effective_address, uint8_t value)
 {
-    uint32_t reg = (effective_address & 0xffff) - PPU_REG_TMAIN;
+    uint32_t reg = effective_address & 0xffff;
     ram1_regs[reg] = value;
     update_bg_state();
 }
@@ -1894,7 +1894,7 @@ uint8_t tmainsub_read(uint32_t effective_address)
 
 void tmainsubwm_write(uint32_t effective_address, uint8_t value)
 {
-    uint32_t reg = (effective_address & 0xffff) - PPU_REG_TMAINWM;
+    uint32_t reg = effective_address & 0xffff;
     ram1_regs[reg] = value;
 }
 
@@ -2196,7 +2196,7 @@ void vhtime_write(uint32_t effective_address, uint8_t value)
 
 uint8_t mpy_read(uint32_t effective_address)
 {
-    uint32_t reg = (effective_address & 0xffff) - PPU_REG_MPYL;
+    uint32_t reg = effective_address & 0xffff;
     ppu1_last_bus_value = ram1_regs[reg];
     return ppu1_last_bus_value;
 }

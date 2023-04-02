@@ -14,3 +14,7 @@ tests
 *.pdb
 *.swp
 .vscode
+snes
+*.blah
+*.swp
+*.cscope_file_list
