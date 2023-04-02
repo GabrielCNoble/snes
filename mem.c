@@ -40,6 +40,145 @@ void init_mem()
     reg_writes = calloc(RAM1_REGS_END - RAM1_REGS_START, sizeof(struct mem_write_t));
     reg_reads = calloc(RAM1_REGS_END - RAM1_REGS_START, sizeof(struct mem_read_t));
 
+    reg_writes[PPU_REG_INIDISP].write = inidisp_write;
+    reg_reads[PPU_REG_INIDISP].read = inidisp_read;
+
+    reg_writes[PPU_REG_OBJSEL].write = objsel_write;
+    reg_reads[PPU_REG_OBJSEL].read = objsel_read;
+
+    reg_writes[PPU_REG_OAMADDL].write = oamadd_write;
+    reg_reads[PPU_REG_OAMADDL].read = oamadd_read;
+
+    reg_writes[PPU_REG_OAMADDH].write = oamadd_write;
+    reg_reads[PPU_REG_OAMADDH].read = oamadd_read;
+
+    reg_writes[PPU_REG_OAMDATAW].write = oamdataw_write;
+    reg_reads[PPU_REG_OAMDATAW].read = oamdataw_read;
+
+    reg_writes[PPU_REG_BGMODE].write = bgmode_write;
+    reg_reads[PPU_REG_BGMODE].read = bgmode_read;
+
+    reg_writes[PPU_REG_MOSAIC].write = mosaic_write;
+    reg_reads[PPU_REG_MOSAIC].read = mosaic_read;
+
+    reg_writes[PPU_REG_BG1SC].write = bgsc_write;
+    reg_reads[PPU_REG_BG1SC].read = bgsc_read;
+
+    reg_writes[PPU_REG_BG2SC].write = bgsc_write;
+    reg_reads[PPU_REG_BG2SC].read = bgsc_read;
+
+    reg_writes[PPU_REG_BG3SC].write = bgsc_write;
+    reg_reads[PPU_REG_BG3SC].read = bgsc_read;
+
+    reg_writes[PPU_REG_BG4SC].write = bgsc_write;
+    reg_reads[PPU_REG_BG4SC].read = bgsc_read;
+
+    reg_writes[PPU_REG_BG12NBA].write = bgnba_write;
+    reg_reads[PPU_REG_BG12NBA].read = bgnba_read;
+
+    reg_writes[PPU_REG_BG34NBA].write = bgnba_write;
+    reg_reads[PPU_REG_BG34NBA].read = bgnba_read;
+
+    reg_writes[PPU_REG_BG1HOFS].write = bgoffs_write;
+    reg_reads[PPU_REG_BG1HOFS].read = bgoffs_read;
+
+    reg_writes[PPU_REG_BG1VOFS].write = bgoffs_write;
+    reg_reads[PPU_REG_BG1VOFS].read = bgoffs_read;
+
+    reg_writes[PPU_REG_BG2HOFS].write = bgoffs_write;
+    reg_reads[PPU_REG_BG2HOFS].read = bgoffs_read;
+
+    reg_writes[PPU_REG_BG2VOFS].write = bgoffs_write;
+    reg_reads[PPU_REG_BG2VOFS].read = bgoffs_read;
+
+    reg_writes[PPU_REG_BG3HOFS].write = bgoffs_write;
+    reg_reads[PPU_REG_BG3HOFS].read = bgoffs_read;
+
+    reg_writes[PPU_REG_BG3VOFS].write = bgoffs_write;
+    reg_reads[PPU_REG_BG3VOFS].read = bgoffs_read;
+
+    reg_writes[PPU_REG_BG4HOFS].write = bgoffs_write;
+    reg_reads[PPU_REG_BG4HOFS].read = bgoffs_read;
+
+    reg_writes[PPU_REG_BG4VOFS].write = bgoffs_write;
+    reg_reads[PPU_REG_BG4VOFS].read = bgoffs_read;
+
+    reg_writes[PPU_REG_VMAINC].write = vmainc_write;
+    reg_reads[PPU_REG_VMAINC].read = vmainc_read;
+
+    reg_writes[PPU_REG_VMADDL].write = vmadd_write;
+    reg_reads[PPU_REG_VMADDL].read = vmadd_read;
+
+    reg_writes[PPU_REG_VMADDH].write = vmadd_write;
+    reg_reads[PPU_REG_VMADDH].read = vmadd_read;
+
+    reg_writes[PPU_REG_VMDATAWL].write = vmdataw_write;
+    reg_reads[PPU_REG_VMDATAWL].read = vmdataw_read;
+
+    reg_writes[PPU_REG_VMDATAWH].write = vmdataw_write;
+    reg_reads[PPU_REG_VMDATAWH].read = vmdataw_read;
+
+    reg_writes[PPU_REG_M7SEL].write = m7sel_write;
+    reg_reads[PPU_REG_M7SEL].read = m7sel_read;
+
+    reg_writes[PPU_REG_M7A].write = mrot_write;
+    reg_reads[PPU_REG_M7A].read = mrot_read;
+
+    reg_writes[PPU_REG_M7B].write = mrot_write;
+    reg_reads[PPU_REG_M7B].read = mrot_read;
+
+    reg_writes[PPU_REG_M7C].write = mrot_write;
+    reg_reads[PPU_REG_M7C].read = mrot_read;
+
+    reg_writes[PPU_REG_M7D].write = mrot_write;
+    reg_reads[PPU_REG_M7D].read = mrot_read;
+
+    reg_writes[PPU_REG_M7X].write = mpos_write;
+    reg_reads[PPU_REG_M7X].read = mpos_read;
+
+    reg_writes[PPU_REG_M7Y].write = mpos_write;
+    reg_reads[PPU_REG_M7Y].read = mpos_read;
+
+    reg_writes[PPU_REG_CGADD].write = cgadd_write;
+    reg_reads[PPU_REG_CGADD].read = cgadd_read;
+
+    reg_writes[PPU_REG_CGDATAW].write = cgdataw_write;
+    reg_reads[PPU_REG_CGDATAW].read = cgdataw_read;
+
+    reg_writes[PPU_REG_W12SEL].write = wsel_write;
+    reg_reads[PPU_REG_W12SEL].read = wsel_read;
+
+    reg_writes[PPU_REG_W34SEL].write = wsel_write;
+    reg_reads[PPU_REG_W34SEL].read = wsel_read;
+
+    reg_writes[PPU_REG_WCOLOBJSEL].write = wobjcolsel_write;
+    reg_reads[PPU_REG_WCOLOBJSEL].read = wobjcolsel_read;
+
+    reg_writes[PPU_REG_W1L].write = wlr_write;
+    reg_reads[PPU_REG_W1L].read = wlr_read;
+
+    reg_writes[PPU_REG_W1R].write = wlr_write;
+    reg_reads[PPU_REG_W1R].read = wlr_read;
+
+    reg_writes[PPU_REG_W2L].write = wlr_write;
+    reg_reads[PPU_REG_W2L].read = wlr_read;
+
+    reg_writes[PPU_REG_W2R].write = wlr_write;
+    reg_reads[PPU_REG_W2R].read = wlr_read;
+
+    reg_writes[PPU_REG_WBGLOG].write = wbglog_write;
+    reg_reads[PPU_REG_WBGLOG].read = wbglog_read;
+
+    reg_writes[PPU_REG_WCOLOBJLOG].write = wcolobjlog_write;
+    reg_reads[PPU_REG_WCOLOBJLOG].read = wcolobjlog_read;
+
+    reg_writes[PPU_REG_TMAIN].write = tmain_write;
+    reg_reads[PPU_REG_TMAIN].read = tmain_read;
+
+    reg_writes[PPU_REG_TSUB].write = tsub_write;
+    reg_reads[PPU_REG_TSUB].read = tsub_read;
+
+
     reg_writes[CPU_REG_MDMAEN].write = mdmaen_write;
     reg_writes[CPU_REG_HDMAEN].write = hdmaen_write;
     reg_writes[CPU_REG_JOYA].write = ctrl_write;
@@ -60,43 +199,13 @@ void init_mem()
 
 //    reg_reads[CPU_REG_JOYB].read = io_read;
 
-    reg_writes[PPU_REG_VMADDL].write = vmadd_write;
-    reg_writes[PPU_REG_VMADDH].write = vmadd_write;
-    reg_writes[PPU_REG_VMDATAWL].write = vmdata_write;
-    reg_writes[PPU_REG_VMDATAWH].write = vmdata_write;
-    reg_writes[PPU_REG_OAMADDL].write = oamadd_write;
-    reg_writes[PPU_REG_OAMADDH].write = oamadd_write;
-    reg_writes[PPU_REG_OAMDATA].write = oamdata_write;
-    reg_writes[PPU_REG_BGMODE].write = bgmode_write;
-    reg_writes[PPU_REG_TMAIN].write = tmain_write;
-    reg_writes[PPU_REG_TSUB].write = tsub_write;
-    reg_writes[PPU_REG_OBJSEL].write = objsel_write;
 
-    reg_writes[PPU_REG_BG1SC].write = bgsc_write;
-    reg_writes[PPU_REG_BG2SC].write = bgsc_write;
-    reg_writes[PPU_REG_BG3SC].write = bgsc_write;
-    reg_writes[PPU_REG_BG4SC].write = bgsc_write;
-
-    reg_writes[PPU_REG_BG12NBA].write = bgnba_write;
-    reg_writes[PPU_REG_BG34NBA].write = bgnba_write;
-
-    reg_writes[PPU_REG_VMAINC].write = vmainc_write;
     reg_writes[PPU_REG_SETINI].write = setinit_write;
 
     reg_writes[PPU_REG_COLDATA].write = coldata_write;
-    reg_writes[PPU_REG_CGADD].write = cgadd_write;
-    reg_writes[PPU_REG_CGDATAW].write = cgdata_write;
-    reg_reads[PPU_REG_CGDATAR].read = cgdata_read;
 
-    reg_writes[PPU_REG_INIDISP].write = inidisp_write;
-    reg_writes[PPU_REG_BG1HOFS].write = bgoffs_write;
-    reg_writes[PPU_REG_BG1VOFS].write = bgoffs_write;
-    reg_writes[PPU_REG_BG2HOFS].write = bgoffs_write;
-    reg_writes[PPU_REG_BG2VOFS].write = bgoffs_write;
-    reg_writes[PPU_REG_BG3HOFS].write = bgoffs_write;
-    reg_writes[PPU_REG_BG3VOFS].write = bgoffs_write;
-    reg_writes[PPU_REG_BG4HOFS].write = bgoffs_write;
-    reg_writes[PPU_REG_BG4VOFS].write = bgoffs_write;
+
+    reg_reads[PPU_REG_CGDATAR].read = cgdata_read;
 
     reg_writes[APU_REG_IO0].write = apuio_write;
     reg_writes[APU_REG_IO1].write = apuio_write;
@@ -109,11 +218,20 @@ void init_mem()
     reg_writes[PPU_REG_WMDATA].write = wmdata_write;
     reg_reads[PPU_REG_WMDATA].read = wmdata_read;
 
+
+
     reg_reads[PPU_REG_SLVH].read = slhv_read;
     reg_reads[PPU_REG_OPHCT].read = opct_read;
     reg_reads[PPU_REG_OPVCT].read = opct_read;
-    reg_reads[PPU_REG_VMDATARL].read = vmdata_read;
-    reg_reads[PPU_REG_VMDATARH].read = vmdata_read;
+    reg_reads[PPU_REG_VMDATARL].read = vmdatar_read;
+    reg_reads[PPU_REG_VMDATARH].read = vmdatar_read;
+
+    reg_reads[PPU_REG_OAMDATAR].read = oamdatar_read;
+
+    reg_reads[PPU_REG_MPYL].read = mpy_read;
+    reg_reads[PPU_REG_MPYM].read = mpy_read;
+    reg_reads[PPU_REG_MPYH].read = mpy_read;
+    reg_reads[PPU_REG_STAT77].read = stat77_read;
     reg_reads[APU_REG_IO0].read = apuio_read;
     reg_reads[APU_REG_IO1].read = apuio_read;
     reg_reads[APU_REG_IO2].read = apuio_read;

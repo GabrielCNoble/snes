@@ -77,7 +77,7 @@ enum HDMA_STATES
     /* iterate over channels, staring transfers on those enabled */
     HDMA_STATE_START_CHANNELS,
     /* setup an enabled channel for transfer */
-    HDMA_STATE_START_CHANNEL,
+    HDMA_STATE_START_CHANNEL_TRANSFER,
     /* transfer */
     HDMA_STATE_TRANSFER,
 };
@@ -121,7 +121,7 @@ uint32_t hdma_start_state(int32_t cycle_count);
 
 uint32_t hdma_start_channels_state(int32_t cycle_count);
 
-uint32_t hdma_start_channel_state(int32_t cycle_count);
+uint32_t hdma_start_channel_transfer_state(int32_t cycle_count);
 
 
 

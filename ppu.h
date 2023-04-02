@@ -100,11 +100,23 @@ struct draw_tile_t
     uint8_t     color_func  : 4;
 };
 
+struct bg_draw_tile_t
+{
+    struct draw_tile_t  tile;
+    uint8_t             background;
+};
+
 struct dot_obj_tiles_t
 {
     uint16_t                tiles[MAX_OBJ_COUNT];
     uint16_t                tile_count;
 };
+
+//struct draw_tile_list_t
+//{
+//    uint16_t *              tiles;
+//    uint16_t                tile_count;
+//};
 
 struct dot_bg_tiles_t
 {
@@ -139,7 +151,7 @@ union oam_t
 #define SCANLINE_DOT_LENGTH     340
 #define SCANLINE_COUNT          262
 #define H_BLANK_END_DOT         1
-#define H_BLANK_START_DOT       274
+#define H_BLANK_START_DOT       255
 
 /*
     https://problemkaputt.github.io/fullsnes.htm#snestiminghvevents
@@ -210,7 +222,7 @@ enum PPU_REGS
     PPU_REG_OBJSEL          = 0x2101,
     PPU_REG_OAMADDL         = 0x2102,
     PPU_REG_OAMADDH         = 0x2103,
-    PPU_REG_OAMDATA         = 0x2104,
+    PPU_REG_OAMDATAW        = 0x2104,
     PPU_REG_BGMODE          = 0x2105,
     PPU_REG_MOSAIC          = 0x2106,
 
@@ -271,12 +283,16 @@ enum PPU_REGS
     PPU_REG_CGADSUB         = 0x2131,
     PPU_REG_COLDATA         = 0x2132,
     PPU_REG_SETINI          = 0x2133,
+    PPU_REG_MPYL            = 0x2134,
+    PPU_REG_MPYM            = 0x2135,
+    PPU_REG_MPYH            = 0x2136,
     PPU_REG_SLVH            = 0x2137,
-    PPU_REG_OPHCT           = 0x213c,
-    PPU_REG_OPVCT           = 0x213d,
+    PPU_REG_OAMDATAR        = 0x2138,
     PPU_REG_VMDATARL        = 0x2139,
     PPU_REG_VMDATARH        = 0x213a,
     PPU_REG_CGDATAR         = 0x213b,
+    PPU_REG_OPHCT           = 0x213c,
+    PPU_REG_OPVCT           = 0x213d,
     PPU_REG_STAT77          = 0x213e,
     PPU_REG_STAT78          = 0x213f,
     PPU_REG_WMDATA          = 0x2180,
@@ -430,26 +446,26 @@ struct pal16_t
     uint16_t colors[16];
 };
 
-struct pal16e_t
-{
-    struct
-    {
-        uint8_t r;
-        uint8_t g;
-        uint8_t b;
-    } colors[16];
-};
+//struct pal16e_t
+//{
+//    struct
+//    {
+//        uint8_t r;
+//        uint8_t g;
+//        uint8_t b;
+//    } colors[16];
+//};
 
 struct pal256_t
 {
     uint16_t colors[256];
 };
 
-struct col_entry_t
-{
-    uint8_t color_index;
-    uint8_t pal_index;
-};
+//struct col_entry_t
+//{
+//    uint8_t color_index;
+//    uint8_t pal_index;
+//};
 
 struct bg_tile_t
 {
@@ -467,12 +483,12 @@ struct bg7_tile_t
     uint8_t chr_data;
 };
 
-// struct col_t
-// {
-//     uint8_t r;
-//     uint8_t g;
-//     uint8_t b;
-// };
+ struct col_t
+ {
+     uint8_t r;
+     uint8_t g;
+     uint8_t b;
+ };
 
 struct mode0_cgram_t
 {
@@ -525,6 +541,11 @@ struct bg_draw_t
     uint16_t           (*   color_func)(uint32_t dot_h, uint32_t dot_v, struct background_t *background);
 };
 
+enum PPU_BGMODE_FLAGS
+{
+    PPU_BGMODE_FLAG_BG3_PRIO      = 1 << 3,
+};
+
 enum PPU_BGMODE_CHR_SIZES
 {
     PPU_BGMODE_BG1_CHR_SIZE_16x16 = 1 << 4,
@@ -541,6 +562,17 @@ struct reg_write_t
     uint8_t                 value;
 };
 
+union counters_t
+{
+    struct
+    {
+        uint16_t hcounter;
+        uint16_t vcounter;
+    };
+
+    uint32_t     counters;
+};
+
 void init_ppu();
 
 void shutdown_ppu();
@@ -549,19 +581,27 @@ void reset_ppu();
 
 uint8_t bg_chr0_dot_col(void *chr_base, uint32_t index, uint32_t size, uint32_t dot_h, uint32_t dot_v);
 
-uint8_t chr0_dot_col(void *chr_base, uint32_t name, uint32_t dot_x, uint32_t dot_y);
+uint8_t chr0_dot(void *chr_base, uint32_t name, uint32_t dot_x, uint32_t dot_y);
+
+
 
 uint8_t bg_chr2_dot_col(void *chr_base, uint32_t index, uint32_t size, uint32_t dot_h, uint32_t dot_v);
 
-uint8_t chr2_dot_col(void *chr_base, uint32_t name, uint32_t dot_x, uint32_t dot_y);
+uint8_t chr2_dot(void *chr_base, uint32_t name, uint32_t dot_x, uint32_t dot_y);
+
+struct col_t pal4_col(void *pal_base, uint8_t pallete, uint8_t index);
 
 uint8_t bg_chr4_dot_col(void *chr_base, uint32_t index, uint32_t size, uint32_t dot_h, uint32_t dot_v);
 
-uint8_t chr4_dot_col(void *chr_base, uint32_t name, uint32_t dot_x, uint32_t dot_y);
+uint8_t chr4_dot(void *chr_base, uint32_t name, uint32_t dot_x, uint32_t dot_y);
+
+struct col_t pal16_col(void *pal_base, uint8_t pallete, uint8_t index);
 
 uint8_t bg_chr8_dot_col(void *chr_base, uint32_t index, uint32_t size, uint32_t dot_h, uint32_t dot_v);
 
-uint8_t chr8_dot_col(void *chr_base, uint32_t name, uint32_t dot_x, uint32_t dot_y);
+uint8_t chr8_dot(void *chr_base, uint32_t name, uint32_t dot_x, uint32_t dot_y);
+
+struct col_t pal256_col(void *pal_base, uint8_t pallete, uint8_t index);
 
 uint8_t bg7_chr8_dot_col(void *chr_base, uint32_t index, uint32_t dot_h, uint32_t dot_v);
 
@@ -595,41 +635,125 @@ uint32_t step_ppu(int32_t cycle_count);
 
 void dump_ppu();
 
-void inidisp_write(uint32_t effective_address, uint8_t value);
+void dump_vram(uint32_t start, uint32_t end);
 
-void objsel_write(uint32_t effective_address, uint8_t value);
+
+void    inidisp_write(uint32_t effective_address, uint8_t value);
+uint8_t inidisp_read(uint32_t effective_address);
+
+
+void    objsel_write(uint32_t effective_address, uint8_t value);
+uint8_t objsel_read(uint32_t effective_address);
+
+
+void    oamadd_write(uint32_t effective_address, uint8_t value);
+uint8_t oamadd_read(uint32_t effective_address);
+
+
+void    oamdataw_write(uint32_t effective_address, uint8_t value);
+uint8_t oamdataw_read(uint32_t effective_address);
+
+void    update_bg_state();
+void    bgmode_write(uint32_t effective_address, uint8_t value);
+uint8_t bgmode_read(uint32_t effective_address);
+
+
+void    mosaic_write(uint32_t effective_address, uint8_t value);
+uint8_t mosaic_read(uint32_t effective_address);
+
+
+void    bgsc_write(uint32_t effective_address, uint8_t value);
+uint8_t bgsc_read(uint32_t effective_address);
+
+
+void    bgnba_write(uint32_t effective_address, uint8_t value);
+uint8_t bgnba_read(uint32_t effective_address);
+
+
+void    bgoffs_write(uint32_t effective_address, uint8_t value);
+uint8_t bgoffs_read(uint32_t effective_address);
+
+
+void    vmainc_write(uint32_t effective_address, uint8_t value);
+uint8_t vmainc_read(uint32_t effective_address);
+
+
+void    vmadd_write(uint32_t effective_address, uint8_t value);
+uint8_t vmadd_read(uint32_t effective_address);
+
+
+void    vmdataw_write(uint32_t effective_address, uint8_t value);
+uint8_t vmdataw_read(uint32_t effective_address);
+
+
+void    m7sel_write(uint32_t effective_address, uint8_t value);
+uint8_t m7sel_read(uint32_t effective_address);
+
+
+void    mrot_write(uint32_t effective_address, uint8_t value);
+uint8_t mrot_read(uint32_t effective_address);
+
+
+void    mpos_write(uint32_t effective_address, uint8_t value);
+uint8_t mpos_read(uint32_t effective_address);
+
+
+void    cgadd_write(uint32_t effective_address, uint8_t value);
+uint8_t cgadd_read(uint32_t effective_address);
+
+
+void    cgdataw_write(uint32_t effective_address, uint8_t value);
+uint8_t cgdataw_read(uint32_t effective_address);
+
+
+void    wsel_write(uint32_t effective_address, uint8_t value);
+uint8_t wsel_read(uint32_t effective_address);
+
+
+void    wobjcolsel_write(uint32_t effective_address, uint8_t value);
+uint8_t wobjcolsel_read(uint32_t effective_address);
+
+
+void    wlr_write(uint32_t effective_address, uint8_t value);
+uint8_t wlr_read(uint32_t effective_address);
+
+
+void    wbglog_write(uint32_t effective_address, uint8_t value);
+uint8_t wbglog_read(uint32_t effective_address);
+
+
+void    wcolobjlog_write(uint32_t effective_address, uint8_t value);
+uint8_t wcolobjlog_read(uint32_t effective_address);
+
+
+void    tmain_write(uint32_t effective_address, uint8_t value);
+uint8_t tmain_read(uint32_t effective_address);
+
+
+void    tsub_write(uint32_t effective_address, uint8_t value);
+uint8_t tsub_read(uint32_t effective_address);
 
 uint8_t slhv_read(uint32_t effective_address);
 
 uint8_t opct_read(uint32_t effective_address);
 
-void vmadd_write(uint32_t effective_address, uint8_t value);
 
-void vmdata_write(uint32_t effective_address, uint8_t value);
+
+uint8_t oamdatar_read(uint32_t effective_address);
+
+
+
+
+
+
+
+
 
 void vram_read_prefetch();
 
-uint8_t vmdata_read(uint32_t effective_address);
+uint8_t vmdatar_read(uint32_t effective_address);
 
-void oamadd_write(uint32_t effective_address, uint8_t value);
 
-void oamdata_write(uint32_t effective_address, uint8_t value);
-
-void update_bg_state();
-
-void bgmode_write(uint32_t effective_address, uint8_t value);
-
-void bgsc_write(uint32_t effective_address, uint8_t value);
-
-void bgnba_write(uint32_t effective_address, uint8_t value);
-
-void bgoffs_write(uint32_t effective_address, uint8_t value);
-
-void vmainc_write(uint32_t effective_address, uint8_t value);
-
-void tmain_write(uint32_t effective_address, uint8_t value);
-
-void tsub_write(uint32_t effective_address, uint8_t value);
 
 void coldata_write(uint32_t effective_address, uint8_t value);
 
@@ -637,13 +761,16 @@ void update_irq_counter();
 
 void vhtime_write(uint32_t effective_address, uint8_t value);
 
-void cgadd_write(uint32_t effective_address, uint8_t value);
 
-void cgdata_write(uint32_t effective_address, uint8_t value);
+
 
 uint8_t cgdata_read(uint32_t effective_address);
 
+uint8_t stat77_read(uint32_t effective_address);
+
 void setinit_write(uint32_t effective_address, uint8_t value);
+
+uint8_t mpy_read(uint32_t effective_address);
 
 void wmdata_write(uint32_t effective_address, uint8_t value);
 

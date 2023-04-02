@@ -181,6 +181,7 @@ uint32_t mov_p(uint32_t arg)
 
 uint32_t decs(uint32_t arg)
 {
+
     if(cpu_state.reg_p.e)
     {
         cpu_state.regs[REG_S].byte[0]--;

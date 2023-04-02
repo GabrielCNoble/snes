@@ -127,6 +127,13 @@ int main(int argc, char *argv[])
                         {
                             view_hardware_registers();
                         }
+                        else if(!strcmp(param, "-vram"))
+                        {
+                            uint32_t start_addr;
+                            uint32_t end_addr;
+                            scanf("%32x %32x", &start_addr, &end_addr);
+                            dump_vram(start_addr, end_addr);
+                        }
                         else if(!strcmp(param, "-run"))
                         {
                             while(!(step_emu(4) & EMU_STATUS_BREAKPOINT));

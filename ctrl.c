@@ -12,6 +12,7 @@ extern int32_t vram_offset;
 SDL_GameController *game_controller;
 
 union ctrl_t controllers[4] = {0};
+uint32_t     halt = 0;
 
 void init_ctrl()
 {
@@ -50,14 +51,18 @@ void step_ctrl(int32_t cycle_count)
                     {
                         if(event.key.keysym.scancode == SDL_SCANCODE_1)
                         {
-                            vram_offset += 0x1;
+                            vram_offset += 32;
                         }
                         if(event.key.keysym.scancode == SDL_SCANCODE_2)
                         {
 //                            if(vram_offset >= 0x1)
                             {
-                                vram_offset -= 0x1;
+                                vram_offset -= 32;
                             }
+                        }
+                        if(event.key.keysym.scancode == SDL_SCANCODE_ESCAPE)
+                        {
+                            halt = 1;
                         }
                     }
                     break;

@@ -59,7 +59,7 @@ uint32_t scanline_cycles = 0;
 //uint64_t irq_cycle = 0xffffffff;
 int32_t  irq_hold_timer = 0;
 uint32_t cur_irq_counter = 0;
-uint32_t irq_count = 0;
+uint32_t irq_counter_reload = 0;
 uint32_t last_draw_scanline = 0;
 uint32_t wmdata_address = 0;
 
@@ -147,12 +147,20 @@ struct background_t *               main_screen[5];
 uint32_t                            sub_screen_bg_count = 0;
 struct bg_draw_t                    sub_screen[5];
 
+uint16_t                            rot_values_bytes = 0;
+int16_t                             rot_values[4];
+int16_t                             pos_values[2];
+
 struct obj_t                        objects[128];
 //struct dot_objs_t *                 line_objects;
 //struct dot_obj_priorities_t *       scanline_objs;
 
 struct draw_tile_t *                obj_tiles;
 uint32_t                            obj_tile_count;
+
+struct draw_tile_t *                bg_tiles;
+uint32_t                            bg_tile_count;
+
 struct dot_tiles_t *                main_scanline_tiles;
 struct dot_tiles_t *                sub_scanline_tiles;
 
@@ -160,17 +168,26 @@ struct dot_tiles_t *                sub_scanline_tiles;
 //struct tile_dot_priorities_t        main_screen_tiles;
 int32_t                             vram_offset = 0;
 uint8_t                             vram_prefetch[2];
-
+uint8_t                             ppu1_last_bus_value = 0;
+uint8_t                             ppu2_last_bus_value = 0;
+extern uint8_t                      last_bus_value;
 //struct pal16e_t                     obj_palletes[8];
 //struct layer_dot_priorities_t   main_screen;
 //struct layer_dot_priorities_t   sub_screen;
 
 
-uint8_t                             (*color_funcs[4])(void *chr_base, uint32_t index, uint32_t dot_h, uint32_t dot_v) = {
-    [COLOR_FUNC_CHR0] = chr0_dot_col,
-    [COLOR_FUNC_CHR2] = chr2_dot_col,
-    [COLOR_FUNC_CHR4] = chr4_dot_col,
-    [COLOR_FUNC_CHR8] = chr8_dot_col,
+uint8_t (*chr_dot_funcs[4])(void *chr_base, uint32_t index, uint32_t dot_h, uint32_t dot_v) = {
+    [COLOR_FUNC_CHR0] = chr0_dot,
+    [COLOR_FUNC_CHR2] = chr2_dot,
+    [COLOR_FUNC_CHR4] = chr4_dot,
+    [COLOR_FUNC_CHR8] = chr8_dot,
+};
+
+struct col_t (*pal_col_funcs[4])(void *pal_base, uint8_t pallete, uint8_t index) = {
+    [COLOR_FUNC_CHR0] = NULL,
+    [COLOR_FUNC_CHR2] = pal4_col,
+    [COLOR_FUNC_CHR4] = pal16_col,
+    [COLOR_FUNC_CHR8] = pal256_col,
 };
 
 uint32_t                            line_obj_count = 0;
@@ -187,7 +204,7 @@ struct chr4_t *                     obj_chr_base[2];
 uint32_t vmadd_increment_shifts[] = {
     [PPU_VMADD_INC1]    = 0,
     [PPU_VMADD_INC32]   = 5,
-    [PPU_VMADD_INC64]   = 7,
+    [PPU_VMADD_INC64]   = 6,
     [PPU_VMADD_INC128]  = 7,
 };
 
@@ -200,7 +217,7 @@ uint32_t objsel_size_sel_sizes[][2] = {
     [PPU_OBJSEL_SIZE_SEL_32_64]     = {32, 64},
 };
 
-uint32_t obj_sizes[2] = {8, 16};
+uint32_t cur_obj_sizes[2]           = {8, 16};
 
 void init_ppu()
 {
@@ -213,6 +230,7 @@ void init_ppu()
 //    scanline_obj_tiles = calloc(SCANLINE_DOT_LENGTH, sizeof(struct dot_obj_priorities_t));
     /* worst case scenario where all objs are 32x32 wide */
     obj_tiles = calloc(MAX_OBJ_COUNT * 16, sizeof(struct draw_tile_t));
+    bg_tiles = calloc(8, sizeof(struct draw_tile_t));
     main_scanline_tiles = calloc(SCANLINE_DOT_LENGTH, sizeof(struct dot_tiles_t));
     sub_scanline_tiles = calloc(SCANLINE_DOT_LENGTH, sizeof(struct dot_tiles_t));
     last_draw_scanline = 224;
@@ -252,28 +270,30 @@ uint8_t bg_chr0_dot_col(void *chr_base, uint32_t index, uint32_t size16, uint32_
     return 0;
 }
 
-uint8_t chr0_dot_col(void *chr_base, uint32_t name, uint32_t dot_x, uint32_t dot_y)
+uint8_t chr0_dot(void *chr_base, uint32_t name, uint32_t dot_x, uint32_t dot_y)
 {
     return 0;
 }
 
 uint8_t bg_chr2_dot_col(void *chr_base, uint32_t index, uint32_t size, uint32_t dot_h, uint32_t dot_v)
 {
-    uint32_t chr_size = size;
+//    uint32_t chr_size = size;
     uint32_t chr_dot_h = dot_h & 0x07;
     uint32_t chr_dot_v = dot_v & 0x07;
     uint8_t color_index;
 
-    index += (dot_h >> 3);
-    index += (dot_v >> 3) << 4;
+//    index += (dot_h >> 3);
+//    index += (dot_v >> 3) << 4;
+    uint32_t offset = 8 * 2 * index;
 
-    struct chr2_t *chr = (struct chr2_t *)chr_base + index;
+//    struct chr2_t *chr = (struct chr2_t *)chr_base + index;
+    struct chr2_t *chr = (struct chr2_t *)((uint8_t *)chr_base + offset);
     color_index  =  (chr->p01[chr_dot_v] & (0x80 >> chr_dot_h)) && 1;
     color_index |= ((chr->p01[chr_dot_v] & (0x8000 >> chr_dot_h)) && 1) << 1;
     return color_index;
 }
 
-uint8_t chr2_dot_col(void *chr_base, uint32_t name, uint32_t dot_x, uint32_t dot_y)
+uint8_t chr2_dot(void *chr_base, uint32_t name, uint32_t dot_x, uint32_t dot_y)
 {
     struct chr2_t *chr = (struct chr2_t *)chr_base + name;
     uint8_t color_index;
@@ -282,21 +302,35 @@ uint8_t chr2_dot_col(void *chr_base, uint32_t name, uint32_t dot_x, uint32_t dot
     return color_index;
 }
 
+struct col_t pal4_col(void *pal_base, uint8_t pallete, uint8_t index)
+{
+    struct pal4_t *pal = (struct pal4_t *)pal_base;
+    uint16_t packed_color = pal[pallete].colors[index];
+    struct col_t color;
+    color.r = color_lut[(packed_color >> COL_DATA_R_SHIFT) & COL_DATA_MASK];
+    color.g = color_lut[(packed_color >> COL_DATA_G_SHIFT) & COL_DATA_MASK];
+    color.b = color_lut[(packed_color >> COL_DATA_B_SHIFT) & COL_DATA_MASK];
+    return color;
+}
+
 uint8_t bg_chr4_dot_col(void *chr_base, uint32_t index, uint32_t size, uint32_t dot_h, uint32_t dot_v)
 {
 //    uint32_t chr_size = 1 << (3 + size16);
-    uint32_t chr_size = size;
+//    uint32_t chr_size = size;
     uint32_t chr_dot_h = dot_h & 0x07;
     uint32_t chr_dot_v = dot_v & 0x07;
     uint8_t color_index;
 
-    index += (dot_h >> 3);
-    index += (dot_v >> 3) << 4;
+//    index += (dot_h >> 3);
+//    index += (dot_v >> 3) << 4;
+
+    uint32_t offset = 8 * 4 * index;
 
     uint16_t mask1 = 0x80 >> chr_dot_h;
     uint16_t mask2 = 0x8000 >> chr_dot_h;
 
-    struct chr4_t *chr = (struct chr4_t *)chr_base + index;
+//    struct chr4_t *chr = (struct chr4_t *)chr_base + index;
+    struct chr4_t *chr = (struct chr4_t *)((uint8_t *)chr_base + offset);
     color_index  =  (chr->p01[chr_dot_v] & mask1) && 1;
     color_index |= ((chr->p01[chr_dot_v] & mask2) && 1) << 1;
     color_index |= ((chr->p23[chr_dot_v] & mask1) && 1) << 2;
@@ -304,7 +338,7 @@ uint8_t bg_chr4_dot_col(void *chr_base, uint32_t index, uint32_t size, uint32_t 
     return color_index;
 }
 
-uint8_t chr4_dot_col(void *chr_base, uint32_t name, uint32_t dot_x, uint32_t dot_y)
+uint8_t chr4_dot(void *chr_base, uint32_t name, uint32_t dot_x, uint32_t dot_y)
 {
     uint16_t mask1 = 0x80 >> dot_x;
     uint16_t mask2 = 0x8000 >> dot_x;
@@ -318,10 +352,20 @@ uint8_t chr4_dot_col(void *chr_base, uint32_t name, uint32_t dot_x, uint32_t dot
     return color_index;
 }
 
+struct col_t pal16_col(void *pal_base, uint8_t pallete, uint8_t index)
+{
+    struct pal16_t *pal = (struct pal16_t *)pal_base;
+    uint16_t packed_color = pal[pallete].colors[index];
+    struct col_t color;
+    color.r = color_lut[(packed_color >> COL_DATA_R_SHIFT) & COL_DATA_MASK];
+    color.g = color_lut[(packed_color >> COL_DATA_G_SHIFT) & COL_DATA_MASK];
+    color.b = color_lut[(packed_color >> COL_DATA_B_SHIFT) & COL_DATA_MASK];
+    return color;
+}
+
 uint8_t bg_chr8_dot_col(void *chr_base, uint32_t index, uint32_t size, uint32_t dot_h, uint32_t dot_v)
 {
 //    uint32_t chr_size = 1 << (3 + size16);
-    uint32_t chr_size = size;
     uint32_t chr_dot_h = dot_h & 0x07;
     uint32_t chr_dot_v = dot_v & 0x07;
     uint8_t color_index;
@@ -329,13 +373,16 @@ uint8_t bg_chr8_dot_col(void *chr_base, uint32_t index, uint32_t size, uint32_t 
 //    index += (dot_h % chr_size) > 7;
 //    index += ((dot_v % chr_size) > 7) << 4;
 
-    index += (dot_h >> 3);
-    index += (dot_v >> 3) << 4;
+//    index += (dot_h >> 3);
+//    index += (dot_v >> 3) << 4;
+
+    uint32_t offset = 8 * 8 * index;
 
     uint16_t mask1 = 0x80 >> chr_dot_h;
     uint16_t mask2 = 0x8000 >> chr_dot_h;
 
-    struct chr8_t *chr = (struct chr8_t *)chr_base + index;
+//    struct chr8_t *chr = (struct chr8_t *)chr_base + index;
+    struct chr8_t *chr = (struct chr8_t *)((uint8_t *)chr_base + offset);
     color_index  =  (chr->p01[chr_dot_v] & mask1) && 1;
     color_index |= ((chr->p01[chr_dot_v] & mask2) && 1) << 1;
     color_index |= ((chr->p23[chr_dot_v] & mask1) && 1) << 2;
@@ -347,7 +394,7 @@ uint8_t bg_chr8_dot_col(void *chr_base, uint32_t index, uint32_t size, uint32_t 
     return color_index;
 }
 
-uint8_t chr8_dot_col(void *chr_base, uint32_t name, uint32_t dot_x, uint32_t dot_y)
+uint8_t chr8_dot(void *chr_base, uint32_t name, uint32_t dot_x, uint32_t dot_y)
 {
     uint16_t mask1 = 0x80 >> dot_x;
     uint16_t mask2 = 0x8000 >> dot_x;
@@ -365,6 +412,17 @@ uint8_t chr8_dot_col(void *chr_base, uint32_t name, uint32_t dot_x, uint32_t dot
     return color_index;
 }
 
+struct col_t pal256_col(void *pal_base, uint8_t pallete, uint8_t index)
+{
+    struct pal256_t *pal = (struct pal4_t *)pal_base;
+    uint16_t packed_color = pal[pallete].colors[index];
+    struct col_t color;
+    color.r = color_lut[(packed_color >> COL_DATA_R_SHIFT) & COL_DATA_MASK];
+    color.g = color_lut[(packed_color >> COL_DATA_G_SHIFT) & COL_DATA_MASK];
+    color.b = color_lut[(packed_color >> COL_DATA_B_SHIFT) & COL_DATA_MASK];
+    return color;
+}
+
 // uint8_t bg7_chr8_dot_col(void *chr_base, uint32_t index, uint32_t dot_h, uint32_t dot_v)
 // {
 //     uint32_t chr_dot_h = dot_h % 8;
@@ -379,13 +437,13 @@ struct bg_tile_t bg_tile_entry(uint32_t dot_h, uint32_t dot_v, struct background
     int16_t tile_dot_y = dot_v & (background->chr_size - 1);
     uint32_t tile_x = (dot_h / background->chr_size) & 0x3f;
     uint32_t tile_y = (dot_v / background->chr_size) & 0x3f;
-    uint32_t screen = (tile_x > 32) + ((tile_y > 32) << 1);
+    uint32_t screen = ((tile_x >> 5) & 0x1) + ((tile_y >> 4) & 0x2);
 
     tile_x &= 0x1f;
     tile_y &= 0x1f;
 
     uint32_t data_index = tile_x + (tile_y << 5);
-    struct bg_sc_data_t *bg_data = background->data_base[0] + data_index;
+    struct bg_sc_data_t *bg_data = background->data_base[screen] + data_index + vram_offset;
 
     if(bg_data->data & (BG_SC_DATA_FLIP_MASK << BG_SC_DATA_H_FLIP_SHIFT))
     {
@@ -668,7 +726,7 @@ void update_scanline_obj_tiles(uint16_t line)
 
         int16_t vpos = (uint16_t)attr1->v_pos;
         uint16_t name = attr1->fpcn & OBJ_ATTR1_NAME_MASK;
-        int16_t size = obj_sizes[size_pos >> 1];
+        int16_t size = cur_obj_sizes[size_pos >> 1];
 
         uint16_t pal = (attr1->fpcn >> OBJ_ATTR1_PAL_SHIFT) & OBJ_ATTR1_PAL_MASK;
         uint8_t priority = (attr1->fpcn >> OBJ_ATTR1_PRI_SHIFT) & OBJ_ATTR1_PRI_MASK;
@@ -757,7 +815,49 @@ void update_scanline_obj_tiles(uint16_t line)
 
 void update_scanline_bg_tiles(uint16_t line, uint16_t dot)
 {
+    bg_tile_count = 0;
 
+    for(uint32_t background_index = 0; background_index < main_screen_bg_count; background_index++)
+    {
+        struct background_t *background = backgrounds + background_index;
+
+        int16_t bg_dot_x = ((int16_t)dot + (int16_t)background->offset.offsets[0]);
+        int16_t bg_dot_y = ((int16_t)line + (int16_t)background->offset.offsets[1]);
+
+        uint32_t tile_x = (bg_dot_x / background->chr_size) & 0x3f;
+        uint32_t tile_y = (bg_dot_y / background->chr_size) & 0x3f;
+        uint32_t screen = ((tile_x >> 5) & 0x1) + ((tile_y >> 4) & 0x2);
+
+        tile_x &= 0x1f;
+        tile_y &= 0x1f;
+
+        uint32_t data_index = tile_x + (tile_y << 5);
+        struct bg_sc_data_t *bg_data = background->data_base[screen] + data_index;
+        int16_t tile_dot_x = bg_dot_x & TILE_SIZE;
+        int16_t tile_dot_y = bg_dot_y & TILE_SIZE;
+        uint16_t name = bg_data->data & BG_SC_DATA_NAME_MASK;
+        uint16_t pallete = (bg_data->data >> BG_SC_DATA_PAL_SHIFT) & BG_SC_DATA_PAL_MASK;
+
+        if(bg_data->data & (BG_SC_DATA_FLIP_MASK << BG_SC_DATA_H_FLIP_SHIFT))
+        {
+            tile_dot_x += TILE_SIZE - 1;
+            name += background->chr_size > TILE_SIZE;
+        }
+
+        if(bg_data->data & (BG_SC_DATA_FLIP_MASK << BG_SC_DATA_V_FLIP_SHIFT))
+        {
+            tile_dot_y += TILE_SIZE - 1;
+            name += (background->chr_size > TILE_SIZE) << 4;
+        }
+
+        struct draw_tile_t *tile = bg_tiles + bg_tile_count;
+        bg_tile_count++;
+
+        tile->start_x = tile_dot_x;
+        tile->start_y = tile_dot_y;
+        tile->name = name;
+        tile->pallete = pallete;
+    }
 }
 
 //void update_dot_objs(uint16_t line)
@@ -813,7 +913,7 @@ uint32_t step_ppu(int32_t cycle_count)
 {
     ppu_cycle_count += cycle_count;
     uint32_t vblank = 0;
-
+    uint32_t irq_triggered = 0;
     while(ppu_cycle_count)
     {
         sub_dot++;
@@ -904,10 +1004,11 @@ uint32_t step_ppu(int32_t cycle_count)
                 if(ram1_regs[CPU_REG_NMITIMEN] & (CPU_NMITIMEN_FLAG_HTIMER_EN | CPU_NMITIMEN_FLAG_VTIMER_EN))
                 {
                     ram1_regs[CPU_REG_TIMEUP] |= 1 << 7;
+                    irq_triggered = 1;
                     irq_hold_timer = 8;
                 }
 
-                cur_irq_counter = irq_count;
+                cur_irq_counter = irq_counter_reload;
             }
 
             if(irq_hold_timer > 0)
@@ -921,6 +1022,7 @@ uint32_t step_ppu(int32_t cycle_count)
             if(!(hvbjoy & CPU_HVBJOY_FLAG_VBLANK) && vcounter >= DRAW_START_LINE
                && vcounter < last_draw_scanline && hcounter <= DRAW_END_DOT)
             {
+                update_scanline_bg_tiles(vcounter, hcounter);
                 uint8_t inidisp = ram1_regs[PPU_REG_INIDISP];
 //                float brightness = (float)(inidisp & 0xf) / 15.0;
                 float brightness = cur_brightness;
@@ -942,6 +1044,10 @@ uint32_t step_ppu(int32_t cycle_count)
                 {
 //                    struct bg_draw_t *bg_draw = main_screen + index;
                     struct background_t *background = main_screen[index];
+                    if(background == NULL)
+                    {
+                        continue;
+                    }
                     uint16_t chr_size = background->chr_size;
                     int16_t bg_dot_x = ((int16_t)hcounter + (int16_t)background->offset.offsets[0]);
                     int16_t bg_dot_y = ((int16_t)vcounter + (int16_t)background->offset.offsets[1]);
@@ -951,6 +1057,11 @@ uint32_t step_ppu(int32_t cycle_count)
                     if(bg_dot_x >= 0 && bg_dot_y >= 0)
                     {
                         uint16_t color = background->color_func(bg_dot_x, bg_dot_y, background);
+
+//                        main_dot->r = color_lut[8 + bg_dot_x % 8];
+//                        main_dot->g = color_lut[8 + bg_dot_y % 8];
+//                        main_dot->b = 0;
+//                        main_dot->b = color_lut[index << 2];
 
                         if(color != 0xffff)
                         {
@@ -967,6 +1078,13 @@ uint32_t step_ppu(int32_t cycle_count)
 //                if(ram1_regs[PPU_REG_TMAIN] & PPU_TMAIN_FLAG_OBJ)
 //                {
 
+//                if(irq_triggered)
+//                {
+//                    main_dot->r = 255;
+//                    main_dot->g = 255;
+//                    main_dot->b = 255;
+//                }
+
                 struct dot_tiles_t *dot_tiles = NULL;
                 struct dot_t *obj_dot = NULL;
 
@@ -981,6 +1099,8 @@ uint32_t step_ppu(int32_t cycle_count)
                     obj_dot = &sub_dot;
                 }
 
+//                obj_dot = NULL;
+
                 if(obj_dot)
                 {
                     for(uint32_t priority = 4; priority > 0;)
@@ -994,7 +1114,7 @@ uint32_t step_ppu(int32_t cycle_count)
                             int16_t tile_dot_x = abs((int16_t)hcounter - (int16_t)tile->start_x);
                             int16_t tile_dot_y = abs((int16_t)vcounter - (int16_t)tile->start_y);
 
-                            uint8_t color_index = color_funcs[tile->color_func](obj_chr_base[0], tile->name, tile_dot_x, tile_dot_y);
+                            uint8_t color_index = chr_dot_funcs[tile->color_func](obj_chr_base[tile->name >= 0x100], tile->name, tile_dot_x, tile_dot_y);
 
                             if(color_index)
                             {
@@ -1013,91 +1133,6 @@ uint32_t step_ppu(int32_t cycle_count)
                         dot_tiles->obj_tiles[priority].tile_count = 0;
                     }
                 }
-
-//                for(uint32_t priority = 4; priority > 0;)
-//                {
-//                    priority--;
-//                    struct dot_objs_t *dot_objects = scanline_objs[dot_x].priorities + priority;
-//
-//                    for(int32_t dot_obj_index = 0; dot_obj_index < dot_objects->count; dot_obj_index++)
-//                    {
-//                        uint32_t object_index = dot_objects->objects[dot_obj_index];
-//                        struct obj_t *object = objects + object_index;
-//
-//                        int16_t obj_dot_x = abs((int16_t)hcounter - object->hpos);
-//                        int16_t obj_dot_y = abs((int16_t)vcounter - object->vpos);
-//
-////                        if(object->hflip)
-////                        {
-////                            obj_dot_x = (object->size - 1) - obj_dot_x;
-////                        }
-////
-////                        if(object->vflip)
-////                        {
-////                            obj_dot_y = (object->size - 1) - obj_dot_y;
-////                        }
-//
-//                        uint8_t color_index = bg_chr4_dot_col(obj_chr_base[0], object->name, object->size, obj_dot_x, obj_dot_y);
-//
-//                        if(color_index)
-//                        {
-//                            uint16_t color = mode0_cgram->obj_colors[object->pal].colors[color_index];
-//                            dot->r = color_lut[(color >> COL_DATA_R_SHIFT) & COL_DATA_MASK];
-//                            dot->g = color_lut[(color >> COL_DATA_G_SHIFT) & COL_DATA_MASK];
-//                            dot->b = color_lut[(color >> COL_DATA_B_SHIFT) & COL_DATA_MASK];
-//                            priority = 0;
-//                            break;
-//                        }
-//                    }
-//                }
-//
-//                for(uint32_t priority = 0; priority < 4; priority++)
-//                {
-//                    scanline_objs[dot_x].priorities[priority].count = 0;
-//                }
-
-
-//                    for(uint32_t dot_obj_index = 0; dot_obj_index < dot_objects->count; dot_obj_index++)
-//                    {
-//                        // struct line_obj_t *obj = line_objs + index;
-//                        uint32_t object_index = dot_objects->objects[dot_obj_index];
-//                        struct obj_t *object = objects + object_index;
-////                        struct obj_t *object = dot_objects->objects[dot_obj_index];
-//                        // if(hcounter >= obj->hpos && hcounter <= obj->hpos + obj->size)
-////                        {
-//                        uint16_t obj_dot_x = (int16_t)hcounter - object->hpos;
-//                        uint16_t obj_dot_y = vcounter - object->vpos;
-////                            uint32_t obj_name = object->name;
-////                            uint32_t obj_pal = object->pal;
-//                            // struct obj_attr1_t *attr1 = oam_tables->table1 + obj->index;
-//                            // uint32_t obj_name = attr1->fpcn & OBJ_ATTR1_NAME_MASK;
-//                            // uint32_t obj_pal = (attr1->fpcn >> OBJ_ATTR1_PAL_SHIFT) & OBJ_ATTR1_PAL_MASK;
-//
-//                        if(object->hflip)
-//                        {
-//                            obj_dot_x = (object->size - 1) - obj_dot_x;
-//                        }
-//
-//                        if(object->vflip)
-//                        {
-//                            obj_dot_y = (object->size - 1) - obj_dot_y;
-//                        }
-//
-//                        uint8_t color_index = bg_chr4_dot_col(obj_chr_base[0], object->name, 1, obj_dot_x, obj_dot_y);
-//
-//                        if(color_index)
-//                        {
-//                            uint16_t color = mode0_cgram->obj_colors[object->pal].colors[color_index];
-//                            dot->r = color_lut[(color >> COL_DATA_R_SHIFT) & COL_DATA_MASK];
-//                            dot->g = color_lut[(color >> COL_DATA_G_SHIFT) & COL_DATA_MASK];
-//                            dot->b = color_lut[(color >> COL_DATA_B_SHIFT) & COL_DATA_MASK];
-//                            break;
-//                        }
-////                        }
-//                    }
-
-//                    dot_objects->count = 0;
-//                }
 
                 main_dot->r *= brightness;
                 main_dot->g *= brightness;
@@ -1121,6 +1156,58 @@ void dump_ppu()
    printf("\n");
 }
 
+void dump_vram(uint32_t start, uint32_t end)
+{
+    if(start > PPU_VRAM_SIZE)
+    {
+        start = PPU_VRAM_SIZE;
+    }
+
+    if(end > PPU_VRAM_SIZE)
+    {
+        end = PPU_VRAM_SIZE;
+    }
+
+    if(start > end)
+    {
+        uint32_t temp = start;
+        start = end;
+        end = temp;
+    }
+
+    start &= 0xfffe;
+    printf("----------- VRAM -----------\n");
+    while(start < end)
+    {
+        uint32_t count = end - start;
+
+        if(count > 16)
+        {
+            count = 16;
+        }
+
+        printf("%04x: ", start);
+
+        for(uint32_t byte = 0; byte < count; byte++)
+        {
+            printf("%02x ", vram[start]);
+            start++;
+        }
+
+        printf("\n");
+    }
+
+    printf("----------------------------\n");
+
+//    for(uint32_t line = 0; line <= lines; line++)
+//    {
+//        for(uint32_t byte = 0; byte < 16 && ; byte++)
+//        {
+//            printf("")
+//        }
+//    }
+}
+
 
 void inidisp_write(uint32_t effective_address, uint8_t value)
 {
@@ -1128,17 +1215,58 @@ void inidisp_write(uint32_t effective_address, uint8_t value)
     cur_brightness = (float)(value & 0xf) / 15.0;
 }
 
+uint8_t inidisp_read(uint32_t effective_address)
+{
+    return last_bus_value;
+}
+
+/*
+==================================================================================
+==================================================================================
+==================================================================================
+*/
+
 void objsel_write(uint32_t effective_address, uint8_t value)
 {
     ram1_regs[PPU_REG_OBJSEL] = value;
     uint32_t obj_size_select = (value >> PPU_OBJSEL_SIZE_SHIFT) & PPU_OBJSEL_SIZE_MASK;
-    obj_sizes[0] = objsel_size_sel_sizes[obj_size_select][0];
-    obj_sizes[1] = objsel_size_sel_sizes[obj_size_select][1];
+    cur_obj_sizes[0] = objsel_size_sel_sizes[obj_size_select][0];
+    cur_obj_sizes[1] = objsel_size_sel_sizes[obj_size_select][1];
     uint32_t chr_base = ((value & PPU_OBJSEL_NAME_BASE_MASK) << 13) & 0x7fff;
     uint32_t name_sel = (chr_base + (((value >> PPU_OBJSEL_NAME_SEL_SHIFT) & PPU_OBJSEL_NAME_SEL_MASK) << 12)) & 0x7fff;
     obj_chr_base[0] = (struct chr4_t *)(vram + (chr_base << 1));
     obj_chr_base[1] = (struct chr4_t *)(vram + (name_sel << 1));
 }
+
+uint8_t objsel_read(uint32_t effective_address)
+{
+    return last_bus_value;
+}
+
+/*
+==================================================================================
+==================================================================================
+==================================================================================
+*/
+
+void oamadd_write(uint32_t effective_address, uint8_t value)
+{
+    uint32_t reg = effective_address & 0xffff;
+    ram1_regs[reg] = value;
+    oam_addr = (((uint16_t)ram1_regs[PPU_REG_OAMADDL]) | (((uint16_t)ram1_regs[PPU_REG_OAMADDH] << 8) & 0x01ff));
+    oam_addr <<= 1;
+}
+
+uint8_t oamadd_read(uint32_t effective_address)
+{
+    return last_bus_value;
+}
+
+/*
+==================================================================================
+==================================================================================
+==================================================================================
+*/
 
 uint8_t slhv_read(uint32_t effective_address)
 {
@@ -1156,96 +1284,13 @@ uint8_t opct_read(uint32_t effective_address)
     return value;
 }
 
-void vmadd_write(uint32_t effective_address, uint8_t value)
-{
-    uint32_t reg = effective_address & 0xffff;
-    ram1_regs[reg] = value;
-    vram_addr = (uint16_t)ram1_regs[PPU_REG_VMADDL] | (((uint16_t)ram1_regs[PPU_REG_VMADDH]) << 8);
-    vram_read_prefetch();
-}
+/*
+==================================================================================
+==================================================================================
+==================================================================================
+*/
 
-void vmdata_write(uint32_t effective_address, uint8_t value)
-{
-    uint32_t write_order = ram1_regs[PPU_REG_VMAINC] & 0x80;
-    uint32_t reg = effective_address & 0xffff;
-    uint32_t write_addr = vram_addr << 1;
-    uint32_t increment_shift = vmadd_increment_shifts[ram1_regs[PPU_REG_VMAINC] & 0x3];
-
-//    if(vram_addr == 0x5000)
-//    {
-//        printf("holy shit...\n");
-//    }
-
-//    if(ram1_regs[PPU_REG_VMAINC] & 0x0c)
-//    {
-//        printf("holy shit...\n");
-//    }
-
-    if((ram1_regs[CPU_REG_HVBJOY] & CPU_HVBJOY_FLAG_VBLANK) || (ram1_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK))
-    {
-        write_addr |= PPU_REG_VMDATAWH == reg;
-        vram[write_addr] = value;
-        vram_addr += ((write_order == PPU_VMDATA_ADDR_INC_LH && reg == PPU_REG_VMDATAWH) ||
-                      (write_order == PPU_VMDATA_ADDR_INC_HL && reg == PPU_REG_VMDATAWL)) << increment_shift;
-        vram_addr &= 0x7fff;
-    }
-//    else
-//    {
-//        printf("write to vmdata blocked\n");
-//    }
-}
-
-void vram_read_prefetch()
-{
-    uint32_t read_address = vram_addr << 1;
-    vram_prefetch[0] = vram[read_address];
-    vram_prefetch[1] = vram[read_address + 1];
-}
-
-uint8_t vmdata_read(uint32_t effective_address)
-{
-    uint32_t read_order = ram1_regs[PPU_REG_VMAINC] & 0x80;
-    uint32_t reg = effective_address & 0xffff;
-    uint32_t read_addr = vram_addr << 1;
-    uint32_t increment_shift = vmadd_increment_shifts[ram1_regs[PPU_REG_VMAINC] & 0x3];
-    uint8_t value;
-
-//    if(ram1_regs[PPU_REG_VMAINC] & 0x0c)
-//    {
-//        printf("holy shit...\n");
-//    }
-
-    if((ram1_regs[CPU_REG_HVBJOY] & V_BLANK_FLAG) || (ram1_regs[CPU_REG_HVBJOY] & H_BLANK_FLAG))
-    {
-//        read_addr |= PPU_REG_VMDATARH == reg;
-//        value = vram[read_addr];
-        value = vram_prefetch[PPU_REG_VMDATARH == reg];
-
-        if((read_order == PPU_VMDATA_ADDR_INC_LH && reg == PPU_REG_VMDATARH) ||
-           (read_order == PPU_VMDATA_ADDR_INC_HL && reg == PPU_REG_VMDATARL))
-        {
-            vram_read_prefetch();
-            vram_addr += 1 << increment_shift;
-            vram_addr &= 0x7fff;
-        }
-
-//        vram_addr += ((read_order == PPU_VMDATA_ADDR_INC_LH && reg == PPU_REG_VMDATARH) ||
-//                      (read_order == PPU_VMDATA_ADDR_INC_HL && reg == PPU_REG_VMDATARL)) << increment_shift;
-//        vram_addr &= 0x7fff;
-    }
-
-    return value;
-}
-
-void oamadd_write(uint32_t effective_address, uint8_t value)
-{
-    uint32_t reg = effective_address & 0xffff;
-    ram1_regs[reg] = value;
-    oam_addr = (((uint16_t)ram1_regs[PPU_REG_OAMADDL]) | (((uint16_t)ram1_regs[PPU_REG_OAMADDH] << 8) & 0x01ff));
-    oam_addr <<= 1;
-}
-
-void oamdata_write(uint32_t effective_address, uint8_t value)
+void oamdataw_write(uint32_t effective_address, uint8_t value)
 {
     oam.bytes[oam_addr] = value;
     // uint32_t obj_index;
@@ -1267,6 +1312,24 @@ void oamdata_write(uint32_t effective_address, uint8_t value)
     // obj->vpos = oam_tables->table1[obj_index].;
 
     oam_addr = (oam_addr + 1) % PPU_OAM_SIZE;
+}
+
+uint8_t oamdataw_read(uint32_t effective_address)
+{
+    return ppu1_last_bus_value;
+}
+
+/*
+==================================================================================
+==================================================================================
+==================================================================================
+*/
+
+uint8_t oamdatar_read(uint32_t effective_address)
+{
+    ppu1_last_bus_value = oam.bytes[oam_addr];
+    oam_addr = (oam_addr + 1) % PPU_OAM_SIZE;
+    return ppu1_last_bus_value;
 }
 
 void update_bg_state()
@@ -1309,11 +1372,6 @@ void update_bg_state()
             main_screen_backgrounds[2] = &backgrounds[2];
             main_screen_backgrounds[3] = &backgrounds[3];
 
-//            main_screen_backgrounds[0] = &backgrounds[0], .color_func = bg_pal4_col};
-//            main_screen_backgrounds[1] = (struct bg_draw_t){.background = &backgrounds[1], .color_func = bg_pal4_col};
-//            main_screen_backgrounds[2] = (struct bg_draw_t){.background = &backgrounds[2], .color_func = bg_pal4_col};
-//            main_screen_backgrounds[3] = (struct bg_draw_t){.background = &backgrounds[3], .color_func = bg_pal4_col};
-
             last_main_background = 3;
         }
         break;
@@ -1330,13 +1388,13 @@ void update_bg_state()
             backgrounds[2].pal_base = mode12_cgram->bg3_colors;
             backgrounds[2].color_func = bg_pal4_col;
 
+//            main_screen_backgrounds[0] = &backgrounds[0];
+//            main_screen_backgrounds[1] = &backgrounds[1];
+//            main_screen_backgrounds[2] = &backgrounds[2];
+
             main_screen_backgrounds[0] = &backgrounds[0];
             main_screen_backgrounds[1] = &backgrounds[1];
             main_screen_backgrounds[2] = &backgrounds[2];
-
-//            main_screen_backgrounds[0] = (struct bg_draw_t){.background = &backgrounds[0], .color_func = bg_pal16_col};
-//            main_screen_backgrounds[1] = (struct bg_draw_t){.background = &backgrounds[1], .color_func = bg_pal16_col};
-//            main_screen_backgrounds[2] = (struct bg_draw_t){.background = &backgrounds[2], .color_func = bg_pal4_col};
 
             last_main_background = 2;
         }
@@ -1354,9 +1412,6 @@ void update_bg_state()
 
             main_screen_backgrounds[0] = &backgrounds[0];
             main_screen_backgrounds[1] = &backgrounds[1];
-
-//            main_screen_backgrounds[0] = (struct bg_draw_t){.background = &backgrounds[0], .color_func = bg_pal16_col};
-//            main_screen_backgrounds[1] = (struct bg_draw_t){.background = &backgrounds[1], .color_func = bg_pal4_col};
 
             last_main_background = 1;
         }
@@ -1388,11 +1443,45 @@ void update_bg_state()
     }
 }
 
+/*
+==================================================================================
+==================================================================================
+==================================================================================
+*/
+
 void bgmode_write(uint32_t effective_address, uint8_t value)
 {
     ram1_regs[PPU_REG_BGMODE] = value;
     update_bg_state();
 }
+
+uint8_t bgmode_read(uint32_t effective_address)
+{
+    return ppu1_last_bus_value;
+}
+
+/*
+==================================================================================
+==================================================================================
+==================================================================================
+*/
+
+void mosaic_write(uint32_t effective_address, uint8_t value)
+{
+
+}
+
+uint8_t mosaic_read(uint32_t effective_address)
+{
+    return ppu1_last_bus_value;
+}
+
+
+/*
+==================================================================================
+==================================================================================
+==================================================================================
+*/
 
 void bgsc_write(uint32_t effective_address, uint8_t value)
 {
@@ -1436,23 +1525,50 @@ void bgsc_write(uint32_t effective_address, uint8_t value)
     }
 }
 
+uint8_t bgsc_read(uint32_t effective_address)
+{
+    if((effective_address & 0xffff) == PPU_REG_BG1SC)
+    {
+        return last_bus_value;
+    }
+
+    return ppu1_last_bus_value;
+}
+
+/*
+==================================================================================
+==================================================================================
+==================================================================================
+*/
+
 void bgnba_write(uint32_t effective_address, uint8_t value)
 {
     uint32_t reg = effective_address & 0xffff;
     uint32_t background_index = (reg - PPU_REG_BG12NBA) << 1;
     ram1_regs[reg] = value;
 
-//    uint32_t offset = (((uint32_t)(value & 0x0f) << 12) & 0x7fff) << 1;
-    uint32_t offset = ((uint32_t)(value & 0x0f)) * 0x2000;
+    uint32_t offset = (((uint32_t)(value & 0x0f) << 12) & 0x7fff) << 1;
+//    uint32_t offset = ((uint32_t)(value & 0x0f)) * 0x2000;
     struct background_t *background = backgrounds + background_index;
     background_index++;
     background->chr_base = vram + offset;
-    value >>= 4;
-//    offset = (((uint32_t)(value & 0xf0) << 8) & 0x7fff) << 1;
-    offset = ((uint32_t)value) * 0x2000;
+//    value >>= 4;
+    offset = (((uint32_t)(value & 0xf0) << 8) & 0x7fff) << 1;
+//    offset = ((uint32_t)value) * 0x2000;
     background = backgrounds + background_index;
     background->chr_base = vram + offset;
 }
+
+uint8_t bgnba_read(uint32_t effective_address)
+{
+    return last_bus_value;
+}
+
+/*
+==================================================================================
+==================================================================================
+==================================================================================
+*/
 
 void bgoffs_write(uint32_t effective_address, uint8_t value)
 {
@@ -1479,6 +1595,21 @@ void bgoffs_write(uint32_t effective_address, uint8_t value)
     background->offset.lsb_written[offset_index] ^= 1;
 }
 
+uint8_t bgoffs_read(uint32_t effective_address)
+{
+    if((effective_address & 0xffff) < PPU_REG_BG4VOFS)
+    {
+        return last_bus_value;
+    }
+    return ppu1_last_bus_value;
+}
+
+/*
+==================================================================================
+==================================================================================
+==================================================================================
+*/
+
 void vmainc_write(uint32_t effective_address, uint8_t value)
 {
     ram1_regs[PPU_REG_VMAINC] = value;
@@ -1486,113 +1617,127 @@ void vmainc_write(uint32_t effective_address, uint8_t value)
 //    bg_chr_dot_col = bg_chr_dot_col_funcs[bitdepth];
 }
 
-void tmain_write(uint32_t effective_address, uint8_t value)
+uint8_t vmainc_read(uint32_t effective_address)
 {
-    ram1_regs[PPU_REG_TMAIN] = value;
-    update_bg_state();
+    return ppu1_last_bus_value;
 }
 
-void tsub_write(uint32_t effective_address, uint8_t value)
-{
-    ram1_regs[PPU_REG_TSUB] = value;
-    update_bg_state();
-}
+/*
+==================================================================================
+==================================================================================
+==================================================================================
+*/
 
-void coldata_write(uint32_t effective_address, uint8_t value)
-{
-    ram1_regs[PPU_REG_COLDATA] = value;
-}
-
-void update_irq_counter()
-{
-    uint16_t vtimer = (uint16_t)ram1_regs[CPU_REG_VTIMEL] | (uint16_t)ram1_regs[CPU_REG_VTIMEH] << 8;
-    uint16_t htimer = (uint16_t)ram1_regs[CPU_REG_VTIMEL] | (uint16_t)ram1_regs[CPU_REG_VTIMEH] << 8;
-
-    switch(ram1_regs[CPU_REG_NMITIMEN] & (CPU_NMITIMEN_FLAG_HTIMER_EN | CPU_NMITIMEN_FLAG_VTIMER_EN))
-    {
-        case CPU_NMITIMEN_FLAG_HTIMER_EN:
-            irq_count = SCANLINE_DOT_LENGTH;
-
-            if(htimer >= hcounter)
-            {
-                cur_irq_counter = htimer - hcounter;
-            }
-            else
-            {
-                cur_irq_counter = irq_count - (hcounter - htimer);
-            }
-        break;
-
-        case CPU_NMITIMEN_FLAG_VTIMER_EN:
-            irq_count = SCANLINE_COUNT * SCANLINE_DOT_LENGTH;
-
-            if(vtimer >= vcounter)
-            {
-                cur_irq_counter = (vtimer - vcounter) * SCANLINE_DOT_LENGTH;
-
-                /* if only virq is enabled and the time irq counter value is zero, it means either the current scanline value got
-                written to 0x4211 or virq got disabled and reenabled. In this case, the virq may be fired immediately if H = ~3.5*/
-                if(!cur_irq_counter)
-                {
-                    if(hcounter <= 3)
-                    {
-                        /* hcounter is within the refire interval, so setup cur_irq_counter to trigger an irq at the
-                        next ppu step */
-                        irq_count -= hcounter;
-                        /* this will be decremented at the start of the ppu update, triggering the irq. */
-                        cur_irq_counter = 1;
-                    }
-                    else
-                    {
-                        /* we're outside the retrigger interval, so just update cur_irq_counter to fire next
-                        frame, at H = ~3.5 */
-                        cur_irq_counter = irq_count - (hcounter + 3);
-                    }
-                }
-                else
-                {
-                    cur_irq_counter -= hcounter;
-                }
-            }
-            else
-            {
-                cur_irq_counter = irq_count - (vcounter - vtimer) * SCANLINE_DOT_LENGTH - (hcounter + 3);
-            }
-        break;
-
-        case CPU_NMITIMEN_FLAG_HTIMER_EN | CPU_NMITIMEN_FLAG_VTIMER_EN:
-            irq_count = SCANLINE_COUNT * SCANLINE_DOT_LENGTH;
-
-            if(vtimer >= vcounter)
-            {
-                cur_irq_counter = (vtimer - vcounter) * SCANLINE_DOT_LENGTH;
-            }
-            else
-            {
-                cur_irq_counter = irq_count - (vcounter - vtimer) * SCANLINE_DOT_LENGTH;
-            }
-
-            cur_irq_counter += htimer;
-
-            if(htimer >= hcounter)
-            {
-                cur_irq_counter += htimer - hcounter;
-            }
-            else
-            {
-                cur_irq_counter -= hcounter - htimer;
-            }
-
-        break;
-    }
-}
-
-void vhtime_write(uint32_t effective_address, uint8_t value)
+void vmadd_write(uint32_t effective_address, uint8_t value)
 {
     uint32_t reg = effective_address & 0xffff;
     ram1_regs[reg] = value;
-    update_irq_counter();
+    vram_addr = (uint16_t)ram1_regs[PPU_REG_VMADDL] | (((uint16_t)ram1_regs[PPU_REG_VMADDH]) << 8);
+    vram_read_prefetch();
 }
+
+uint8_t vmadd_read(uint32_t effective_address)
+{
+    return ppu1_last_bus_value;
+}
+
+/*
+==================================================================================
+==================================================================================
+==================================================================================
+*/
+
+void vmdataw_write(uint32_t effective_address, uint8_t value)
+{
+    uint32_t write_order = ram1_regs[PPU_REG_VMAINC] & 0x80;
+    uint32_t reg = effective_address & 0xffff;
+    uint32_t write_addr = vram_addr << 1;
+    uint32_t increment_shift = vmadd_increment_shifts[ram1_regs[PPU_REG_VMAINC] & 0x3];
+
+    if(vram_addr == 35 || vram_addr == 0x00)
+    {
+        printf("holy shit...\n");
+    }
+
+//    if(ram1_regs[PPU_REG_VMAINC] & 0x0c)
+//    {
+//        printf("holy shit...\n");
+//    }
+
+    if((ram1_regs[CPU_REG_HVBJOY] & CPU_HVBJOY_FLAG_VBLANK) || (ram1_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK))
+    {
+        write_addr |= PPU_REG_VMDATAWH == reg;
+        vram[write_addr] = value;
+        vram_addr += ((write_order == PPU_VMDATA_ADDR_INC_LH && reg == PPU_REG_VMDATAWH) ||
+                      (write_order == PPU_VMDATA_ADDR_INC_HL && reg == PPU_REG_VMDATAWL)) << increment_shift;
+        vram_addr &= 0x7fff;
+    }
+//    else
+//    {
+//        printf("write to vmdata blocked\n");
+//    }
+}
+
+uint8_t vmdataw_read(uint32_t effective_address)
+{
+    return ppu1_last_bus_value;
+}
+
+/*
+==================================================================================
+==================================================================================
+==================================================================================
+*/
+
+void m7sel_write(uint32_t effective_address, uint8_t value)
+{
+
+}
+
+uint8_t m7sel_read(uint32_t effective_address)
+{
+    return ppu1_last_bus_value;
+}
+
+/*
+==================================================================================
+==================================================================================
+==================================================================================
+*/
+
+void mrot_write(uint32_t effective_address, uint8_t value)
+{
+    uint32_t reg = (effective_address & 0xffff) - PPU_REG_M7A;
+    rot_values[reg] = ((uint16_t)value << 8) | ((rot_values[reg] & 0xff00) >> 8);
+}
+
+uint8_t mrot_read(uint32_t effective_address)
+{
+    return last_bus_value;
+}
+
+/*
+==================================================================================
+==================================================================================
+==================================================================================
+*/
+
+void mpos_write(uint32_t effective_address, uint8_t value)
+{
+    uint32_t reg = (effective_address & 0xffff) - PPU_REG_M7X;
+//    pos_values[reg] =
+}
+
+uint8_t mpos_read(uint32_t effective_address)
+{
+
+}
+
+/*
+==================================================================================
+==================================================================================
+==================================================================================
+*/
 
 void cgadd_write(uint32_t effective_address, uint8_t value)
 {
@@ -1603,10 +1748,16 @@ void cgadd_write(uint32_t effective_address, uint8_t value)
 
 uint8_t cgadd_read(uint32_t effective_address)
 {
-
+    return last_bus_value;
 }
 
-void cgdata_write(uint32_t effective_address, uint8_t value)
+/*
+==================================================================================
+==================================================================================
+==================================================================================
+*/
+
+void cgdataw_write(uint32_t effective_address, uint8_t value)
 {
     if((ram1_regs[CPU_REG_HVBJOY] & (CPU_HVBJOY_FLAG_HBLANK | CPU_HVBJOY_FLAG_VBLANK)) || (ram1_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK))
     {
@@ -1629,6 +1780,296 @@ void cgdata_write(uint32_t effective_address, uint8_t value)
     }
 }
 
+uint8_t cgdataw_read(uint32_t effective_address)
+{
+    return last_bus_value;
+}
+
+/*
+==================================================================================
+==================================================================================
+==================================================================================
+*/
+
+void wsel_write(uint32_t effective_address, uint8_t value)
+{
+
+}
+
+uint8_t wsel_read(uint32_t effective_address)
+{
+    if((effective_address & 0xffff) == PPU_REG_W12SEL)
+    {
+        return last_bus_value;
+    }
+
+    return ppu1_last_bus_value;
+}
+
+/*
+==================================================================================
+==================================================================================
+==================================================================================
+*/
+
+void wobjcolsel_write(uint32_t effective_address, uint8_t value)
+{
+
+}
+
+uint8_t wobjcolsel_read(uint32_t effective_address)
+{
+    return ppu1_last_bus_value;
+}
+
+/*
+==================================================================================
+==================================================================================
+==================================================================================
+*/
+
+void wlr_write(uint32_t effective_address, uint8_t value)
+{
+
+}
+
+uint8_t wlr_read(uint32_t effective_address)
+{
+    if((effective_address & 0xffff) == PPU_REG_W1R)
+    {
+        return last_bus_value;
+    }
+
+    return ppu1_last_bus_value;
+}
+
+/*
+==================================================================================
+==================================================================================
+==================================================================================
+*/
+
+void wbglog_write(uint32_t effective_address, uint8_t value)
+{
+
+}
+
+uint8_t wbglog_read(uint32_t effective_address)
+{
+    return ppu1_last_bus_value;
+}
+
+/*
+==================================================================================
+==================================================================================
+==================================================================================
+*/
+
+void wcolobjlog_write(uint32_t effective_address, uint8_t value)
+{
+
+}
+
+uint8_t wcolobjlog_read(uint32_t effective_address)
+{
+    return last_bus_value;
+}
+
+/*
+==================================================================================
+==================================================================================
+==================================================================================
+*/
+
+void tmain_write(uint32_t effective_address, uint8_t value)
+{
+    ram1_regs[PPU_REG_TMAIN] = value;
+    update_bg_state();
+}
+
+uint8_t tmain_read(uint32_t effective_address)
+{
+    return last_bus_value;
+}
+
+/*
+==================================================================================
+==================================================================================
+==================================================================================
+*/
+
+void tsub_write(uint32_t effective_address, uint8_t value)
+{
+    ram1_regs[PPU_REG_TSUB] = value;
+    update_bg_state();
+}
+
+uint8_t tsub_read(uint32_t effective_address)
+{
+    return last_bus_value;
+}
+
+/*
+==================================================================================
+==================================================================================
+==================================================================================
+*/
+
+void vram_read_prefetch()
+{
+    uint32_t read_address = vram_addr << 1;
+    vram_prefetch[0] = vram[read_address];
+    vram_prefetch[1] = vram[read_address + 1];
+}
+
+uint8_t vmdatar_read(uint32_t effective_address)
+{
+    uint32_t read_order = ram1_regs[PPU_REG_VMAINC] & 0x80;
+    uint32_t reg = effective_address & 0xffff;
+    uint32_t read_addr = vram_addr << 1;
+    uint32_t increment_shift = vmadd_increment_shifts[ram1_regs[PPU_REG_VMAINC] & 0x3];
+
+//    if(ram1_regs[PPU_REG_VMAINC] & 0x0c)
+//    {
+//        printf("holy shit...\n");
+//    }
+
+    if((ram1_regs[CPU_REG_HVBJOY] & V_BLANK_FLAG) || (ram1_regs[CPU_REG_HVBJOY] & H_BLANK_FLAG))
+    {
+//        read_addr |= PPU_REG_VMDATARH == reg;
+//        value = vram[read_addr];
+        ppu1_last_bus_value = vram_prefetch[PPU_REG_VMDATARH == reg];
+
+        if((read_order == PPU_VMDATA_ADDR_INC_LH && reg == PPU_REG_VMDATARH) ||
+           (read_order == PPU_VMDATA_ADDR_INC_HL && reg == PPU_REG_VMDATARL))
+        {
+            vram_read_prefetch();
+            vram_addr += 1 << increment_shift;
+            vram_addr &= 0x7fff;
+        }
+
+//        vram_addr += ((read_order == PPU_VMDATA_ADDR_INC_LH && reg == PPU_REG_VMDATARH) ||
+//                      (read_order == PPU_VMDATA_ADDR_INC_HL && reg == PPU_REG_VMDATARL)) << increment_shift;
+//        vram_addr &= 0x7fff;
+    }
+
+    return ppu1_last_bus_value;
+}
+
+
+
+
+void coldata_write(uint32_t effective_address, uint8_t value)
+{
+    ram1_regs[PPU_REG_COLDATA] = value;
+}
+
+void update_irq_counter()
+{
+    uint16_t vtimer = (uint16_t)ram1_regs[CPU_REG_VTIMEL] | ((uint16_t)ram1_regs[CPU_REG_VTIMEH] << 8);
+    uint16_t htimer = (uint16_t)ram1_regs[CPU_REG_HTIMEL] | ((uint16_t)ram1_regs[CPU_REG_HTIMEH] << 8);
+
+    switch(ram1_regs[CPU_REG_NMITIMEN] & (CPU_NMITIMEN_FLAG_HTIMER_EN | CPU_NMITIMEN_FLAG_VTIMER_EN))
+    {
+        case CPU_NMITIMEN_FLAG_HTIMER_EN:
+            irq_counter_reload = SCANLINE_DOT_LENGTH;
+
+            if(htimer >= hcounter)
+            {
+                cur_irq_counter = htimer - hcounter;
+            }
+            else
+            {
+                cur_irq_counter = irq_counter_reload - (hcounter - htimer);
+            }
+        break;
+
+        case CPU_NMITIMEN_FLAG_VTIMER_EN:
+            irq_counter_reload = SCANLINE_COUNT * SCANLINE_DOT_LENGTH;
+
+            if(vtimer >= vcounter)
+            {
+                cur_irq_counter = (vtimer - vcounter) * SCANLINE_DOT_LENGTH;
+
+                /* if only virq is enabled and the time irq counter value is zero, it means either the current scanline value got
+                written to 0x4211 or virq got disabled and reenabled. In this case, the virq may be fired immediately if H = ~3.5*/
+                if(!cur_irq_counter)
+                {
+                    if(hcounter <= 3)
+                    {
+                        /* hcounter is within the refire interval, so setup cur_irq_counter to trigger an irq at the
+                        next ppu step */
+                        irq_counter_reload -= hcounter;
+                        /* this will be decremented at the start of the ppu update, triggering the irq. */
+                        cur_irq_counter = 1;
+                    }
+                    else
+                    {
+                        /* we're outside the retrigger interval, so just update cur_irq_counter to fire next
+                        frame, at H = ~3.5 */
+                        cur_irq_counter = irq_counter_reload - (hcounter + 3);
+                    }
+                }
+                else
+                {
+                    cur_irq_counter -= hcounter;
+                }
+            }
+            else
+            {
+                cur_irq_counter = irq_counter_reload - (vcounter - vtimer) * SCANLINE_DOT_LENGTH - (hcounter + 3);
+            }
+        break;
+
+        case CPU_NMITIMEN_FLAG_HTIMER_EN | CPU_NMITIMEN_FLAG_VTIMER_EN:
+            irq_counter_reload = SCANLINE_COUNT * SCANLINE_DOT_LENGTH;
+
+            if(vtimer >= vcounter)
+            {
+                cur_irq_counter = (vtimer - vcounter) * SCANLINE_DOT_LENGTH;
+            }
+            else
+            {
+                cur_irq_counter = irq_counter_reload - (vcounter - vtimer) * SCANLINE_DOT_LENGTH;
+            }
+
+            if(cur_irq_counter == 0)
+            {
+                if(htimer >= hcounter)
+                {
+                    cur_irq_counter = htimer - hcounter;
+                }
+                else
+                {
+                    cur_irq_counter = irq_counter_reload - (hcounter - htimer);
+                }
+            }
+            else
+            {
+                cur_irq_counter -= hcounter;
+                cur_irq_counter += htimer;
+//                if(htimer >= hcounter)
+//                {
+//                    cur_irq_counter -= hcounter;
+//                }
+//                else
+//                {
+//                    cur_irq_counter = irq_counter_reloavoid cgadd_write(uint32_t effective_address, uint8_t value);d - (hcounter - htimer);
+//                }
+            }
+
+        break;
+    }
+}
+
+void vhtime_write(uint32_t effective_address, uint8_t value)
+{
+    uint32_t reg = effective_address & 0xffff;
+    ram1_regs[reg] = value;
+    update_irq_counter();
+}
+
+
 uint8_t cgdata_read(uint32_t effective_address)
 {
     uint8_t value = 0;
@@ -1642,6 +2083,12 @@ uint8_t cgdata_read(uint32_t effective_address)
     return value;
 }
 
+uint8_t stat77_read(uint32_t effective_address)
+{
+    ppu1_last_bus_value = ram1_regs[PPU_REG_STAT77] | (ppu1_last_bus_value & 0x10);
+    return ppu1_last_bus_value;
+}
+
 void setinit_write(uint32_t effective_address, uint8_t value)
 {
     ram1_regs[PPU_REG_SETINI] = value;
@@ -1653,6 +2100,13 @@ void setinit_write(uint32_t effective_address, uint8_t value)
     {
         last_draw_scanline = 224;
     }
+}
+
+uint8_t mpy_read(uint32_t effective_address)
+{
+    uint32_t reg = (effective_address & 0xffff) - PPU_REG_MPYL;
+    ppu1_last_bus_value = ram1_regs[reg];
+    return ppu1_last_bus_value;
 }
 
 void wmdata_write(uint32_t effective_address, uint8_t value)

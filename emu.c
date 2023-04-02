@@ -54,6 +54,7 @@ extern uint8_t                  active_channels;
 extern uint16_t                 hcounter;
 extern uint16_t                 vcounter;
 extern uint32_t                 scanline_cycles;
+extern uint32_t                 halt;
 
 void set_execution_breakpoint(uint32_t effective_address)
 {
@@ -114,7 +115,10 @@ void blit_backbuffer()
 void init_emu()
 {
     window = SDL_CreateWindow("snes", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, window_width, window_height, 0);
-    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    renderer = SDL_CreateRenderer(window, -1, 0);
+    char *error = SDL_GetError();
+    printf("error: %s\n", error);
+    SDL_RenderSetVSync(renderer, 1);
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
     SDL_RenderPresent(renderer);
@@ -159,9 +163,9 @@ void reset_emu()
 uint32_t step_emu(int32_t step_cycles)
 {
     uint32_t status = 0;
-    uint32_t hdma_active = ram1_regs[CPU_REG_HDMAEN] && ((ram1_regs[CPU_REG_HVBJOY] & (CPU_HVBJOY_FLAG_HBLANK | CPU_HVBJOY_FLAG_VBLANK)) == CPU_HVBJOY_FLAG_HBLANK);
+//    uint32_t hdma_active = ram1_regs[CPU_REG_HDMAEN] && ((ram1_regs[CPU_REG_HVBJOY] & (CPU_HVBJOY_FLAG_HBLANK | CPU_HVBJOY_FLAG_VBLANK)) == CPU_HVBJOY_FLAG_HBLANK);
 
-    if((!ram1_regs[CPU_REG_MDMAEN] && !hdma_active))
+    if(!ram1_regs[CPU_REG_MDMAEN])
     {
         if(step_cpu(&step_cycles))
         {
@@ -191,6 +195,7 @@ uint32_t step_emu(int32_t step_cycles)
             frame = 0;
             accum_time /= 60.0;
             printf("frame time: %f ms\n", accum_time * 1000.0);
+            accum_time = 0.0;
         }
         blit_backbuffer();
     }
@@ -292,6 +297,12 @@ uint32_t step_emu(int32_t step_cycles)
                 }
                 break;
             }
+        }
+
+        if(halt)
+        {
+            halt = 0;
+            status |= EMU_STATUS_BREAKPOINT;
         }
     }
 

@@ -11,14 +11,14 @@ uint8_t         prev_hvbjoy;
 
 
 uint32_t (*hdma_states[])(int32_t cycle_count) = {
-    [HDMA_STATE_IDLE]               = hdma_idle_state,
-    [HDMA_STATE_INIT]               = hdma_init_state,
-    [HDMA_STATE_INIT_CHANNELS]      = hdma_init_channels_state,
-    [HDMA_STATE_INIT_CHANNEL]       = hdma_init_channel_state,
-    [HDMA_STATE_START]              = hdma_start_state,
-    [HDMA_STATE_START_CHANNELS]     = hdma_start_channels_state,
-    [HDMA_STATE_START_CHANNEL]      = hdma_start_channel_state,
-    [HDMA_STATE_TRANSFER]           = hdma_transfer_state
+    [HDMA_STATE_IDLE]                           = hdma_idle_state,
+    [HDMA_STATE_INIT]                           = hdma_init_state,
+    [HDMA_STATE_INIT_CHANNELS]                  = hdma_init_channels_state,
+    [HDMA_STATE_INIT_CHANNEL]                   = hdma_init_channel_state,
+    [HDMA_STATE_START]                          = hdma_start_state,
+    [HDMA_STATE_START_CHANNELS]                 = hdma_start_channels_state,
+    [HDMA_STATE_START_CHANNEL_TRANSFER]         = hdma_start_channel_transfer_state,
+    [HDMA_STATE_TRANSFER]                       = hdma_transfer_state
 };
 
 struct hdma_t   hdma_channels[8];
@@ -28,7 +28,9 @@ int32_t         hdma_cycle_count = 0;
 int32_t         init_channel_cycle_overhead = 0;
 
 uint32_t        active_hdma_channel_index = 0;
+uint32_t        enabled_hdma_channel_count = 0;
 int32_t         active_channel_cycle_overhead = 0;
+uint32_t        last_hdma_line = 0;
 // uint8_t         hdma_enabled_channels = 0;
 // uint32_t        init_channels = 0;
 
@@ -103,7 +105,7 @@ void step_dma(int32_t cycle_count)
                 if(active_channels & (1 << channel_index))
                 {
                     struct dma_t *dma = dma_channels + channel_index;
-                    /* TODO: this can be easily optimizied. The DMA will always read from/write to the
+                    /* TODO: this can be easily optimized. The DMA will always read from/write to the
                     same ppu register, so it's worth it to manually read from/write to the register here */
 
                     if(byte_count > dma->count)
@@ -338,8 +340,20 @@ uint32_t hdma_start_state(int32_t cycle_count)
     {
         active_hdma_channel_index = 0;
         hdma_cycle_count -= HDMA_START_CYCLE_OVERHEAD;
-        hdma_state = hdma_states[HDMA_STATE_START_CHANNELS];
-        hdma_state(0);
+
+        if(last_hdma_line != vcounter)
+        {
+            last_hdma_line = vcounter;
+
+            hdma_state = hdma_states[HDMA_STATE_START_CHANNELS];
+
+            for(uint32_t channel_index = 0; channel_index < 8; channel_index++)
+            {
+                hdma_channels[channel_index].cur_reg = 0;
+            }
+
+            hdma_state(0);
+        }
     }
 
     return 0;
@@ -350,16 +364,16 @@ uint32_t hdma_start_channels_state(int32_t cycle_count)
     hdma_cycle_count += cycle_count;
     for(; active_hdma_channel_index < 8; active_hdma_channel_index++)
     {
-        if(ram1_regs[CPU_REG_HDMAEN] & (1 << active_hdma_channel_index))
+        struct hdma_t *channel = hdma_channels + active_hdma_channel_index;
+
+        if(ram1_regs[CPU_REG_HDMAEN] & (1 << active_hdma_channel_index) && channel->cur_reg == 0)
         {
-            struct hdma_t *channel = hdma_channels + active_hdma_channel_index;
             uint32_t channel_reg_index = active_hdma_channel_index << 4;
             uint32_t reg = CPU_REG_DMA0_PARAM | channel_reg_index;
             uint32_t write_mode = ram1_regs[reg] & DMA_PARAM_WRITE_MODE_MASK;
 
             channel->indirect = (ram1_regs[reg] & HDMA_PARAM_INDIRECT) && 1;
             channel->last_reg = hdma_write_mode_write_counts[write_mode];
-            channel->cur_reg = 0;
 
             reg = CPU_REG_DMA0_BBUS_ADDR | channel_reg_index;
             uint16_t ppu_reg = DMA_BASE_REG | (uint16_t)ram1_regs[reg];
@@ -371,7 +385,7 @@ uint32_t hdma_start_channels_state(int32_t cycle_count)
 
             active_channel_cycle_overhead = hdma_addr_mode_start_cycle_overheads[channel->indirect];
 
-            hdma_state = hdma_states[HDMA_STATE_START_CHANNEL];
+            hdma_state = hdma_states[HDMA_STATE_START_CHANNEL_TRANSFER];
 
             if(!hdma_state(0))
             {
@@ -384,7 +398,7 @@ uint32_t hdma_start_channels_state(int32_t cycle_count)
     return 1;
 }
 
-uint32_t hdma_start_channel_state(int32_t cycle_count)
+uint32_t hdma_start_channel_transfer_state(int32_t cycle_count)
 {
     hdma_cycle_count += cycle_count;
 
@@ -397,8 +411,12 @@ uint32_t hdma_start_channel_state(int32_t cycle_count)
         uint32_t table_reg = CPU_REG_HDMA0_DIR_ADDRL | channel_reg_index;
         uint32_t line_count_reg = CPU_REG_HDMA0_CUR_LINE_COUNT | channel_reg_index;
 
+        struct hdma_t *channel = hdma_channels + active_hdma_channel_index;
+
+//        if(channel)
+
         hdma_state = hdma_states[HDMA_STATE_TRANSFER];
-        hdma_state(0);
+        uint32_t done_for_line = hdma_state(0);
 
         if(!(ram1_regs[line_count_reg] & 0x7f))
         {
@@ -578,6 +596,7 @@ void mdmaen_write(uint32_t effective_address, uint8_t value)
 void hdmaen_write(uint32_t effective_address, uint8_t value)
 {
     ram1_regs[CPU_REG_HDMAEN] = value;
+    last_hdma_line = 0xffff;
 }
 
 void dma_param(uint32_t effective_address, uint8_t value)
