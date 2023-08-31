@@ -116,8 +116,8 @@ void init_emu()
 {
     window = SDL_CreateWindow("snes", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, window_width, window_height, 0);
     renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
-    char *error = SDL_GetError();
-    printf("error: %s\n", error);
+    // char *error = SDL_GetError();
+    // printf("error: %s\n", error);
     SDL_RenderSetVSync(renderer, 1);
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
