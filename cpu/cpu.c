@@ -8,6 +8,7 @@
 #include <string.h>
 #include <assert.h>
 #include <stdint.h>
+#include <ctype.h>
 
 unsigned long step_count = 0;
 

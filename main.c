@@ -23,10 +23,10 @@ int main(int argc, char *argv[])
     uint32_t breakpoint_count = 0;
     uint32_t breakpoints[32];
 
-    if(SDL_Init(SDL_INIT_EVERYTHING) < 0)
+    if(SDL_Init(SDL_INIT_VIDEO) < 0)
     {
         printf("error: %s\n", SDL_GetError());
-        return -1;
+        exit(-1);
     }
 
     if(argc > 1)

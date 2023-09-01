@@ -18,3 +18,4 @@ snes
 *.blah
 *.swp
 *.cscope_file_list
+*.out

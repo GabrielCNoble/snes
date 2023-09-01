@@ -1,3 +1,6 @@
+C_FLAGS 	:= -std=c2x -g -masm=intel -msse3 -mavx
+CPP_FLAGS 	:= -std=c++11 -g -masm=intel -fno-threadsafe-statics -fno-exceptions
+
 SRC := $(wildcard *.c) $(wildcard */*.c)
 INC := $(wildcard *.s) $(wildcard *.h) $(wildcard */*.h)
 
@@ -8,13 +11,13 @@ LIB_INC := $(wildcard libs/*/include)
 OBJ := $(SRC:.c=.o) $(LIB_SRC:.cpp=.o)
 
 %.o: %.c
-	gcc -c $< $(foreach path, $(LIB_PATH), -I$(path)/include) -g -o $@
+	gcc -c $< $(foreach path, $(LIB_PATH), -I$(path)/include) $(C_FLAGS) -o $@
 
 %.o: %.cpp
-	gcc -c $< $(foreach path, $(LIB_PATH), -I$(path)/include) -g -o $@
+	gcc -c $< $(foreach path, $(LIB_PATH), -I$(path)/include) $(CPP_FLAGS) -o $@
 
 all: $(OBJ) $(INC)
-	gcc $(OBJ) -Wl,--copy-dt-needed-entries -g $(foreach path, $(LIB_PATH),-L$(path)/lib/linux) -lSDL2main -lSDL2 -lGLEW -lstdc++ -o snes.out
+	gcc $(OBJ) -Wl,--copy-dt-needed-entries -g $(foreach path, $(LIB_PATH),-L$(path)/lib/linux -Wl,-rpath=$(path)/lib/linux) -lSDL2main -lSDL2 -lGLEW -lstdc++ -o snes.out
 
 test:
 	echo $(OBJ)

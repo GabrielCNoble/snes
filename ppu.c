@@ -414,7 +414,7 @@ uint8_t chr8_dot(void *chr_base, uint32_t name, uint32_t dot_x, uint32_t dot_y)
 
 struct col_t pal256_col(void *pal_base, uint8_t pallete, uint8_t index)
 {
-    struct pal256_t *pal = (struct pal4_t *)pal_base;
+    struct pal256_t *pal = (struct pal256_t *)pal_base;
     uint16_t packed_color = pal[pallete].colors[index];
     struct col_t color;
     color.r = color_lut[(packed_color >> COL_DATA_R_SHIFT) & COL_DATA_MASK];

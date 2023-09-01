@@ -1,12 +1,15 @@
 #include <stdio.h>
 #include <string.h>
 #include "emu.h"
+#include "ui.h"
 #include "SDL2/SDL.h"
+#include "GL/glew.h"
 
 uint32_t breakpoint_count = 0;
 struct breakpoint_t breakpoints[512];
 
-SDL_Window *    window = NULL;
+SDL_Window *    emu_window = NULL;
+SDL_GLContext   emu_context;
 SDL_Renderer *  renderer = NULL;
 SDL_Texture *   backbuffer_textures[2] = {};
 uint32_t        run_window_thread = 1;
@@ -114,30 +117,43 @@ void blit_backbuffer()
 
 void init_emu()
 {
-    window = SDL_CreateWindow("snes", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, window_width, window_height, 0);
-    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
-    // char *error = SDL_GetError();
-    // printf("error: %s\n", error);
-    SDL_RenderSetVSync(renderer, 1);
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-    SDL_RenderClear(renderer);
-    SDL_RenderPresent(renderer);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+
+    emu_window = SDL_CreateWindow("snes", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, window_width, window_height, SDL_WINDOW_OPENGL);
+    emu_context = SDL_GL_CreateContext(emu_window);
+    SDL_GL_MakeCurrent(emu_window, emu_context);
+    glewExperimental = GL_TRUE;
+    GLenum status = glewInit();
+    if(status != GLEW_OK)
+    {
+        printf("couldn't initialize glew (%d)\n%s\n", status, glewGetErrorString(status));
+        exit(-1);
+    }
+
+    // renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+    // SDL_RenderSetVSync(renderer, 1);
+    // SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    // SDL_RenderClear(renderer);
+    // SDL_RenderPresent(renderer);
 
     framebuffers[0] = calloc(FRAMEBUFFER_WIDTH * FRAMEBUFFER_HEIGHT, sizeof(struct dot_t));
     framebuffers[1] = calloc(FRAMEBUFFER_WIDTH * FRAMEBUFFER_HEIGHT, sizeof(struct dot_t));
 
     framebuffer = framebuffers[cur_framebuffer];
 
-    backbuffer_textures[0] = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, FRAMEBUFFER_WIDTH, FRAMEBUFFER_HEIGHT);
-    backbuffer_textures[1] = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, FRAMEBUFFER_WIDTH, FRAMEBUFFER_HEIGHT);
-    SDL_SetTextureScaleMode(backbuffer_textures[0], SDL_ScaleModeLinear);
-    SDL_SetTextureScaleMode(backbuffer_textures[1], SDL_ScaleModeLinear);
-    SDL_UpdateTexture(backbuffer_textures[cur_framebuffer], NULL, framebuffer, sizeof(struct dot_t) * FRAMEBUFFER_WIDTH);
-    SDL_RenderCopy(renderer, backbuffer_textures[cur_framebuffer], NULL, NULL);
-    SDL_RenderPresent(renderer);
+    // backbuffer_textures[0] = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, FRAMEBUFFER_WIDTH, FRAMEBUFFER_HEIGHT);
+    // backbuffer_textures[1] = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, FRAMEBUFFER_WIDTH, FRAMEBUFFER_HEIGHT);
+    // SDL_SetTextureScaleMode(backbuffer_textures[0], SDL_ScaleModeLinear);
+    // SDL_SetTextureScaleMode(backbuffer_textures[1], SDL_ScaleModeLinear);
+    // SDL_UpdateTexture(backbuffer_textures[cur_framebuffer], NULL, framebuffer, sizeof(struct dot_t) * FRAMEBUFFER_WIDTH);
+    // SDL_RenderCopy(renderer, backbuffer_textures[cur_framebuffer], NULL, NULL);
+    // SDL_RenderPresent(renderer);
 
     counter_frequency = SDL_GetPerformanceFrequency();
     prev_count = SDL_GetPerformanceCounter();
+    ui_Init();
     init_apu();
     init_ppu();
     init_mem();
