@@ -175,16 +175,6 @@ void ui_Shutdown()
 void ui_MouseMoveEvent(float mouse_x, float mouse_y)
 {
     ImGuiIO *io = igGetIO();
-    io->DisplaySize.x = emu_window_width;
-    io->DisplaySize.y = emu_window_height;
-
-    ui_model_view_projection_matrix[0] = 2.0f / (float)emu_window_width;
-    ui_model_view_projection_matrix[5] = -2.0f / (float)emu_window_height;
-    ui_model_view_projection_matrix[12] = -1.0f;
-    ui_model_view_projection_matrix[13] = 1.0f;
-    // ui_model_view_projection_matrix[10] = 1.0f;
-    // ui_model_view_projection_matrix[15] = 1.0f;
-
     ImGuiIO_AddMousePosEvent(io, mouse_x, mouse_y);
 }
 
@@ -196,6 +186,15 @@ void ui_MouseClickEvent(uint32_t button, uint32_t down)
 
 void ui_Begin()
 {
+    io->DisplaySize.x = emu_window_width;
+    io->DisplaySize.y = emu_window_height;
+
+    ui_model_view_projection_matrix[0] = 2.0f / (float)emu_window_width;
+    ui_model_view_projection_matrix[5] = -2.0f / (float)emu_window_height;
+    ui_model_view_projection_matrix[12] = -1.0f;
+    ui_model_view_projection_matrix[13] = 1.0f;
+    // ui_model_view_projection_matrix[10] = 1.0f;
+    // ui_model_view_projection_matrix[15] = 1.0f;
     igNewFrame();
 }
 
