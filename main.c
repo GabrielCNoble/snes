@@ -11,7 +11,22 @@ extern uint32_t         interactive_mode;
 extern uint32_t         animated_mode;
 extern FILE *           trace_file;
 extern GLuint           emu_framebuffer_texture;
+extern uint32_t         emu_window_width;
+extern uint32_t         emu_window_height;
 extern uint8_t *        vram;
+
+
+struct viewer_tile_t
+{
+    struct dot_t pixels[64];
+};
+
+
+GLuint                  m_tile_viewer_texture;
+struct dot_t *          m_tile_viewer_dots;
+// struct viewer_tile_t *  m_tile_viewer_tiles;
+#define                 M_TILE_VIEWER_TILES_PER_ROW 8
+#define                 M_TILE_VIEWER_MAX_TILE_ROWS 256
 
 
 int main(int argc, char *argv[])
@@ -39,11 +54,34 @@ int main(int argc, char *argv[])
         printf("couldn't load rom\n");
     }
 
+    // m_tile_viewer_tiles = calloc(M_TILE_VIEWER_TILES_PER_ROW * M_TILE_VIEWER_MAX_TILE_ROWS, sizeof(struct viewer_tile_t));
+
+    // for(uint32_t tile_index = 0; tile_index < M_TILE_VIEWER_TILES_PER_ROW * M_TILE_VIEWER_MAX_TILE_ROWS; tile_index++)
+    // {
+    //     for(uint32_t pixel_index = 0; pixel_index < 64; pixel_index++)
+    //     {
+    //         m_tile_viewer_tiles[tile_index].pixels[pixel_index].a = 255;
+    //     }
+    // }
+
+    m_tile_viewer_dots = calloc(8 * 8 * M_TILE_VIEWER_TILES_PER_ROW * M_TILE_VIEWER_MAX_TILE_ROWS, sizeof(struct dot_t));
+
+    glGenTextures(1, &m_tile_viewer_texture);
+    glBindTexture(GL_TEXTURE_2D, m_tile_viewer_texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 8 * M_TILE_VIEWER_TILES_PER_ROW , 8 * M_TILE_VIEWER_MAX_TILE_ROWS, 0, GL_RGBA, GL_UNSIGNED_BYTE, m_tile_viewer_dots);
+
     reset_emu();
 
     uint32_t run_emulation = 0;
-    uint32_t vram_offset = 0;
-
+    uint32_t tile_bits_per_pixel = 1;
+    uint32_t tile_viewer_first_row = 0;
+    uint32_t tile_viewer_last_row = 0;
     while(!in_ReadInput())
     {
         ui_Begin();
@@ -72,46 +110,245 @@ int main(int argc, char *argv[])
             while(!(step_emu(4) & EMU_STATUS_END_OF_FRAME));
         }
 
-        vram_offset = 0;
-        if(igBegin("vram", NULL, ImGuiWindowFlags_NoScrollbar))
-        {
-            if(igBeginTabBar("Views", 0))
-            {
-                if(igBeginTabItem("Raw", NULL, 0))
-                {
-                    if(igBeginTable("##vram", 16, ImGuiTableFlags_ScrollY, (ImVec2){0, 0}, 0.0))
-                    {
-                        for(uint32_t row_index = 0; row_index < 256; row_index++)
-                        {
-                            igTableNextRow(0, 0);
-                            for(uint32_t column_index = 0; column_index < 16; column_index++)
-                            {
-                                igTableNextColumn();
-                                igText("%02x", vram[column_index + vram_offset]);
-                            }
 
-                            vram_offset += 16;
-                        }
-                        igEndTable();
+        igSetNextWindowSize((ImVec2){emu_window_width, emu_window_height - 18}, 0);
+        igSetNextWindowPos((ImVec2){0, 18}, 0, (ImVec2){0, 0});
+        igBegin("##main_dockspace_indow", NULL, ImGuiWindowFlags_NoDecoration);
+        {
+            ImGuiID main_dockspace = igGetID_Str("main_dockspace");
+            ImVec2 dockspace_size;
+            igGetContentRegionAvail(&dockspace_size);
+
+            if(igDockBuilderGetNode(main_dockspace) == NULL)
+            {
+                igDockBuilderAddNode(main_dockspace, ImGuiDockNodeFlags_DockSpace | ImGuiWindowFlags_NoBackground);
+                igDockBuilderSetNodeSize(main_dockspace, dockspace_size);
+
+                ImGuiID left_node;
+                ImGuiID right_node;
+                ImGuiID bottom_node;
+
+                igDockBuilderSplitNode(main_dockspace, ImGuiDir_Right, 0.4f, &right_node, &left_node);
+                igDockBuilderSplitNode(left_node, ImGuiDir_Down, 0.3f, &bottom_node, &left_node);
+                igDockBuilderDockWindow("##framebuffer", left_node);
+                igDockBuilderDockWindow("##data_viewer", right_node);
+                igDockBuilderDockWindow("##trace", bottom_node);
+                igDockBuilderFinish(main_dockspace);
+            }
+
+            igDockSpace(main_dockspace, dockspace_size, ImGuiDockNodeFlags_AutoHideTabBar | ImGuiDockNodeFlags_NoTabBar, NULL);
+
+            if(igBegin("##data_viewer", NULL, ImGuiWindowFlags_NoScrollbar))
+            {
+                ImVec2 window_size;
+                igGetContentRegionAvail(&window_size);
+                if(igBeginTabBar("Views", 0))
+                {
+                    if(igBeginTabItem("CPU", NULL, 0))
+                    {
+                        igEndTabItem();
                     }
 
-                    igEndTabItem();
-                }
-                if(igBeginTabItem("Graphics", NULL, 0))
-                {
-                    igEndTabItem();
-                }
-                igEndTabBar();
-            }
-        }
-        igEnd();
+                    if(igBeginTabItem("VRAM (Raw)", NULL, 0))
+                    {
+                        if(igBeginTable("##vram_raw", 17, ImGuiTableFlags_ScrollY, (ImVec2){0, 0}, 0.0))
+                        {
+                            ImGuiListClipper clipper;
+                            ImGuiListClipper_ImGuiListClipper(&clipper);
+                            ImGuiListClipper_Begin(&clipper, 17 * (0xffff / 16), 1.0f);
+                            while(ImGuiListClipper_Step(&clipper))
+                            {
+                                uint32_t first_row = clipper.DisplayStart / 17;
+                                uint32_t last_row = clipper.DisplayEnd / 17;
 
-        ImVec2 window_size = (ImVec2){FRAMEBUFFER_WIDTH * 2, FRAMEBUFFER_HEIGHT * 2};
-        igSetNextWindowSize(window_size, 0);
-        if(igBegin("framebuffer", NULL, ImGuiWindowFlags_NoScrollbar))
-        {
-            igImage((ImTextureID)(uintptr_t)emu_framebuffer_texture, window_size, (ImVec2){0, 0}, (ImVec2){1, 1}, (ImVec4){1, 1, 1, 1}, (ImVec4){0, 0, 0, 0});
+                                uint32_t vram_offset = first_row * 16;
+                                igTableSetupColumn("Address", ImGuiTableColumnFlags_WidthFixed, 48.0f, 0);
+                                for(uint32_t row_index = first_row; row_index < last_row; row_index++)
+                                {
+                                    igTableNextRow(0, 0);
+                                    igTableNextColumn();
+                                    igText("0x%04x: ", vram_offset);
+
+                                    for(uint32_t column_index = 0; column_index < 16; column_index++)
+                                    {
+                                        igTableNextColumn();
+                                        igText("%02x", vram[column_index + vram_offset]);
+                                    }
+
+                                    vram_offset += 16;
+                                }
+                            }
+                            igEndTable();
+                        }
+
+                        igEndTabItem();
+                    }
+                    if(igBeginTabItem("VRAM (Tiles)", NULL, 0))
+                    {
+                        if(igRadioButton_Bool("1 bpp", tile_bits_per_pixel == 1))
+                        {
+                            tile_bits_per_pixel = 1;
+                        }
+                        igSameLine(0.0f, -1.0f);
+                        if(igRadioButton_Bool("2 bpp", tile_bits_per_pixel == 2))
+                        {
+                            tile_bits_per_pixel = 2;
+                        }
+                        igSameLine(0.0f, -1.0f);
+                        if(igRadioButton_Bool("4 bpp", tile_bits_per_pixel == 4))
+                        {
+                            tile_bits_per_pixel = 4;
+                        }
+
+                        igPushStyleVar_Vec2(ImGuiStyleVar_WindowPadding, (ImVec2){0, 0});
+                        igPushStyleVar_Vec2(ImGuiStyleVar_ItemSpacing, (ImVec2){0, 0});
+                        if(igBeginTable("##vram_tiles", 1, ImGuiTableFlags_ScrollY | ImGuiTableFlags_NoPadInnerX, (ImVec2){0, 0}, 0.0))
+                        {
+                            uint32_t tile_count = 0x10000 / (8 * tile_bits_per_pixel);
+                            ImGuiListClipper clipper;
+                            ImGuiListClipper_ImGuiListClipper(&clipper);
+                            ImGuiListClipper_Begin(&clipper, tile_count / M_TILE_VIEWER_TILES_PER_ROW, -1.0f);
+                            // if(ImGuiListClipper_Step(&clipper))
+                            // {
+
+                            
+                            uint32_t last_row = 0;
+                            uint32_t row_count = 0;
+
+                            while(ImGuiListClipper_Step(&clipper))
+                            {   
+                                last_row = clipper.DisplayEnd;
+                                row_count = clipper.ItemsCount;
+
+                                for(uint32_t row_index = clipper.DisplayStart; row_index < clipper.DisplayEnd; row_index++)
+                                {
+                                    uint32_t vram_offset = (row_index * tile_bits_per_pixel * 8) * M_TILE_VIEWER_TILES_PER_ROW;
+                                    igTableNextRow(0, 0);
+                                    igTableNextColumn();
+                                    igText("0x%04x: ", vram_offset);
+                                    igSameLine(0.0f, -1.0f);
+
+                                    ImVec2 uv0;
+                                    ImVec2 uv1;
+                                    uv0.y = (float)(row_index % M_TILE_VIEWER_MAX_TILE_ROWS) / (float)M_TILE_VIEWER_MAX_TILE_ROWS;
+                                    uv1.y = uv0.y + 8.0f / (float)(M_TILE_VIEWER_MAX_TILE_ROWS * 8);
+                                    for(uint32_t column_index = 0; column_index < M_TILE_VIEWER_TILES_PER_ROW; column_index++)
+                                    {
+                                        uv0.x = (float)(column_index * 8) / (float)(M_TILE_VIEWER_TILES_PER_ROW * 8);
+                                        uv1.x = uv0.x + 8.0f / (float)(M_TILE_VIEWER_TILES_PER_ROW * 8);
+                                        igImage((ImTextureID)(uintptr_t)m_tile_viewer_texture, (ImVec2){32, 32}, uv0, uv1, (ImVec4){1, 1, 1, 1}, (ImVec4){0, 0, 0, 0});
+                                        igSameLine(0.0f, -1.0f);
+                                    }
+                                }
+                            }
+
+                            uint32_t update_start = 0;
+                            uint32_t update_end = 0;
+
+                            if(tile_viewer_last_row != last_row)
+                            {
+                                if(tile_viewer_last_row < last_row)
+                                {
+                                    update_start = tile_viewer_last_row;
+                                    update_end = last_row;
+                                }
+                                else
+                                {
+                                    update_start = last_row - row_count;
+                                    update_end = tile_viewer_last_row - row_count;
+                                }
+                            }
+
+                            tile_viewer_last_row = last_row;
+
+                            if(update_start != update_end)
+                            {
+                                uint32_t changed_row_count = update_end - update_start;
+                                // printf("update %d rows\n", changed_row_count);
+                                for(uint32_t row_index = 0; row_index < changed_row_count; row_index++)
+                                {
+                                    uint32_t vram_offset = (row_index * tile_bits_per_pixel * 8) * M_TILE_VIEWER_TILES_PER_ROW;
+                                    struct dot_t *first_dot = m_tile_viewer_dots + row_index * M_TILE_VIEWER_TILES_PER_ROW * 8 * 8;
+                                    for(uint32_t dot_index = 0; dot_index < 8 * 8 * M_TILE_VIEWER_TILES_PER_ROW; dot_index++)
+                                    {
+                                        struct dot_t *dot = first_dot + dot_index;
+                                        // dot->r = rand() % 255;
+                                        // dot->g = rand() % 255;
+                                        // dot->b = rand() % 255;
+
+                                        switch(tile_bits_per_pixel)
+                                        {
+                                            case 1:
+                                            {
+                                                
+                                            }
+                                            break;
+
+                                            case 2:
+
+                                            break;
+
+                                            case 4:
+
+                                            break;
+                                        }
+
+                                        dot->a = 255;
+                                    }
+                                }
+
+                                update_start %= M_TILE_VIEWER_MAX_TILE_ROWS;
+                                update_end %= M_TILE_VIEWER_MAX_TILE_ROWS;
+
+                                uint32_t copy_size = changed_row_count * 8;
+                                glBindTexture(GL_TEXTURE_2D, m_tile_viewer_texture);
+
+                                if(update_end < update_start)
+                                {
+                                    uint32_t sub_copy_size = update_end * 8;
+                                    copy_size -= sub_copy_size;
+                                    struct dot_t *first_dot = m_tile_viewer_dots + copy_size * 8 * M_TILE_VIEWER_TILES_PER_ROW;
+                                    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 8 * M_TILE_VIEWER_TILES_PER_ROW, sub_copy_size, GL_RGBA, GL_UNSIGNED_BYTE, first_dot);    
+                                }
+
+                                uint32_t copy_start = update_start * 8;
+                                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, copy_start, 8 * M_TILE_VIEWER_TILES_PER_ROW, copy_size, GL_RGBA, GL_UNSIGNED_BYTE, m_tile_viewer_dots);
+                            }
+
+                            igEndTable();
+                        }
+                        igPopStyleVar(2);
+
+                        igEndTabItem();
+                    }
+                    igEndTabBar();
+                }
+            }
+            igEnd();
+
+            // ImVec2 window_size = (ImVec2){FRAMEBUFFER_WIDTH * 2, FRAMEBUFFER_HEIGHT * 2};
+            // igSetNextWindowSize(window_size, 0);
+            if(igBegin("##framebuffer", NULL, ImGuiWindowFlags_NoScrollbar))
+            {
+                ImVec2 window_size;
+                igGetContentRegionAvail(&window_size);
+                igImage((ImTextureID)(uintptr_t)emu_framebuffer_texture, window_size, (ImVec2){0, 0}, (ImVec2){1, 1}, (ImVec4){1, 1, 1, 1}, (ImVec4){0, 0, 0, 0});
+            }
+            igEnd();
+
+            if(igBegin("##trace", NULL, 0))
+            {
+
+            }
+            igEnd();
+
+
         }
+
+
+        
+
+
         igEnd();
         
         ui_End();

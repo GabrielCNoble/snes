@@ -3632,7 +3632,7 @@ CIMGUI_API float* ImGuiStorage_GetFloatRef(ImGuiStorage* self,ImGuiID key,float 
 CIMGUI_API void** ImGuiStorage_GetVoidPtrRef(ImGuiStorage* self,ImGuiID key,void* default_val);
 CIMGUI_API void ImGuiStorage_SetAllInt(ImGuiStorage* self,int val);
 CIMGUI_API void ImGuiStorage_BuildSortByKey(ImGuiStorage* self);
-CIMGUI_API ImGuiListClipper* ImGuiListClipper_ImGuiListClipper(void);
+CIMGUI_API ImGuiListClipper* ImGuiListClipper_ImGuiListClipper(ImGuiListClipper *self);
 CIMGUI_API void ImGuiListClipper_destroy(ImGuiListClipper* self);
 CIMGUI_API void ImGuiListClipper_Begin(ImGuiListClipper* self,int items_count,float items_height);
 CIMGUI_API void ImGuiListClipper_End(ImGuiListClipper* self);

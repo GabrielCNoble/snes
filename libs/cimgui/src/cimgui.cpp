@@ -1985,9 +1985,10 @@ CIMGUI_API void ImGuiStorage_BuildSortByKey(ImGuiStorage* self)
 {
     return self->BuildSortByKey();
 }
-CIMGUI_API ImGuiListClipper* ImGuiListClipper_ImGuiListClipper(void)
+CIMGUI_API ImGuiListClipper* ImGuiListClipper_ImGuiListClipper(ImGuiListClipper* self)
 {
-    return IM_NEW(ImGuiListClipper)();
+    // return IM_NEW(ImGuiListClipper)();
+    return IM_PLACEMENT_NEW(self) ImGuiListClipper;
 }
 CIMGUI_API void ImGuiListClipper_destroy(ImGuiListClipper* self)
 {

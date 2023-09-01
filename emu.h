@@ -67,6 +67,13 @@ enum EMU_STATUS
     EMU_STATUS_END_OF_FRAME         = 1 << 2,
 };
 
+enum EMU_STATES
+{
+    EMU_STATE_HALT = 0,
+    EMU_STATE_RUN,
+    EMU_STATE_STEP,
+};
+
 struct breakpoint_t
 {
     uint32_t type;

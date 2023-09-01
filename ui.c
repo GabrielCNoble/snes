@@ -186,6 +186,7 @@ void ui_MouseClickEvent(uint32_t button, uint32_t down)
 
 void ui_Begin()
 {
+    ImGuiIO *io = igGetIO();
     io->DisplaySize.x = emu_window_width;
     io->DisplaySize.y = emu_window_height;
 
@@ -196,6 +197,7 @@ void ui_Begin()
     // ui_model_view_projection_matrix[10] = 1.0f;
     // ui_model_view_projection_matrix[15] = 1.0f;
     igNewFrame();
+    // igShowDemoWindow(NULL);
 }
 
 void ui_End()
@@ -208,6 +210,7 @@ void ui_End()
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_CULL_FACE);
     glEnable(GL_BLEND);
+    glEnable(GL_SCISSOR_TEST);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     glUseProgram(ui_shader);
@@ -245,6 +248,7 @@ void ui_End()
                 cur_texture_id = draw_cmd->TextureId;
                 glUniform1i(ui_shader_texture, 0);
             }
+            glScissor(draw_cmd->ClipRect.x, (float)emu_window_height - draw_cmd->ClipRect.w, draw_cmd->ClipRect.z - draw_cmd->ClipRect.x, draw_cmd->ClipRect.w - draw_cmd->ClipRect.y);
             glDrawElements(GL_TRIANGLES, draw_cmd->ElemCount, GL_UNSIGNED_INT, (void *)(sizeof(uint32_t) * index_offset));
             index_offset += draw_cmd->ElemCount;
         }
