@@ -10,22 +10,26 @@ struct breakpoint_t breakpoints[512];
 
 SDL_Window *    emu_window = NULL;
 SDL_GLContext   emu_context;
-SDL_Renderer *  renderer = NULL;
-SDL_Texture *   backbuffer_textures[2] = {};
-uint32_t        run_window_thread = 1;
-uint32_t        blit_backbuffer_texture = 0;
+uint32_t        emu_window_width = 1360;
+uint32_t        emu_window_height = 700;
+GLuint          emu_framebuffer_texture = 0;
+struct dot_t *  emu_framebuffer;
+
+// SDL_Renderer *  renderer = NULL;
+// SDL_Texture *   backbuffer_textures[2] = {};
+// uint32_t        run_window_thread = 1;
+// uint32_t        blit_backbuffer_texture = 0;
 uint32_t        get_input = 0;
 uint64_t        counter_frequency;
 uint64_t        prev_count = 0;
-SDL_atomic_t    blit_semaphore = {0};
+// SDL_atomic_t    blit_semaphore = {0};
 uint64_t        master_cycles = 0;
 //  uint32_t        mem_refresh_state = 0;
 //uint32_t        scanline_cycles = 0;
 // int32_t         mem_refresh_cyles = 0;
 // int32_t         mem_refresh_start = 538;
 
-uint32_t    window_width = 800;
-uint32_t    window_height = 600;
+
 uint32_t    interactive_mode = 0;
 uint32_t    animated_mode = 0;
 FILE *      trace_file;
@@ -49,9 +53,10 @@ extern uint8_t *                ram1_regs;
 extern uint8_t *                ram2;
 extern struct mem_write_t *     reg_writes;
 extern struct mem_read_t *      reg_reads;
-extern struct dot_t *           framebuffer;
+// extern struct dot_t *           framebuffer;
 uint32_t                        cur_framebuffer = 0;
-struct dot_t *                  framebuffers[2];
+// struct dot_t *                  framebuffers[2];
+// struct dot_t *                  framebuffer;
 extern uint32_t                 cpu_cycle_count;
 extern uint8_t                  active_channels;
 extern uint16_t                 hcounter;
@@ -108,11 +113,8 @@ void clear_breakpoints()
 
 void blit_backbuffer()
 {
-    SDL_UpdateTexture(backbuffer_textures[cur_framebuffer], NULL, framebuffer, sizeof(struct dot_t) * FRAMEBUFFER_WIDTH);
-    SDL_RenderCopy(renderer, backbuffer_textures[cur_framebuffer], NULL, NULL);
-    SDL_RenderPresent(renderer);
-    cur_framebuffer ^= 1;
-    framebuffer = framebuffers[cur_framebuffer];
+    glBindTexture(GL_TEXTURE_2D, emu_framebuffer_texture);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, FRAMEBUFFER_WIDTH, FRAMEBUFFER_HEIGHT, GL_RGBA, GL_UNSIGNED_BYTE, emu_framebuffer);
 }
 
 void init_emu()
@@ -121,9 +123,10 @@ void init_emu()
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 
-    emu_window = SDL_CreateWindow("snes", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, window_width, window_height, SDL_WINDOW_OPENGL);
+    emu_window = SDL_CreateWindow("snes", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, emu_window_width, emu_window_height, SDL_WINDOW_OPENGL);
     emu_context = SDL_GL_CreateContext(emu_window);
     SDL_GL_MakeCurrent(emu_window, emu_context);
+    SDL_GL_SetSwapInterval(1);
     glewExperimental = GL_TRUE;
     GLenum status = glewInit();
     if(status != GLEW_OK)
@@ -132,24 +135,17 @@ void init_emu()
         exit(-1);
     }
 
-    // renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
-    // SDL_RenderSetVSync(renderer, 1);
-    // SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-    // SDL_RenderClear(renderer);
-    // SDL_RenderPresent(renderer);
+    glGenTextures(1, &emu_framebuffer_texture);
+    glBindTexture(GL_TEXTURE_2D, emu_framebuffer_texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, FRAMEBUFFER_WIDTH, FRAMEBUFFER_HEIGHT, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 
-    framebuffers[0] = calloc(FRAMEBUFFER_WIDTH * FRAMEBUFFER_HEIGHT, sizeof(struct dot_t));
-    framebuffers[1] = calloc(FRAMEBUFFER_WIDTH * FRAMEBUFFER_HEIGHT, sizeof(struct dot_t));
-
-    framebuffer = framebuffers[cur_framebuffer];
-
-    // backbuffer_textures[0] = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, FRAMEBUFFER_WIDTH, FRAMEBUFFER_HEIGHT);
-    // backbuffer_textures[1] = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, FRAMEBUFFER_WIDTH, FRAMEBUFFER_HEIGHT);
-    // SDL_SetTextureScaleMode(backbuffer_textures[0], SDL_ScaleModeLinear);
-    // SDL_SetTextureScaleMode(backbuffer_textures[1], SDL_ScaleModeLinear);
-    // SDL_UpdateTexture(backbuffer_textures[cur_framebuffer], NULL, framebuffer, sizeof(struct dot_t) * FRAMEBUFFER_WIDTH);
-    // SDL_RenderCopy(renderer, backbuffer_textures[cur_framebuffer], NULL, NULL);
-    // SDL_RenderPresent(renderer);
+    emu_framebuffer = calloc(FRAMEBUFFER_WIDTH * FRAMEBUFFER_HEIGHT, sizeof(struct dot_t));
 
     counter_frequency = SDL_GetPerformanceFrequency();
     prev_count = SDL_GetPerformanceCounter();
@@ -162,9 +158,9 @@ void init_emu()
 
 void shutdown_emu()
 {
-    run_window_thread = 0;
-    free(framebuffers[0]);
-    free(framebuffers[1]);
+    free(emu_framebuffer);
+    // free(framebuffers[1]);
+    ui_Shutdown();
     shutdown_ppu();
     shutdown_mem();
 }
@@ -198,7 +194,7 @@ uint32_t step_emu(int32_t step_cycles)
     step_apu(step_cycles);
     step_ctrl(step_cycles);
 
-    if(step_ppu(step_cycles) || animated_mode)
+    if(step_ppu(step_cycles))
     {
         frame++;
         uint64_t cur_count = SDL_GetPerformanceCounter();
@@ -213,7 +209,9 @@ uint32_t step_emu(int32_t step_cycles)
             printf("frame time: %f ms\n", accum_time * 1000.0);
             accum_time = 0.0;
         }
+
         blit_backbuffer();
+        status |= EMU_STATUS_END_OF_FRAME;
     }
 
     if(scanline_cycles >= 538 && scanline_cycles < 578)

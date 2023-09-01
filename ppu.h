@@ -174,10 +174,10 @@ union oam_t
 //#define PPU_OAM_SIZE 0x420
 struct dot_t
 {
-    uint8_t a;
-    uint8_t b;
-    uint8_t g;
     uint8_t r;
+    uint8_t g;
+    uint8_t b;
+    uint8_t a;
 };
 
 struct bg_offset_t

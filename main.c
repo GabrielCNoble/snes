@@ -7,9 +7,12 @@
 #define SDL_MAIN_HANDLED
 #include "SDL2/SDL.h"
 
-extern uint32_t interactive_mode;
-extern uint32_t animated_mode;
-extern FILE *trace_file;
+extern uint32_t         interactive_mode;
+extern uint32_t         animated_mode;
+extern FILE *           trace_file;
+extern GLuint           emu_framebuffer_texture;
+extern uint8_t *        vram;
+
 
 int main(int argc, char *argv[])
 {
@@ -23,12 +26,98 @@ int main(int argc, char *argv[])
     uint32_t breakpoint_count = 0;
     uint32_t breakpoints[32];
 
-    if(SDL_Init(SDL_INIT_VIDEO) < 0)
+    if(SDL_Init(SDL_INIT_EVERYTHING) < 0)
     {
         printf("error: %s\n", SDL_GetError());
         exit(-1);
     }
 
+    init_emu();
+
+    if(!load_cart("./rom/super_metroid_ntsc.sfc"))
+    {
+        printf("couldn't load rom\n");
+    }
+
+    reset_emu();
+
+    uint32_t run_emulation = 0;
+    uint32_t vram_offset = 0;
+
+    while(!in_ReadInput())
+    {
+        ui_Begin();
+
+        if(igBeginMainMenuBar())
+        {
+            if(igBeginMenu("Emulation", 1))
+            {
+                if(igMenuItem_Bool("Run", NULL, 0, 1))
+                {
+                    run_emulation = 1;
+                }
+
+                if(igMenuItem_Bool("Halt", NULL, 0, 1))
+                {
+                    run_emulation = 0;
+                }
+                igEndMenu();
+            }
+
+            igEndMainMenuBar();   
+        }
+
+        if(run_emulation)
+        {
+            while(!(step_emu(4) & EMU_STATUS_END_OF_FRAME));
+        }
+
+        vram_offset = 0;
+        if(igBegin("vram", NULL, ImGuiWindowFlags_NoScrollbar))
+        {
+            if(igBeginTabBar("Views", 0))
+            {
+                if(igBeginTabItem("Raw", NULL, 0))
+                {
+                    if(igBeginTable("##vram", 16, ImGuiTableFlags_ScrollY, (ImVec2){0, 0}, 0.0))
+                    {
+                        for(uint32_t row_index = 0; row_index < 256; row_index++)
+                        {
+                            igTableNextRow(0, 0);
+                            for(uint32_t column_index = 0; column_index < 16; column_index++)
+                            {
+                                igTableNextColumn();
+                                igText("%02x", vram[column_index + vram_offset]);
+                            }
+
+                            vram_offset += 16;
+                        }
+                        igEndTable();
+                    }
+
+                    igEndTabItem();
+                }
+                if(igBeginTabItem("Graphics", NULL, 0))
+                {
+                    igEndTabItem();
+                }
+                igEndTabBar();
+            }
+        }
+        igEnd();
+
+        ImVec2 window_size = (ImVec2){FRAMEBUFFER_WIDTH * 2, FRAMEBUFFER_HEIGHT * 2};
+        igSetNextWindowSize(window_size, 0);
+        if(igBegin("framebuffer", NULL, ImGuiWindowFlags_NoScrollbar))
+        {
+            igImage((ImTextureID)(uintptr_t)emu_framebuffer_texture, window_size, (ImVec2){0, 0}, (ImVec2){1, 1}, (ImVec4){1, 1, 1, 1}, (ImVec4){0, 0, 0, 0});
+        }
+        igEnd();
+        
+        ui_End();
+    }
+
+/*
     if(argc > 1)
     {
         init_emu();
@@ -222,6 +311,10 @@ int main(int argc, char *argv[])
 
         shutdown_emu();
     }
+
+    */
+
+    shutdown_emu();
 
     return 0;
 }

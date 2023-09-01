@@ -63,7 +63,8 @@ uint32_t irq_counter_reload = 0;
 uint32_t last_draw_scanline = 0;
 uint32_t wmdata_address = 0;
 
-struct dot_t *framebuffer;
+// struct dot_t *framebuffer;
+extern struct dot_t *emu_framebuffer;
 
 
 uint8_t color_lut[] = {
@@ -1035,7 +1036,7 @@ uint32_t step_ppu(int32_t cycle_count)
                 }
 
                 struct mode0_cgram_t *mode0_cgram = (struct mode0_cgram_t *)cgram;
-                struct dot_t *main_dot = framebuffer + dot_y * FRAMEBUFFER_WIDTH + dot_x;
+                struct dot_t *main_dot = emu_framebuffer + dot_y * FRAMEBUFFER_WIDTH + dot_x;
                 struct dot_t sub_dot = {};
 
                 *main_dot = cur_backdrop;

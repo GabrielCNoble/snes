@@ -64,6 +64,7 @@ enum EMU_STATUS
 {
     EMU_STATUS_END_OF_INSTRUCTION   = 1,
     EMU_STATUS_BREAKPOINT           = 1 << 1,
+    EMU_STATUS_END_OF_FRAME         = 1 << 2,
 };
 
 struct breakpoint_t

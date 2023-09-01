@@ -3,16 +3,21 @@
 #include "cpu/cpu.h"
 #include "ppu.h"
 #include "SDL2/SDL.h"
+#include "ui.h"
 
 uint32_t controller_read = 0;
 uint32_t button_index = 0;
 extern uint8_t *ram1_regs;
-extern int32_t vram_offset;
+// extern int32_t vram_offset;
 
-SDL_GameController *game_controller;
+// SDL_GameController *game_controller;
+// extern SDL_GameController *in_game_controller;
 
 union ctrl_t controllers[4] = {0};
 uint32_t     halt = 0;
+
+// uint32_t        ctrl_mouse_x;
+// uint32_t        ctrl_mouse_y;
 
 void init_ctrl()
 {
@@ -29,101 +34,101 @@ void step_ctrl(int32_t cycle_count)
     {
         if(!controller_read)
         {
-            SDL_Event event;
+            // SDL_Event event;
 
-            while(SDL_PollEvent(&event))
-            {
-                switch(event.type)
-                {
-                    case SDL_CONTROLLERDEVICEADDED:
-                    {
-                        game_controller = SDL_GameControllerOpen(event.cdevice.which);
-                    }
-                    break;
+//             while(SDL_PollEvent(&event))
+//             {
+//                 switch(event.type)
+//                 {
+//                     case SDL_CONTROLLERDEVICEADDED:
+//                     {
+//                         game_controller = SDL_GameControllerOpen(event.cdevice.which);
+//                     }
+//                     break;
 
-                    case SDL_CONTROLLERDEVICEREMOVED:
-                    {
-                        SDL_GameControllerClose(game_controller);
-                    }
-                    break;
+//                     case SDL_CONTROLLERDEVICEREMOVED:
+//                     {
+//                         SDL_GameControllerClose(game_controller);
+//                     }
+//                     break;
 
-                    case SDL_KEYDOWN:
-                    {
-                        if(event.key.keysym.scancode == SDL_SCANCODE_1)
-                        {
-                            vram_offset += 32;
-                        }
-                        if(event.key.keysym.scancode == SDL_SCANCODE_2)
-                        {
-//                            if(vram_offset >= 0x1)
-                            {
-                                vram_offset -= 32;
-                            }
-                        }
-                        if(event.key.keysym.scancode == SDL_SCANCODE_ESCAPE)
-                        {
-                            halt = 1;
-                        }
-                    }
-                    break;
+//                     case SDL_KEYDOWN:
+//                     {
+//                         if(event.key.keysym.scancode == SDL_SCANCODE_1)
+//                         {
+//                             vram_offset += 32;
+//                         }
+//                         if(event.key.keysym.scancode == SDL_SCANCODE_2)
+//                         {
+// //                            if(vram_offset >= 0x1)
+//                             {
+//                                 vram_offset -= 32;
+//                             }
+//                         }
+//                         if(event.key.keysym.scancode == SDL_SCANCODE_ESCAPE)
+//                         {
+//                             halt = 1;
+//                         }
+//                     }
+//                     break;
 
-                    case SDL_CONTROLLERBUTTONUP:
-                    case SDL_CONTROLLERBUTTONDOWN:
-                    {
-                        switch(event.cbutton.button)
-                        {
-                            case SDL_CONTROLLER_BUTTON_A:
-                                controllers[0].a = (event.type == SDL_CONTROLLERBUTTONDOWN);
-                            break;
+//                     case SDL_CONTROLLERBUTTONUP:
+//                     case SDL_CONTROLLERBUTTONDOWN:
+//                     {
+//                         switch(event.cbutton.button)
+//                         {
+//                             case SDL_CONTROLLER_BUTTON_A:
+//                                 controllers[0].a = (event.type == SDL_CONTROLLERBUTTONDOWN);
+//                             break;
 
-                            case SDL_CONTROLLER_BUTTON_B:
-                                controllers[0].b = (event.type == SDL_CONTROLLERBUTTONDOWN);
-                            break;
+//                             case SDL_CONTROLLER_BUTTON_B:
+//                                 controllers[0].b = (event.type == SDL_CONTROLLERBUTTONDOWN);
+//                             break;
 
-                            case SDL_CONTROLLER_BUTTON_X:
-                                controllers[0].x = (event.type == SDL_CONTROLLERBUTTONDOWN);
-                            break;
+//                             case SDL_CONTROLLER_BUTTON_X:
+//                                 controllers[0].x = (event.type == SDL_CONTROLLERBUTTONDOWN);
+//                             break;
 
-                            case SDL_CONTROLLER_BUTTON_Y:
-                                controllers[0].y = (event.type == SDL_CONTROLLERBUTTONDOWN);
-                            break;
+//                             case SDL_CONTROLLER_BUTTON_Y:
+//                                 controllers[0].y = (event.type == SDL_CONTROLLERBUTTONDOWN);
+//                             break;
 
-                            case SDL_CONTROLLER_BUTTON_DPAD_UP:
-                                controllers[0].up = (event.type == SDL_CONTROLLERBUTTONDOWN);
-                            break;
+//                             case SDL_CONTROLLER_BUTTON_DPAD_UP:
+//                                 controllers[0].up = (event.type == SDL_CONTROLLERBUTTONDOWN);
+//                             break;
 
-                            case SDL_CONTROLLER_BUTTON_DPAD_DOWN:
-                                controllers[0].down = (event.type == SDL_CONTROLLERBUTTONDOWN);
-                            break;
+//                             case SDL_CONTROLLER_BUTTON_DPAD_DOWN:
+//                                 controllers[0].down = (event.type == SDL_CONTROLLERBUTTONDOWN);
+//                             break;
 
-                            case SDL_CONTROLLER_BUTTON_DPAD_LEFT:
-                                controllers[0].left = (event.type == SDL_CONTROLLERBUTTONDOWN);
-                            break;
+//                             case SDL_CONTROLLER_BUTTON_DPAD_LEFT:
+//                                 controllers[0].left = (event.type == SDL_CONTROLLERBUTTONDOWN);
+//                             break;
 
-                            case SDL_CONTROLLER_BUTTON_DPAD_RIGHT:
-                                controllers[0].right = (event.type == SDL_CONTROLLERBUTTONDOWN);
-                            break;
+//                             case SDL_CONTROLLER_BUTTON_DPAD_RIGHT:
+//                                 controllers[0].right = (event.type == SDL_CONTROLLERBUTTONDOWN);
+//                             break;
 
-                            case SDL_CONTROLLER_BUTTON_START:
-                                controllers[0].start = (event.type == SDL_CONTROLLERBUTTONDOWN);
-                            break;
+//                             case SDL_CONTROLLER_BUTTON_START:
+//                                 controllers[0].start = (event.type == SDL_CONTROLLERBUTTONDOWN);
+//                             break;
 
-                            case SDL_CONTROLLER_BUTTON_BACK:
-                                controllers[0].select = (event.type == SDL_CONTROLLERBUTTONDOWN);
-                            break;
+//                             case SDL_CONTROLLER_BUTTON_BACK:
+//                                 controllers[0].select = (event.type == SDL_CONTROLLERBUTTONDOWN);
+//                             break;
 
-                            case SDL_CONTROLLER_BUTTON_LEFTSHOULDER:
-                                controllers[0].l = (event.type == SDL_CONTROLLERBUTTONDOWN);
-                            break;
+//                             case SDL_CONTROLLER_BUTTON_LEFTSHOULDER:
+//                                 controllers[0].l = (event.type == SDL_CONTROLLERBUTTONDOWN);
+//                             break;
 
-                            case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:
-                                controllers[0].r = (event.type == SDL_CONTROLLERBUTTONDOWN);
-                            break;
-                        }
-                    }
-                    break;
-                }
-            }
+//                             case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:
+//                                 controllers[0].r = (event.type == SDL_CONTROLLERBUTTONDOWN);
+//                             break;
+//                         }
+//                     }
+//                     break;
+//                 }
+//             }
 
             if(ram1_regs[CPU_REG_NMITIMEN] & CPU_NMITIMEN_FLAG_STD_CTRL_EN)
             {
