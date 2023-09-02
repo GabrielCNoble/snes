@@ -8,6 +8,12 @@
 uint32_t breakpoint_count = 0;
 struct breakpoint_t breakpoints[512];
 
+struct breakpoint_t emu_read_breakpoints[MAX_BREAKPOINTS];
+uint32_t            emu_read_breakpoint_count;
+
+struct breakpoint_t emu_write_breakpoints[MAX_BREAKPOINTS];
+uint32_t            emu_write_breakpoint_count;
+
 SDL_Window *    emu_window = NULL;
 SDL_GLContext   emu_context;
 uint32_t        emu_window_width = 1360;
@@ -35,11 +41,6 @@ uint32_t    animated_mode = 0;
 FILE *      trace_file;
 uint64_t    frame = 0;
 float       accum_time = 0;
-
-uint32_t    read_address_buffer[ADDRESS_BUFFER_SIZE];
-uint32_t    read_address_count = 0;
-uint32_t    write_address_buffer[ADDRESS_BUFFER_SIZE];
-uint32_t    write_address_count = 0;
 
 char *breakpoint_register_names[] =
 {
@@ -89,25 +90,36 @@ void set_register_breakpoint(uint32_t reg, uint32_t value)
 
 void set_read_write_breakpoint(uint32_t type, uint32_t address)
 {
-    struct breakpoint_t *breakpoint = breakpoints + breakpoint_count;
-    breakpoint_count++;
+    // struct breakpoint_t *breakpoint = breakpoints + breakpoint_count;
+    // breakpoint_count++;
 
-    breakpoint->type = type;
-    breakpoint->value = address;
+    // breakpoint->type = type;
+    // breakpoint->value = address;
+
+    struct breakpoint_t *breakpoint;
 
     if(type == BREAKPOINT_TYPE_READ)
     {
         printf("breakpoint set for reads from address %x\n", address);
+        breakpoint = emu_read_breakpoints + emu_read_breakpoint_count;
+        emu_read_breakpoint_count++;
     }
     else
     {
         printf("breakpoint set for writes to address %x\n", address);
+        breakpoint = emu_write_breakpoints + emu_write_breakpoint_count;
+        emu_write_breakpoint_count++;
     }
+    
+    breakpoint->address = address;
+    breakpoint->type = type;
 }
 
 void clear_breakpoints()
 {
     breakpoint_count = 0;
+    emu_read_breakpoint_count = 0;
+    emu_write_breakpoint_count = 0;
     printf("breakpoints cleared\n");
 }
 

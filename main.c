@@ -7,14 +7,17 @@
 #define SDL_MAIN_HANDLED
 #include "SDL2/SDL.h"
 
-extern uint32_t         interactive_mode;
-extern uint32_t         animated_mode;
-extern FILE *           trace_file;
-extern GLuint           emu_framebuffer_texture;
-extern uint32_t         emu_window_width;
-extern uint32_t         emu_window_height;
-extern uint8_t *        vram;
-extern uint8_t *        cgram;
+// extern uint32_t             interactive_mode;
+// extern uint32_t             animated_mode;
+
+extern FILE *               trace_file;
+extern GLuint               emu_framebuffer_texture;
+extern uint32_t             emu_window_width;
+extern uint32_t             emu_window_height;
+extern uint8_t *            vram;
+extern uint8_t *            cgram;
+extern uint8_t *            ram1_regs;
+extern struct background_t  backgrounds[4];
 
 
 struct viewer_tile_t
@@ -210,9 +213,6 @@ int main(int argc, char *argv[])
                             ImGuiListClipper clipper;
                             ImGuiListClipper_ImGuiListClipper(&clipper);
                             ImGuiListClipper_Begin(&clipper, tile_count / M_TILE_VIEWER_TILES_PER_ROW, -1.0f);
-                            // if(ImGuiListClipper_Step(&clipper))
-                            // {
-
                             
                             uint32_t last_row = 0;
                             uint32_t row_count = 0;
@@ -249,24 +249,6 @@ int main(int argc, char *argv[])
                             uint32_t update_start = last_row - row_count;
                             uint32_t update_end = last_row;
 
-                            // if(tile_viewer_last_row != last_row)
-                            // {
-                            //     if(tile_viewer_last_row < last_row)
-                            //     {
-                            //         update_start = tile_viewer_last_row;
-                            //         update_end = last_row;
-                            //     }
-                            //     else
-                            //     {
-                            //         update_start = last_row - row_count;
-                            //         update_end = tile_viewer_last_row - row_count;
-                            //     }
-                            // }
-
-                            // tile_viewer_last_row = last_row;
-
-                            // if(update_start != update_end)
-                            // {
                             struct mode0_cgram_t *mode0_cgram = (struct mode0_cgram_t *)cgram;
 
                             uint32_t changed_row_count = update_end - update_start;
@@ -284,11 +266,18 @@ int main(int argc, char *argv[])
                                     uint32_t dot_y = dot_index / (8 * M_TILE_VIEWER_TILES_PER_ROW);
 
                                     uint8_t color_index = chr16_dot(vram, tile_index, dot_x, dot_y);
-                                    struct col_t color = pal16_col(&mode0_cgram->obj_colors, 0, color_index);
-                                    dot->r = color.r;
-                                    dot->g = color.g;
-                                    dot->b = color.b;
-                                    dot->a = 255;
+                                    if(color_index > 0)
+                                    {
+                                        struct col_t color = pal16_col(&mode0_cgram->obj_colors, 0, color_index);
+                                        dot->r = color.r;
+                                        dot->g = color.g;
+                                        dot->b = color.b;
+                                        dot->a = 255;
+                                    }
+                                    else
+                                    {
+                                        dot->a = 0;
+                                    }
                                 }
                             }
 
@@ -308,14 +297,43 @@ int main(int argc, char *argv[])
 
                             uint32_t copy_start = update_start * 8;
                             glTexSubImage2D(GL_TEXTURE_2D, 0, 0, copy_start, 8 * M_TILE_VIEWER_TILES_PER_ROW, copy_size, GL_RGBA, GL_UNSIGNED_BYTE, m_tile_viewer_dots);
-                            // }
-
+    
                             igEndTable();
                         }
                         igPopStyleVar(3);
 
                         igEndTabItem();
                     }
+
+                    if(igBeginTabItem("Backgrounds", NULL, 0))
+                    {
+                        uint8_t bg_mode = ram1_regs[PPU_REG_BGMODE] & PPU_BGMODE_MODE_MASK;
+                        uint8_t chr_size = ram1_regs[PPU_REG_BGMODE] >> PPU_BGMODE_BG1_CHR_SIZE_SHIFT;
+
+                        igText("BG mode: %d", bg_mode);
+                        // char label[64];
+                        for(uint32_t background_index = 0; background_index < 4; background_index++)
+                        {
+                            // sprintf(label, "BG %d", background_index);
+                            struct background_t *background = backgrounds + background_index;
+                            uint32_t screen_size = ram1_regs[PPU_REG_BG1SC + background_index] & 0x3;
+                            igPushID_Int(background_index);
+                            if(igBeginChild_Str("Background", (ImVec2){0, 128}, 1, 0))
+                            {    
+                                igText("X: %d, Y: %d", background->offset.offsets[0], background->offset.offsets[1]);
+                                igText("Screen size: %d", screen_size);
+                                igText("Chr size: %s", (chr_size & PPU_BGMODE_BG_CHR_SIZE_MASK) ? "16x16" : "8x8");
+                                igText("Name base address: 0x%04x", (uintptr_t)background->chr_base - (uintptr_t)vram);
+                                igText("Screen data base address: 0x%04x", (uintptr_t)background->data_base[0] - (uintptr_t)vram);
+                            }
+                            igEndChild();
+                            igPopID();
+
+                            chr_size >>= 1;
+                        }
+                        igEndTabItem();
+                    }
+
                     igEndTabBar();
                 }
             }
