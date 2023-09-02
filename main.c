@@ -202,7 +202,8 @@ int main(int argc, char *argv[])
                         }
 
                         igPushStyleVar_Vec2(ImGuiStyleVar_WindowPadding, (ImVec2){0, 0});
-                        igPushStyleVar_Vec2(ImGuiStyleVar_ItemSpacing, (ImVec2){0, 0});
+                        igPushStyleVar_Vec2(ImGuiStyleVar_ItemSpacing, (ImVec2){4, 0});
+                        igPushStyleVar_Vec2(ImGuiStyleVar_CellPadding , (ImVec2){0, 2});
                         if(igBeginTable("##vram_tiles", 1, ImGuiTableFlags_ScrollY | ImGuiTableFlags_NoPadInnerX, (ImVec2){0, 0}, 0.0))
                         {
                             uint32_t tile_count = 0x10000 / (8 * tile_bits_per_pixel);
@@ -238,7 +239,7 @@ int main(int argc, char *argv[])
                                     {
                                         uv0.x = (float)(column_index * 8) / (float)(M_TILE_VIEWER_TILES_PER_ROW * 8);
                                         uv1.x = uv0.x + 8.0f / (float)(M_TILE_VIEWER_TILES_PER_ROW * 8);
-                                        igImage((ImTextureID)(uintptr_t)m_tile_viewer_texture, (ImVec2){32, 32}, uv0, uv1, (ImVec4){1, 1, 1, 1}, (ImVec4){0, 0, 0, 0});
+                                        igImage((ImTextureID)(uintptr_t)m_tile_viewer_texture, (ImVec2){32, 32}, uv0, uv1, (ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 1});
                                         igSameLine(0.0f, -1.0f);
                                     }
                                     row_count++;
@@ -311,7 +312,7 @@ int main(int argc, char *argv[])
 
                             igEndTable();
                         }
-                        igPopStyleVar(2);
+                        igPopStyleVar(3);
 
                         igEndTabItem();
                     }
