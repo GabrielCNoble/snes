@@ -339,6 +339,23 @@ void write_byte(uint32_t effective_address, uint8_t data)
     {
         uint32_t offset = (effective_address & 0xffff) - RAM1_REGS_START;
 
+        struct breakpoint_list_t *wram_write_breakpoints = &emu_breakpoints[BREAKPOINT_TYPE_REG_WRITE];
+
+        for(uint32_t breakpoint_index = 0; breakpoint_index < wram_write_breakpoints->count; breakpoint_index++)
+        {
+            struct breakpoint_t *breakpoint = wram_write_breakpoints->breakpoints + breakpoint_index;
+            
+            if(breakpoint->start_address == offset)
+            {
+                struct emu_thread_data_t *thread_data = emu_emulation_thread->data;
+                breakpoint->value = data;
+                thread_data->breakpoint = breakpoint;
+                thread_data->status |= EMU_STATUS_BREAKPOINT;
+                thrd_Switch(emu_emulation_thread, &emu_main_thread);
+                break;
+            }
+        }
+
         if(reg_writes[offset].write)
         {
             reg_writes[offset].write(effective_address, data);

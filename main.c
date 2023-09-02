@@ -19,6 +19,8 @@ extern struct emu_thread_data_t     emu_emulation_data;
 extern struct emu_log_t *           emu_log_entries;
 extern uint32_t                     emu_log_entry_count;
 
+extern struct cpu_state_t           cpu_state;
+
 extern uint8_t *            vram;
 extern uint8_t *            cgram;
 extern uint8_t *            ram1_regs;
@@ -31,6 +33,8 @@ const char *m_breakpoint_type_names[] = {
     [BREAKPOINT_TYPE_WRAM_WRITE]    = "WRAM write",
     [BREAKPOINT_TYPE_VRAM_READ]     = "VRAM read",
     [BREAKPOINT_TYPE_VRAM_WRITE]    = "VRAM write",
+    [BREAKPOINT_TYPE_REG_READ]      = "REG read",
+    [BREAKPOINT_TYPE_REG_WRITE]     = "REG write",
 };
 
 struct viewer_tile_t
@@ -171,6 +175,100 @@ int main(int argc, char *argv[])
                 {
                     if(igBeginTabItem("CPU", NULL, 0))
                     {
+                        if(igBeginTable("##registers0", 6, ImGuiTableFlags_Borders | ImGuiTableFlags_NoKeepColumnsVisible, (ImVec2){0, 0}, 0))
+                        {
+                            igTableNextRow(ImGuiTableRowFlags_Headers, 0);
+                            igTableNextColumn();
+                            igText("ACCUM");
+                            igTableNextColumn();
+                            igText("X");
+                            igTableNextColumn();
+                            igText("Y");
+                            igTableNextColumn();
+                            igText("PC");
+                            igTableNextColumn();
+                            igText("PBR");
+                            igTableNextColumn();
+                            igText("DBR");
+
+                            igTableNextRow(0, 0);
+                            igTableNextColumn();
+                            igText("%04x", cpu_state.regs[REG_ACCUM].word);
+                            igTableNextColumn();
+                            igText("%04x", cpu_state.regs[REG_X].word);
+                            igTableNextColumn();
+                            igText("%04x", cpu_state.regs[REG_Y].word);
+                            igTableNextColumn();
+                            igText("%04x (%04x)", cpu_state.instruction_address & 0xffff, cpu_state.regs[REG_PC].word);
+                            igTableNextColumn();
+                            igText("%02x", cpu_state.regs[REG_PBR].byte[0]);
+                            igTableNextColumn();
+                            igText("%02x", cpu_state.regs[REG_DBR].byte[0]);
+
+                            igEndTable();
+                        }
+
+                        if(igBeginTable("##registers1", 8, ImGuiTableFlags_Borders | ImGuiTableFlags_NoKeepColumnsVisible, (ImVec2){0, 0}, 0))
+                        {
+                            igTableNextRow(ImGuiTableRowFlags_Headers, 0);
+                            igTableNextColumn();
+                            igText("C");
+                            igTableNextColumn();
+                            igText("Z");
+                            igTableNextColumn();
+                            igText("I");
+                            igTableNextColumn();
+                            igText("D");
+                            igTableNextColumn();
+                            if(cpu_state.reg_p.e)
+                            {
+                                igText("B");
+                            }
+                            else
+                            {
+                                igText("X");
+                            }
+                            igTableNextColumn();
+                            igText("M");
+                            igTableNextColumn();
+                            igText("V");
+                            igTableNextColumn();
+                            igText("E");
+
+                            igTableNextRow(0, 0);
+                            igTableNextColumn();
+                            igText("%d", cpu_state.reg_p.c);
+                            igTableNextColumn();
+                            igText("%d", cpu_state.reg_p.z);
+                            igTableNextColumn();
+                            igText("%d", cpu_state.reg_p.i);
+                            igTableNextColumn();
+                            igText("%d", cpu_state.reg_p.d);
+                            igTableNextColumn();
+                            if(cpu_state.reg_p.e)
+                            {
+                                igText("%d", cpu_state.reg_p.b);
+                            }
+                            else
+                            {
+                                igText("%d", cpu_state.reg_p.x);
+                            }
+                            igTableNextColumn();
+                            igText("%d", cpu_state.reg_p.m);
+                            igTableNextColumn();
+                            igText("%d", cpu_state.reg_p.v);
+                            igTableNextColumn();
+                            igText("%d", cpu_state.reg_p.e);
+
+                            igEndTable();
+                        }
+                        
+                        igEndTabItem();
+                    }
+
+                    if(igBeginTabItem("PPU", NULL, 0))
+                    {
+                        igText("0x2115(VMAINC): 0x%02x", ram1_regs[PPU_REG_VMAINC]);
                         igEndTabItem();
                     }
 
@@ -424,6 +522,8 @@ int main(int argc, char *argv[])
                                         case BREAKPOINT_TYPE_VRAM_WRITE:
                                         case BREAKPOINT_TYPE_WRAM_READ:
                                         case BREAKPOINT_TYPE_WRAM_WRITE:
+                                        case BREAKPOINT_TYPE_REG_READ:
+                                        case BREAKPOINT_TYPE_REG_WRITE:
                                             set_read_write_breakpoint(add_breakpoint_type, breakpoint_start_address, breakpoint_end_address);
                                         break;
                                     }

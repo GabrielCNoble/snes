@@ -15,8 +15,7 @@
 // struct breakpoint_t emu_wram_write_breakpoints[MAX_BREAKPOINTS];
 // uint32_t            emu_wram_write_breakpoint_count;
 
-struct breakpoint_list_t emu_breakpoints[BREAKPOINT_TYPE_LAST];
-
+struct breakpoint_list_t        emu_breakpoints[BREAKPOINT_TYPE_LAST];
 SDL_Window *                    emu_window = NULL;
 SDL_GLContext                   emu_context;
 uint32_t                        emu_window_width = 1360;
@@ -122,6 +121,10 @@ void set_read_write_breakpoint(uint32_t type, uint32_t start_address, uint32_t e
             emu_Log("breakpoint set for VRAM reads from 0x%04x to 0x%04x\n", start_address, end_address);
         break;
 
+        case BREAKPOINT_TYPE_REG_READ:
+            emu_Log("breakpoint set for reads from register 0x%04x\n", start_address);
+        break;
+
         case BREAKPOINT_TYPE_WRAM_WRITE:
             emu_Log("breakpoint set for WRAM writes from 0x%06x to 0x%06x\n", start_address, end_address);
         break;
@@ -129,23 +132,15 @@ void set_read_write_breakpoint(uint32_t type, uint32_t start_address, uint32_t e
         case BREAKPOINT_TYPE_VRAM_WRITE:
             emu_Log("breakpoint set for VRAM writes from 0x%04x to 0x%04x\n", start_address, end_address);
         break;
-    }
 
-    // if(type == BREAKPOINT_TYPE_WRAM_READ)
-    // {
-    //     printf("breakpoint set for reads from 0x%x to 0x%x\n", start_address);
-    // }
-    // else
-    // {
-    //     printf("breakpoint set for writes to address %x\n", address);
-    // }
+        case BREAKPOINT_TYPE_REG_WRITE:
+            emu_Log("breakpoint set for writes to register 0x%04x\n", start_address);
+        break;
+    }
 }
 
 void clear_breakpoints()
 {
-    // breakpoint_count = 0;
-    // emu_wram_read_breakpoint_count = 0;
-    // emu_wram_write_breakpoint_count = 0;
     for(uint32_t type = 0; type < BREAKPOINT_TYPE_LAST; type++)
     {
         emu_breakpoints[type].count = 0;
@@ -326,6 +321,14 @@ uint32_t emu_Step(int32_t step_cycles)
 
             case BREAKPOINT_TYPE_VRAM_WRITE:
                 emu_Log("VRAM write: write 0x%02x to 0x%06x\n", breakpoint->value, breakpoint->address);
+            break;
+
+            case BREAKPOINT_TYPE_REG_READ:
+                emu_Log("REG read: read from 0x%04x\n", breakpoint->start_address);        
+            break;
+
+            case BREAKPOINT_TYPE_REG_WRITE:
+                emu_Log("REG write: write 0x%02x to 0x%04x\n", breakpoint->value, breakpoint->start_address);
             break;
         }
     }
