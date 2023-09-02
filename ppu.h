@@ -86,9 +86,9 @@ struct obj_t
 enum COLOR_FUNCS
 {
     COLOR_FUNC_CHR0,
-    COLOR_FUNC_CHR2,
     COLOR_FUNC_CHR4,
-    COLOR_FUNC_CHR8,
+    COLOR_FUNC_CHR16,
+    COLOR_FUNC_CHR256,
 };
 
 struct draw_tile_t
@@ -106,10 +106,10 @@ struct bg_draw_tile_t
     uint8_t             background;
 };
 
-struct dot_obj_tiles_t
+struct dot_obj_draw_tiles_t
 {
-    uint16_t                tiles[MAX_OBJ_COUNT];
-    uint16_t                tile_count;
+    uint16_t                draw_tiles[MAX_OBJ_COUNT];
+    uint16_t                draw_tile_count;
 };
 
 //struct draw_tile_list_t
@@ -127,8 +127,8 @@ struct dot_bg_tiles_t
 
 struct dot_tiles_t
 {
-    struct dot_obj_tiles_t  obj_tiles[OBJ_PRIORITIES];
-    struct dot_bg_tiles_t   bg_tiles[OBJ_PRIORITIES];
+    struct dot_obj_draw_tiles_t     obj_draw_tiles[OBJ_PRIORITIES];
+    struct dot_bg_tiles_t           bg_tiles[OBJ_PRIORITIES];
 };
 
 #define PPU_OAM_TABLE1_START 0x0000
@@ -411,18 +411,18 @@ enum PPU_TSUB_FLAGS
     addressing goes from [<chr base address> + name * 8] to
     [from <chr base address> + name * 8 + 7].
 */
-struct chr2_t
+struct chr4_t
 {
     uint16_t p01[8];
 };
 
-struct chr4_t
+struct chr16_t
 {
     uint16_t p01[8];
     uint16_t p23[8];
 };
 
-struct chr8_t
+struct chr256_t
 {
     uint16_t p01[8];
     uint16_t p23[8];
@@ -585,25 +585,25 @@ uint8_t chr0_dot(void *chr_base, uint32_t name, uint32_t dot_x, uint32_t dot_y);
 
 
 
-uint8_t bg_chr2_dot_col(void *chr_base, uint32_t index, uint32_t size, uint32_t dot_h, uint32_t dot_v);
-
-uint8_t chr2_dot(void *chr_base, uint32_t name, uint32_t dot_x, uint32_t dot_y);
-
-struct col_t pal4_col(void *pal_base, uint8_t pallete, uint8_t index);
-
 uint8_t bg_chr4_dot_col(void *chr_base, uint32_t index, uint32_t size, uint32_t dot_h, uint32_t dot_v);
 
 uint8_t chr4_dot(void *chr_base, uint32_t name, uint32_t dot_x, uint32_t dot_y);
 
+struct col_t pal4_col(void *pal_base, uint8_t pallete, uint8_t index);
+
+uint8_t bg_chr16_dot_col(void *chr_base, uint32_t index, uint32_t size, uint32_t dot_h, uint32_t dot_v);
+
+uint8_t chr16_dot(void *chr_base, uint32_t name, uint32_t dot_x, uint32_t dot_y);
+
 struct col_t pal16_col(void *pal_base, uint8_t pallete, uint8_t index);
 
-uint8_t bg_chr8_dot_col(void *chr_base, uint32_t index, uint32_t size, uint32_t dot_h, uint32_t dot_v);
+uint8_t bg_chr256_dot_col(void *chr_base, uint32_t index, uint32_t size, uint32_t dot_h, uint32_t dot_v);
 
-uint8_t chr8_dot(void *chr_base, uint32_t name, uint32_t dot_x, uint32_t dot_y);
+uint8_t chr256_dot(void *chr_base, uint32_t name, uint32_t dot_x, uint32_t dot_y);
 
 struct col_t pal256_col(void *pal_base, uint8_t pallete, uint8_t index);
 
-uint8_t bg7_chr8_dot_col(void *chr_base, uint32_t index, uint32_t dot_h, uint32_t dot_v);
+uint8_t bg7_chr256_dot_col(void *chr_base, uint32_t index, uint32_t dot_h, uint32_t dot_v);
 
 struct bg_tile_t bg_tile_entry(uint32_t dot_h, uint32_t dot_v, struct background_t *background);
 

@@ -14,6 +14,7 @@ extern GLuint           emu_framebuffer_texture;
 extern uint32_t         emu_window_width;
 extern uint32_t         emu_window_height;
 extern uint8_t *        vram;
+extern uint8_t *        cgram;
 
 
 struct viewer_tile_t
@@ -79,7 +80,7 @@ int main(int argc, char *argv[])
     reset_emu();
 
     uint32_t run_emulation = 0;
-    uint32_t tile_bits_per_pixel = 1;
+    uint32_t tile_bits_per_pixel = 4;
     uint32_t tile_viewer_first_row = 0;
     uint32_t tile_viewer_last_row = 0;
     while(!in_ReadInput())
@@ -185,11 +186,6 @@ int main(int argc, char *argv[])
                     }
                     if(igBeginTabItem("VRAM (Tiles)", NULL, 0))
                     {
-                        if(igRadioButton_Bool("1 bpp", tile_bits_per_pixel == 1))
-                        {
-                            tile_bits_per_pixel = 1;
-                        }
-                        igSameLine(0.0f, -1.0f);
                         if(igRadioButton_Bool("2 bpp", tile_bits_per_pixel == 2))
                         {
                             tile_bits_per_pixel = 2;
@@ -198,6 +194,11 @@ int main(int argc, char *argv[])
                         if(igRadioButton_Bool("4 bpp", tile_bits_per_pixel == 4))
                         {
                             tile_bits_per_pixel = 4;
+                        }
+                        igSameLine(0.0f, -1.0f);
+                        if(igRadioButton_Bool("8 bpp", tile_bits_per_pixel == 8))
+                        {
+                            tile_bits_per_pixel = 8;
                         }
 
                         igPushStyleVar_Vec2(ImGuiStyleVar_WindowPadding, (ImVec2){0, 0});
@@ -217,8 +218,9 @@ int main(int argc, char *argv[])
 
                             while(ImGuiListClipper_Step(&clipper))
                             {   
+
                                 last_row = clipper.DisplayEnd;
-                                row_count = clipper.ItemsCount;
+                                // row_count = clipper.ItemsCount;
 
                                 for(uint32_t row_index = clipper.DisplayStart; row_index < clipper.DisplayEnd; row_index++)
                                 {
@@ -239,81 +241,73 @@ int main(int argc, char *argv[])
                                         igImage((ImTextureID)(uintptr_t)m_tile_viewer_texture, (ImVec2){32, 32}, uv0, uv1, (ImVec4){1, 1, 1, 1}, (ImVec4){0, 0, 0, 0});
                                         igSameLine(0.0f, -1.0f);
                                     }
+                                    row_count++;
                                 }
                             }
 
-                            uint32_t update_start = 0;
-                            uint32_t update_end = 0;
+                            uint32_t update_start = last_row - row_count;
+                            uint32_t update_end = last_row;
 
-                            if(tile_viewer_last_row != last_row)
+                            // if(tile_viewer_last_row != last_row)
+                            // {
+                            //     if(tile_viewer_last_row < last_row)
+                            //     {
+                            //         update_start = tile_viewer_last_row;
+                            //         update_end = last_row;
+                            //     }
+                            //     else
+                            //     {
+                            //         update_start = last_row - row_count;
+                            //         update_end = tile_viewer_last_row - row_count;
+                            //     }
+                            // }
+
+                            // tile_viewer_last_row = last_row;
+
+                            // if(update_start != update_end)
+                            // {
+                            struct mode0_cgram_t *mode0_cgram = (struct mode0_cgram_t *)cgram;
+
+                            uint32_t changed_row_count = update_end - update_start;
+                            // printf("update %d rows\n", changed_row_count);
+                            for(uint32_t row_index = 0; row_index < changed_row_count; row_index++)
                             {
-                                if(tile_viewer_last_row < last_row)
+                                // uint32_t vram_offset = (row_index * tile_bits_per_pixel * 8) * M_TILE_VIEWER_TILES_PER_ROW;
+
+                                struct dot_t *first_dot = m_tile_viewer_dots + row_index * M_TILE_VIEWER_TILES_PER_ROW * 8 * 8;
+                                for(uint32_t dot_index = 0; dot_index < 8 * 8 * M_TILE_VIEWER_TILES_PER_ROW; dot_index++)
                                 {
-                                    update_start = tile_viewer_last_row;
-                                    update_end = last_row;
-                                }
-                                else
-                                {
-                                    update_start = last_row - row_count;
-                                    update_end = tile_viewer_last_row - row_count;
+                                    uint32_t tile_index = (dot_index >> 3) % 8 + ((row_index + update_start) << 3);
+                                    struct dot_t *dot = first_dot + dot_index;
+                                    uint32_t dot_x = dot_index % 8;
+                                    uint32_t dot_y = dot_index / (8 * M_TILE_VIEWER_TILES_PER_ROW);
+
+                                    uint8_t color_index = chr16_dot(vram, tile_index, dot_x, dot_y);
+                                    struct col_t color = pal16_col(&mode0_cgram->obj_colors, 0, color_index);
+                                    dot->r = color.r;
+                                    dot->g = color.g;
+                                    dot->b = color.b;
+                                    dot->a = 255;
                                 }
                             }
 
-                            tile_viewer_last_row = last_row;
+                            update_start %= M_TILE_VIEWER_MAX_TILE_ROWS;
+                            update_end %= M_TILE_VIEWER_MAX_TILE_ROWS;
 
-                            if(update_start != update_end)
+                            uint32_t copy_size = changed_row_count * 8;
+                            glBindTexture(GL_TEXTURE_2D, m_tile_viewer_texture);
+
+                            if(update_end < update_start)
                             {
-                                uint32_t changed_row_count = update_end - update_start;
-                                // printf("update %d rows\n", changed_row_count);
-                                for(uint32_t row_index = 0; row_index < changed_row_count; row_index++)
-                                {
-                                    uint32_t vram_offset = (row_index * tile_bits_per_pixel * 8) * M_TILE_VIEWER_TILES_PER_ROW;
-                                    struct dot_t *first_dot = m_tile_viewer_dots + row_index * M_TILE_VIEWER_TILES_PER_ROW * 8 * 8;
-                                    for(uint32_t dot_index = 0; dot_index < 8 * 8 * M_TILE_VIEWER_TILES_PER_ROW; dot_index++)
-                                    {
-                                        struct dot_t *dot = first_dot + dot_index;
-                                        // dot->r = rand() % 255;
-                                        // dot->g = rand() % 255;
-                                        // dot->b = rand() % 255;
-
-                                        switch(tile_bits_per_pixel)
-                                        {
-                                            case 1:
-                                            {
-                                                
-                                            }
-                                            break;
-
-                                            case 2:
-
-                                            break;
-
-                                            case 4:
-
-                                            break;
-                                        }
-
-                                        dot->a = 255;
-                                    }
-                                }
-
-                                update_start %= M_TILE_VIEWER_MAX_TILE_ROWS;
-                                update_end %= M_TILE_VIEWER_MAX_TILE_ROWS;
-
-                                uint32_t copy_size = changed_row_count * 8;
-                                glBindTexture(GL_TEXTURE_2D, m_tile_viewer_texture);
-
-                                if(update_end < update_start)
-                                {
-                                    uint32_t sub_copy_size = update_end * 8;
-                                    copy_size -= sub_copy_size;
-                                    struct dot_t *first_dot = m_tile_viewer_dots + copy_size * 8 * M_TILE_VIEWER_TILES_PER_ROW;
-                                    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 8 * M_TILE_VIEWER_TILES_PER_ROW, sub_copy_size, GL_RGBA, GL_UNSIGNED_BYTE, first_dot);    
-                                }
-
-                                uint32_t copy_start = update_start * 8;
-                                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, copy_start, 8 * M_TILE_VIEWER_TILES_PER_ROW, copy_size, GL_RGBA, GL_UNSIGNED_BYTE, m_tile_viewer_dots);
+                                uint32_t sub_copy_size = update_end * 8;
+                                copy_size -= sub_copy_size;
+                                struct dot_t *first_dot = m_tile_viewer_dots + copy_size * 8 * M_TILE_VIEWER_TILES_PER_ROW;
+                                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 8 * M_TILE_VIEWER_TILES_PER_ROW, sub_copy_size, GL_RGBA, GL_UNSIGNED_BYTE, first_dot);    
                             }
+
+                            uint32_t copy_start = update_start * 8;
+                            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, copy_start, 8 * M_TILE_VIEWER_TILES_PER_ROW, copy_size, GL_RGBA, GL_UNSIGNED_BYTE, m_tile_viewer_dots);
+                            // }
 
                             igEndTable();
                         }

@@ -156,8 +156,8 @@ struct obj_t                        objects[128];
 //struct dot_objs_t *                 line_objects;
 //struct dot_obj_priorities_t *       scanline_objs;
 
-struct draw_tile_t *                obj_tiles;
-uint32_t                            obj_tile_count;
+struct draw_tile_t *                obj_draw_tiles;
+uint32_t                            obj_draw_tile_count;
 
 struct draw_tile_t *                bg_tiles;
 uint32_t                            bg_tile_count;
@@ -179,22 +179,22 @@ extern uint8_t                      last_bus_value;
 
 uint8_t (*chr_dot_funcs[4])(void *chr_base, uint32_t index, uint32_t dot_h, uint32_t dot_v) = {
     [COLOR_FUNC_CHR0] = chr0_dot,
-    [COLOR_FUNC_CHR2] = chr2_dot,
     [COLOR_FUNC_CHR4] = chr4_dot,
-    [COLOR_FUNC_CHR8] = chr8_dot,
+    [COLOR_FUNC_CHR16] = chr16_dot,
+    [COLOR_FUNC_CHR256] = chr256_dot,
 };
 
 struct col_t (*pal_col_funcs[4])(void *pal_base, uint8_t pallete, uint8_t index) = {
     [COLOR_FUNC_CHR0] = NULL,
-    [COLOR_FUNC_CHR2] = pal4_col,
-    [COLOR_FUNC_CHR4] = pal16_col,
-    [COLOR_FUNC_CHR8] = pal256_col,
+    [COLOR_FUNC_CHR4] = pal4_col,
+    [COLOR_FUNC_CHR16] = pal16_col,
+    [COLOR_FUNC_CHR256] = pal256_col,
 };
 
 uint32_t                            line_obj_count = 0;
 uint32_t                            line_chr_count = 0;
 //struct line_obj_t   line_objs[128];
-struct chr4_t *                     obj_chr_base[2];
+struct chr16_t *                    obj_chr_base[2];
 // void  *             obj_chr_base[2];
 // uint8_t             line_objs[128];
 
@@ -230,7 +230,7 @@ void init_ppu()
 
 //    scanline_obj_tiles = calloc(SCANLINE_DOT_LENGTH, sizeof(struct dot_obj_priorities_t));
     /* worst case scenario where all objs are 32x32 wide */
-    obj_tiles = calloc(MAX_OBJ_COUNT * 16, sizeof(struct draw_tile_t));
+    obj_draw_tiles = calloc(MAX_OBJ_COUNT * 16, sizeof(struct draw_tile_t));
     bg_tiles = calloc(8, sizeof(struct draw_tile_t));
     main_scanline_tiles = calloc(SCANLINE_DOT_LENGTH, sizeof(struct dot_tiles_t));
     sub_scanline_tiles = calloc(SCANLINE_DOT_LENGTH, sizeof(struct dot_tiles_t));
@@ -240,7 +240,7 @@ void init_ppu()
 void shutdown_ppu()
 {
 //    free(framebuffer);
-    free(obj_tiles);
+    free(obj_draw_tiles);
     free(main_scanline_tiles);
     free(sub_scanline_tiles);
     free(cgram);
@@ -257,8 +257,8 @@ void reset_ppu()
     backgrounds[2] = (struct background_t){.chr_base = vram, .data_base = (struct bg_sc_data_t *)vram, .pal_base = vram};
     backgrounds[3] = (struct background_t){.chr_base = vram, .data_base = (struct bg_sc_data_t *)vram, .pal_base = vram};
 
-    obj_chr_base[0] = (struct chr4_t *)vram;
-    obj_chr_base[1] = (struct chr4_t *)vram;
+    obj_chr_base[0] = (struct chr16_t *)vram;
+    obj_chr_base[1] = (struct chr16_t *)vram;
 
     ram1_regs[PPU_REG_STAT77] = 0;
     ram1_regs[PPU_REG_STAT78] = 0;
@@ -276,7 +276,7 @@ uint8_t chr0_dot(void *chr_base, uint32_t name, uint32_t dot_x, uint32_t dot_y)
     return 0;
 }
 
-uint8_t bg_chr2_dot_col(void *chr_base, uint32_t index, uint32_t size, uint32_t dot_h, uint32_t dot_v)
+uint8_t bg_chr4_dot_col(void *chr_base, uint32_t index, uint32_t size, uint32_t dot_h, uint32_t dot_v)
 {
 //    uint32_t chr_size = size;
     uint32_t chr_dot_h = dot_h & 0x07;
@@ -288,15 +288,15 @@ uint8_t bg_chr2_dot_col(void *chr_base, uint32_t index, uint32_t size, uint32_t 
     uint32_t offset = 8 * 2 * index;
 
 //    struct chr2_t *chr = (struct chr2_t *)chr_base + index;
-    struct chr2_t *chr = (struct chr2_t *)((uint8_t *)chr_base + offset);
+    struct chr4_t *chr = (struct chr4_t *)((uint8_t *)chr_base + offset);
     color_index  =  (chr->p01[chr_dot_v] & (0x80 >> chr_dot_h)) && 1;
     color_index |= ((chr->p01[chr_dot_v] & (0x8000 >> chr_dot_h)) && 1) << 1;
     return color_index;
 }
 
-uint8_t chr2_dot(void *chr_base, uint32_t name, uint32_t dot_x, uint32_t dot_y)
+uint8_t chr4_dot(void *chr_base, uint32_t name, uint32_t dot_x, uint32_t dot_y)
 {
-    struct chr2_t *chr = (struct chr2_t *)chr_base + name;
+    struct chr4_t *chr = (struct chr4_t *)chr_base + name;
     uint8_t color_index;
     color_index  =  (chr->p01[dot_y] & (0x80 >> dot_x)) && 1;
     color_index |= ((chr->p01[dot_y] & (0x8000 >> dot_x)) && 1) << 1;
@@ -314,7 +314,7 @@ struct col_t pal4_col(void *pal_base, uint8_t pallete, uint8_t index)
     return color;
 }
 
-uint8_t bg_chr4_dot_col(void *chr_base, uint32_t index, uint32_t size, uint32_t dot_h, uint32_t dot_v)
+uint8_t bg_chr16_dot_col(void *chr_base, uint32_t index, uint32_t size, uint32_t dot_h, uint32_t dot_v)
 {
 //    uint32_t chr_size = 1 << (3 + size16);
 //    uint32_t chr_size = size;
@@ -331,7 +331,7 @@ uint8_t bg_chr4_dot_col(void *chr_base, uint32_t index, uint32_t size, uint32_t 
     uint16_t mask2 = 0x8000 >> chr_dot_h;
 
 //    struct chr4_t *chr = (struct chr4_t *)chr_base + index;
-    struct chr4_t *chr = (struct chr4_t *)((uint8_t *)chr_base + offset);
+    struct chr16_t *chr = (struct chr16_t *)((uint8_t *)chr_base + offset);
     color_index  =  (chr->p01[chr_dot_v] & mask1) && 1;
     color_index |= ((chr->p01[chr_dot_v] & mask2) && 1) << 1;
     color_index |= ((chr->p23[chr_dot_v] & mask1) && 1) << 2;
@@ -339,12 +339,12 @@ uint8_t bg_chr4_dot_col(void *chr_base, uint32_t index, uint32_t size, uint32_t 
     return color_index;
 }
 
-uint8_t chr4_dot(void *chr_base, uint32_t name, uint32_t dot_x, uint32_t dot_y)
+uint8_t chr16_dot(void *chr_base, uint32_t name, uint32_t dot_x, uint32_t dot_y)
 {
     uint16_t mask1 = 0x80 >> dot_x;
     uint16_t mask2 = 0x8000 >> dot_x;
 
-    struct chr4_t *chr = (struct chr4_t *)chr_base + name;
+    struct chr16_t *chr = (struct chr16_t *)chr_base + name;
     uint8_t color_index;
     color_index  =  (chr->p01[dot_y] & mask1) && 1;
     color_index |= ((chr->p01[dot_y] & mask2) && 1) << 1;
@@ -364,7 +364,7 @@ struct col_t pal16_col(void *pal_base, uint8_t pallete, uint8_t index)
     return color;
 }
 
-uint8_t bg_chr8_dot_col(void *chr_base, uint32_t index, uint32_t size, uint32_t dot_h, uint32_t dot_v)
+uint8_t bg_chr256_dot_col(void *chr_base, uint32_t index, uint32_t size, uint32_t dot_h, uint32_t dot_v)
 {
 //    uint32_t chr_size = 1 << (3 + size16);
     uint32_t chr_dot_h = dot_h & 0x07;
@@ -383,7 +383,7 @@ uint8_t bg_chr8_dot_col(void *chr_base, uint32_t index, uint32_t size, uint32_t 
     uint16_t mask2 = 0x8000 >> chr_dot_h;
 
 //    struct chr8_t *chr = (struct chr8_t *)chr_base + index;
-    struct chr8_t *chr = (struct chr8_t *)((uint8_t *)chr_base + offset);
+    struct chr256_t *chr = (struct chr256_t *)((uint8_t *)chr_base + offset);
     color_index  =  (chr->p01[chr_dot_v] & mask1) && 1;
     color_index |= ((chr->p01[chr_dot_v] & mask2) && 1) << 1;
     color_index |= ((chr->p23[chr_dot_v] & mask1) && 1) << 2;
@@ -395,12 +395,12 @@ uint8_t bg_chr8_dot_col(void *chr_base, uint32_t index, uint32_t size, uint32_t 
     return color_index;
 }
 
-uint8_t chr8_dot(void *chr_base, uint32_t name, uint32_t dot_x, uint32_t dot_y)
+uint8_t chr256_dot(void *chr_base, uint32_t name, uint32_t dot_x, uint32_t dot_y)
 {
     uint16_t mask1 = 0x80 >> dot_x;
     uint16_t mask2 = 0x8000 >> dot_x;
 
-    struct chr8_t *chr = (struct chr8_t *)chr_base + name;
+    struct chr256_t *chr = (struct chr256_t *)chr_base + name;
     uint8_t color_index;
     color_index  =  (chr->p01[dot_y] & mask1) && 1;
     color_index |= ((chr->p01[dot_y] & mask2) && 1) << 1;
@@ -486,7 +486,7 @@ uint16_t bg_pal4_col(uint32_t dot_h, uint32_t dot_v, struct background_t *backgr
     struct pal4_t *palletes = (struct pal4_t *)background->pal_base;
     struct bg_tile_t tile = bg_tile_entry(dot_h, dot_v, background);
 //    uint8_t color_index = bg_chr2_dot_col(background->chr_base, tile.chr_index, background->chr_size, dot_h, dot_v);
-    uint8_t color_index = bg_chr2_dot_col(background->chr_base, tile.chr_index, background->chr_size, tile.tile_dot_x, tile.tile_dot_y);
+    uint8_t color_index = bg_chr4_dot_col(background->chr_base, tile.chr_index, background->chr_size, tile.tile_dot_x, tile.tile_dot_y);
 
     if(color_index == 0)
     {
@@ -501,7 +501,7 @@ uint16_t bg_pal16_col(uint32_t dot_h, uint32_t dot_v, struct background_t *backg
     struct pal16_t *palletes = (struct pal16_t *)background->pal_base;
     struct bg_tile_t tile = bg_tile_entry(dot_h, dot_v, background);
 //    uint8_t color_index = bg_chr4_dot_col(background->chr_base, tile.chr_index, background->chr_size, dot_h, dot_v);
-    uint8_t color_index = bg_chr4_dot_col(background->chr_base, tile.chr_index, background->chr_size, tile.tile_dot_x, tile.tile_dot_y);
+    uint8_t color_index = bg_chr16_dot_col(background->chr_base, tile.chr_index, background->chr_size, tile.tile_dot_x, tile.tile_dot_y);
 
     if(color_index == 0)
     {
@@ -516,7 +516,7 @@ uint16_t bg_pal256_col(uint32_t dot_h, uint32_t dot_v, struct background_t *back
     struct pal256_t *palletes = (struct pal256_t *)background->pal_base;
     struct bg_tile_t tile = bg_tile_entry(dot_h, dot_v, background);
 //    uint8_t color_index = bg_chr8_dot_col(background->chr_base, tile.chr_index, background->chr_size, dot_h, dot_v);
-    uint8_t color_index = bg_chr8_dot_col(background->chr_base, tile.chr_index, background->chr_size, tile.tile_dot_x, tile.tile_dot_y);
+    uint8_t color_index = bg_chr256_dot_col(background->chr_base, tile.chr_index, background->chr_size, tile.tile_dot_x, tile.tile_dot_y);
 
     if(color_index == 0)
     {
@@ -693,7 +693,7 @@ uint16_t obj_pal16_col(uint32_t dot_h, uint32_t dot_v, struct obj_t *obj)
 
 void update_scanline_obj_tiles(uint16_t line)
 {
-    obj_tile_count = 0;
+    obj_draw_tile_count = 0;
 
     uint16_t chr_names[4];
 
@@ -722,22 +722,23 @@ void update_scanline_obj_tiles(uint16_t line)
 
         if(hpos & 0x100)
         {
+            /* object wrapped around to the other side of the screen */
             hpos = -hpos;
         }
 
         int16_t vpos = (uint16_t)attr1->v_pos;
         uint16_t name = attr1->fpcn & OBJ_ATTR1_NAME_MASK;
-        int16_t size = cur_obj_sizes[size_pos >> 1];
+        int16_t obj_size = cur_obj_sizes[size_pos >> 1];
 
         uint16_t pal = (attr1->fpcn >> OBJ_ATTR1_PAL_SHIFT) & OBJ_ATTR1_PAL_MASK;
         uint8_t priority = (attr1->fpcn >> OBJ_ATTR1_PRI_SHIFT) & OBJ_ATTR1_PRI_MASK;
 
-        int16_t obj_end_hpos = hpos + size;
-        int16_t obj_end_vpos = vpos + size;
+        int16_t obj_end_hpos = hpos + obj_size;
+        int16_t obj_end_vpos = vpos + obj_size;
 
-        if(hpos > DRAW_END_DOT || obj_end_hpos <= DRAW_START_DOT ||
-           vpos > line || obj_end_vpos <= (int16_t)line)
+        if(hpos > DRAW_END_DOT || obj_end_hpos <= DRAW_START_DOT || vpos > line || obj_end_vpos <= (int16_t)line)
         {
+            /* object is outside screen or doesn't touch this scanline */
             continue;
         }
 
@@ -748,14 +749,14 @@ void update_scanline_obj_tiles(uint16_t line)
             start_dot = 0;
         }
 
-        int16_t end_dot = start_dot + size;
+        int16_t end_dot = start_dot + obj_size;
 
         if(end_dot > DRAW_END_DOT - DRAW_START_DOT)
         {
             end_dot = DRAW_END_DOT - DRAW_START_DOT;
         }
 
-        uint32_t tile_count = size / TILE_SIZE;
+        uint32_t tile_count = obj_size / TILE_SIZE;
         int16_t tile_y_index = (line - vpos) / TILE_SIZE;
         int16_t tile_start_dot_y = vpos + (tile_y_index * TILE_SIZE);
 
@@ -771,7 +772,7 @@ void update_scanline_obj_tiles(uint16_t line)
 
 
         int16_t tile_start_dot_x = start_dot;
-        uint32_t first_obj_tile = obj_tile_count;
+        uint32_t first_obj_draw_tile = obj_draw_tile_count;
 
         if(attr1->fpcn & OBJ_ATTR1_HFLIP)
         {
@@ -793,22 +794,22 @@ void update_scanline_obj_tiles(uint16_t line)
 
         for(uint32_t tile_index = 0; tile_index < tile_count; tile_index++)
         {
-            struct draw_tile_t *tile = obj_tiles + obj_tile_count;
-            obj_tile_count++;
+            struct draw_tile_t *tile = obj_draw_tiles + obj_draw_tile_count;
+            obj_draw_tile_count++;
             tile->start_x = tile_start_dot_x;
             tile->start_y = tile_start_dot_y;
             tile->pallete = pal;
             tile->name = chr_names[tile_index];
-            tile->color_func = COLOR_FUNC_CHR4;
+            tile->color_func = COLOR_FUNC_CHR16;
             tile_start_dot_x += TILE_SIZE;
         }
 
         uint32_t dot_count = 0;
         for(uint32_t dot = start_dot; dot < end_dot; dot++)
         {
-            struct dot_obj_tiles_t *dot_obj_tiles = dot_tiles[dot].obj_tiles + priority;
-            dot_obj_tiles->tiles[dot_obj_tiles->tile_count] = first_obj_tile + (dot_count >> 3);
-            dot_obj_tiles->tile_count++;
+            struct dot_obj_draw_tiles_t *dot_obj_draw_tiles = dot_tiles[dot].obj_draw_tiles + priority;
+            dot_obj_draw_tiles->draw_tiles[dot_obj_draw_tiles->draw_tile_count] = first_obj_draw_tile + (dot_count >> 3);
+            dot_obj_draw_tiles->draw_tile_count++;
             dot_count++;
         }
     }
@@ -1107,19 +1108,19 @@ uint32_t step_ppu(int32_t cycle_count)
                     for(uint32_t priority = 4; priority > 0;)
                     {
                         priority--;
-                        struct dot_obj_tiles_t *dot_obj_tiles = dot_tiles->obj_tiles + priority;
+                        struct dot_obj_draw_tiles_t *dot_obj_draw_tiles = dot_tiles->obj_draw_tiles + priority;
 
-                        for(uint32_t dot_tile_index = 0; dot_tile_index < dot_obj_tiles->tile_count; dot_tile_index++)
+                        for(uint32_t dot_draw_tile_index = 0; dot_draw_tile_index < dot_obj_draw_tiles->draw_tile_count; dot_draw_tile_index++)
                         {
-                            struct draw_tile_t *tile = obj_tiles + dot_obj_tiles->tiles[dot_tile_index];
-                            int16_t tile_dot_x = abs((int16_t)hcounter - (int16_t)tile->start_x);
-                            int16_t tile_dot_y = abs((int16_t)vcounter - (int16_t)tile->start_y);
+                            struct draw_tile_t *draw_tile = obj_draw_tiles + dot_obj_draw_tiles->draw_tiles[dot_draw_tile_index];
+                            int16_t tile_dot_x = abs((int16_t)hcounter - (int16_t)draw_tile->start_x);
+                            int16_t tile_dot_y = abs((int16_t)vcounter - (int16_t)draw_tile->start_y);
 
-                            uint8_t color_index = chr_dot_funcs[tile->color_func](obj_chr_base[tile->name >= 0x100], tile->name, tile_dot_x, tile_dot_y);
+                            uint8_t color_index = chr_dot_funcs[draw_tile->color_func](obj_chr_base[draw_tile->name >= 0x100], draw_tile->name, tile_dot_x, tile_dot_y);
 
                             if(color_index)
                             {
-                                uint16_t color = mode0_cgram->obj_colors[tile->pallete].colors[color_index];
+                                uint16_t color = mode0_cgram->obj_colors[draw_tile->pallete].colors[color_index];
                                 obj_dot->r = color_lut[(color >> COL_DATA_R_SHIFT) & COL_DATA_MASK];
                                 obj_dot->g = color_lut[(color >> COL_DATA_G_SHIFT) & COL_DATA_MASK];
                                 obj_dot->b = color_lut[(color >> COL_DATA_B_SHIFT) & COL_DATA_MASK];
@@ -1131,7 +1132,7 @@ uint32_t step_ppu(int32_t cycle_count)
 
                     for(uint32_t priority = 0; priority < 4; priority++)
                     {
-                        dot_tiles->obj_tiles[priority].tile_count = 0;
+                        dot_tiles->obj_draw_tiles[priority].draw_tile_count = 0;
                     }
                 }
 
@@ -1235,8 +1236,8 @@ void objsel_write(uint32_t effective_address, uint8_t value)
     cur_obj_sizes[1] = objsel_size_sel_sizes[obj_size_select][1];
     uint32_t chr_base = ((value & PPU_OBJSEL_NAME_BASE_MASK) << 13) & 0x7fff;
     uint32_t name_sel = (chr_base + (((value >> PPU_OBJSEL_NAME_SEL_SHIFT) & PPU_OBJSEL_NAME_SEL_MASK) << 12)) & 0x7fff;
-    obj_chr_base[0] = (struct chr4_t *)(vram + (chr_base << 1));
-    obj_chr_base[1] = (struct chr4_t *)(vram + (name_sel << 1));
+    obj_chr_base[0] = (struct chr16_t *)(vram + (chr_base << 1));
+    obj_chr_base[1] = (struct chr16_t *)(vram + (name_sel << 1));
 }
 
 uint8_t objsel_read(uint32_t effective_address)
