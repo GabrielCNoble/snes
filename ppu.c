@@ -6,6 +6,7 @@
 #include "addr.h"
 #include "cpu/cpu.h"
 #include "mem.h"
+#include "emu.h"
 
 
 
@@ -172,6 +173,11 @@ uint8_t                             vram_prefetch[2];
 uint8_t                             ppu1_last_bus_value = 0;
 uint8_t                             ppu2_last_bus_value = 0;
 extern uint8_t                      last_bus_value;
+
+
+extern struct breakpoint_list_t emu_breakpoints[];
+extern struct thrd_t            emu_main_thread;
+extern struct thrd_t *          emu_emulation_thread;
 //struct pal16e_t                     obj_palletes[8];
 //struct layer_dot_priorities_t   main_screen;
 //struct layer_dot_priorities_t   sub_screen;
@@ -1649,15 +1655,26 @@ void vmdataw_write(uint32_t effective_address, uint8_t value)
     uint32_t write_addr = vram_addr << 1;
     uint32_t increment_shift = vmadd_increment_shifts[ram1_regs[PPU_REG_VMAINC] & 0x3];
 
-    if(vram_addr == 35 || vram_addr == 0x00)
+    // if(vram_addr == 35 || vram_addr == 0x00)
+    // {
+    //     printf("holy shit...\n");
+    // }
+    struct breakpoint_list_t *list = &emu_breakpoints[BREAKPOINT_TYPE_VRAM_WRITE];
+    
+    for(uint32_t breakpoint_index = 0; breakpoint_index < list->count; breakpoint_index++)
     {
-        printf("holy shit...\n");
+        struct breakpoint_t *breakpoint = list->breakpoints + breakpoint_index;
+        if(breakpoint->start_address <= write_addr && write_addr <= breakpoint->end_address)
+        {
+            struct emu_thread_data_t *data = emu_emulation_thread->data;
+            breakpoint->address = write_addr;
+            breakpoint->value = value;
+            data->breakpoint = breakpoint;
+            data->status |= EMU_STATUS_BREAKPOINT;
+            thrd_Switch(emu_emulation_thread, &emu_main_thread);
+            break;
+        }
     }
-
-//    if(ram1_regs[PPU_REG_VMAINC] & 0x0c)
-//    {
-//        printf("holy shit...\n");
-//    }
 
     if((ram1_regs[CPU_REG_HVBJOY] & CPU_HVBJOY_FLAG_VBLANK) || (ram1_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK))
     {

@@ -11,14 +11,27 @@
 // extern uint32_t             animated_mode;
 
 extern FILE *               trace_file;
-extern GLuint               emu_framebuffer_texture;
-extern uint32_t             emu_window_width;
-extern uint32_t             emu_window_height;
+extern GLuint                       emu_framebuffer_texture;
+extern uint32_t                     emu_window_width;
+extern uint32_t                     emu_window_height;
+extern struct breakpoint_list_t     emu_breakpoints[];
+extern struct emu_thread_data_t     emu_emulation_data;
+extern struct emu_log_t *           emu_log_entries;
+extern uint32_t                     emu_log_entry_count;
+
 extern uint8_t *            vram;
 extern uint8_t *            cgram;
 extern uint8_t *            ram1_regs;
 extern struct background_t  backgrounds[4];
 
+const char *m_breakpoint_type_names[] = {
+    [BREAKPOINT_TYPE_EXECUTION]     = "Execution",
+    [BREAKPOINT_TYPE_REGISTER]      = "Register",
+    [BREAKPOINT_TYPE_WRAM_READ]     = "WRAM read",
+    [BREAKPOINT_TYPE_WRAM_WRITE]    = "WRAM write",
+    [BREAKPOINT_TYPE_VRAM_READ]     = "VRAM read",
+    [BREAKPOINT_TYPE_VRAM_WRITE]    = "VRAM write",
+};
 
 struct viewer_tile_t
 {
@@ -31,7 +44,6 @@ struct dot_t *          m_tile_viewer_dots;
 // struct viewer_tile_t *  m_tile_viewer_tiles;
 #define                 M_TILE_VIEWER_TILES_PER_ROW 8
 #define                 M_TILE_VIEWER_MAX_TILE_ROWS 256
-
 
 int main(int argc, char *argv[])
 {
@@ -58,16 +70,6 @@ int main(int argc, char *argv[])
         printf("couldn't load rom\n");
     }
 
-    // m_tile_viewer_tiles = calloc(M_TILE_VIEWER_TILES_PER_ROW * M_TILE_VIEWER_MAX_TILE_ROWS, sizeof(struct viewer_tile_t));
-
-    // for(uint32_t tile_index = 0; tile_index < M_TILE_VIEWER_TILES_PER_ROW * M_TILE_VIEWER_MAX_TILE_ROWS; tile_index++)
-    // {
-    //     for(uint32_t pixel_index = 0; pixel_index < 64; pixel_index++)
-    //     {
-    //         m_tile_viewer_tiles[tile_index].pixels[pixel_index].a = 255;
-    //     }
-    // }
-
     m_tile_viewer_dots = calloc(8 * 8 * M_TILE_VIEWER_TILES_PER_ROW * M_TILE_VIEWER_MAX_TILE_ROWS, sizeof(struct dot_t));
 
     glGenTextures(1, &m_tile_viewer_texture);
@@ -86,32 +88,51 @@ int main(int argc, char *argv[])
     uint32_t tile_bits_per_pixel = 4;
     uint32_t tile_viewer_first_row = 0;
     uint32_t tile_viewer_last_row = 0;
+
+    uint32_t cur_breakpoint_tab = BREAKPOINT_TYPE_EXECUTION;
+    uint32_t add_breakpoint_type;
+    char breakpoint_start_address_buffer[128];
+    char breakpoint_end_address_buffer[128];
+    uint32_t breakpoint_start_address;
+    uint32_t breakpoint_end_address;
+
     while(!in_ReadInput())
     {
         ui_Begin();
 
         if(igBeginMainMenuBar())
         {
-            if(igBeginMenu("Emulation", 1))
-            {
-                if(igMenuItem_Bool("Run", NULL, 0, 1))
-                {
-                    run_emulation = 1;
-                }
+            // if(igBeginMenu("Emulation", 1))
+            // {
+            //     if(igMenuItem_Bool("Run", NULL, 0, 1))
+            //     {
+            //         run_emulation = 1;
+            //     }
 
-                if(igMenuItem_Bool("Halt", NULL, 0, 1))
-                {
-                    run_emulation = 0;
-                }
-                igEndMenu();
-            }
+            //     if(igMenuItem_Bool("Halt", NULL, 0, 1))
+            //     {
+            //         run_emulation = 0;
+            //     }
+            //     igEndMenu();
+            // }
 
             igEndMainMenuBar();   
         }
 
         if(run_emulation)
         {
-            while(!(step_emu(4) & EMU_STATUS_END_OF_FRAME));
+            uint32_t status = 0;
+
+            do
+            {
+                status = emu_Step(4);
+            }
+            while(!(status & (EMU_STATUS_END_OF_FRAME | EMU_STATUS_BREAKPOINT)));
+
+            if(status & EMU_STATUS_BREAKPOINT)
+            {
+                run_emulation = 0;
+            }
         }
 
 
@@ -334,6 +355,128 @@ int main(int argc, char *argv[])
                         igEndTabItem();
                     }
 
+                    if(igBeginTabItem("Breakpoints", NULL, 0))
+                    {
+                        if(igButton("Add breakpoint", (ImVec2){0, 0}))
+                        {
+                            igOpenPopup_Str("Add breakpoint", 0);
+                            add_breakpoint_type = cur_breakpoint_tab;
+                            breakpoint_start_address_buffer[0] = '\0';
+                            breakpoint_end_address_buffer[0] = '\0';
+                            breakpoint_start_address = 0;
+                            breakpoint_end_address = 0;
+                        }
+
+                        if(igIsPopupOpen_Str("Add breakpoint", 0))
+                        {
+                            igSetNextWindowSize((ImVec2){256, 132}, 0);
+                            if(igBeginPopupModal("Add breakpoint", 0, 0))
+                            {
+                                if(igBeginCombo("Type", m_breakpoint_type_names[add_breakpoint_type], 0))
+                                {
+                                    for(uint32_t breakpoint_type = 0; breakpoint_type < BREAKPOINT_TYPE_LAST; breakpoint_type++)
+                                    {
+                                        if(igSelectable_Bool(m_breakpoint_type_names[breakpoint_type], add_breakpoint_type == breakpoint_type, 0, (ImVec2){0, 0}))
+                                        {
+                                            add_breakpoint_type = breakpoint_type;
+                                        }
+                                    }
+
+                                    igEndCombo();
+                                }
+
+                                // uint32_t address = 0;
+
+                                igPushStyleVar_Vec2(ImGuiStyleVar_WindowPadding, (ImVec2){0, 0});
+                                if(igBeginChild_Str("##breakpoint_config", (ImVec2){0, 48}, 0, 0))
+                                {
+                                    if(igInputText("Start address", breakpoint_start_address_buffer, sizeof(breakpoint_start_address_buffer), 
+                                        ImGuiInputTextFlags_CharsHexadecimal, NULL, NULL))
+                                    {
+                                        breakpoint_start_address = strtoul(breakpoint_start_address_buffer, NULL, 16);
+                                    }
+
+                                    if(igInputText("End address", breakpoint_end_address_buffer, sizeof(breakpoint_end_address_buffer), 
+                                        ImGuiInputTextFlags_CharsHexadecimal, NULL, NULL))
+                                    {
+                                        breakpoint_end_address = strtoul(breakpoint_end_address_buffer, NULL, 16);
+                                    }
+                                }
+                                igEndChild();
+                                igPopStyleVar(1);
+                                
+                                if(igButton("Cancel", (ImVec2){48, 0}))
+                                {
+                                    igCloseCurrentPopup();
+                                }
+
+                                igSameLine(0, -1);
+
+                                if(igButton("Add", (ImVec2){32, 0}))
+                                {
+                                    switch(add_breakpoint_type)
+                                    {
+                                        // case BREAKPOINT_TYPE_EXECUTION:
+                                        //     set_execution_breakpoint(breakpoint_address);       
+                                        // break;
+
+                                        case BREAKPOINT_TYPE_VRAM_READ:
+                                        case BREAKPOINT_TYPE_VRAM_WRITE:
+                                        case BREAKPOINT_TYPE_WRAM_READ:
+                                        case BREAKPOINT_TYPE_WRAM_WRITE:
+                                            set_read_write_breakpoint(add_breakpoint_type, breakpoint_start_address, breakpoint_end_address);
+                                        break;
+                                    }
+                                    igCloseCurrentPopup();
+                                }
+
+                                igEndPopup();
+                            }
+                        }
+                        
+                        if(igBeginTabBar("##breakpoints", 0))
+                        {
+                            for(uint32_t breakpoint_type = 0; breakpoint_type < BREAKPOINT_TYPE_LAST; breakpoint_type++)
+                            {
+                                struct breakpoint_list_t *list = emu_breakpoints + breakpoint_type;
+                                if(igBeginTabItem(m_breakpoint_type_names[breakpoint_type], NULL, 0))
+                                {
+                                    cur_breakpoint_tab = breakpoint_type;
+
+                                    igText("Count: %d", list->count);
+
+                                    for(uint32_t index = 0; index < list->count; index++)
+                                    {
+                                        struct breakpoint_t *breakpoint = list->breakpoints + index;
+                                        igPushID_Int(index);
+                                        if(igBeginChild_Str("##breakpoint", (ImVec2){0, 64}, 1, 0))
+                                        {
+                                            ImVec4 color;
+                                            if(emu_emulation_data.breakpoint == breakpoint)
+                                            {
+                                                color = (ImVec4){1, 1, 0, 1};
+                                            }
+                                            else
+                                            {
+                                                color = (ImVec4){1, 1, 1, 1};
+                                            }
+
+                                            igTextColored(color, "Range: [%06x - %06x]", breakpoint->start_address, breakpoint->end_address);
+
+                                        }
+                                        igEndChild();
+                                        igPopID();
+                                    }
+
+                                    igEndTabItem();
+                                }
+                            }
+                            igEndTabBar();
+                        }
+                        
+                        igEndTabItem();
+                    }
+
                     igEndTabBar();
                 }
             }
@@ -345,13 +488,32 @@ int main(int argc, char *argv[])
             {
                 ImVec2 window_size;
                 igGetContentRegionAvail(&window_size);
+
+                if(igButton("Run", (ImVec2){32, 0}))
+                {
+                    run_emulation = 1;
+                }
+                igSameLine(0, -1);
+                if(igButton("Halt", (ImVec2){48, 0}))
+                {
+                    run_emulation = 0;
+                }
+
                 igImage((ImTextureID)(uintptr_t)emu_framebuffer_texture, window_size, (ImVec2){0, 0}, (ImVec2){1, 1}, (ImVec4){1, 1, 1, 1}, (ImVec4){0, 0, 0, 0});
             }
             igEnd();
 
             if(igBegin("##trace", NULL, 0))
             {
-
+                if(igBeginChild_Str("##trace_window",(ImVec2){0, 0}, 1, 0))
+                {
+                    for(uint32_t entry_index = emu_log_entry_count - 1; entry_index < 0xffffffff; entry_index--)
+                    {
+                        struct emu_log_t *log = emu_log_entries + entry_index;
+                        igText("%s", log->message);
+                    }
+                }
+                igEndChild();
             }
             igEnd();
 

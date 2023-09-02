@@ -12,6 +12,7 @@
 // extern int32_t vram_offset;
 
 SDL_GameController *    in_controller;
+uint32_t                in_text_input;
 extern union ctrl_t     controllers[4];
 // uint32_t            in_controller_count = 0;
 
@@ -58,9 +59,24 @@ uint32_t in_ReadInput()
             }
             break;
 
+            case SDL_KEYDOWN:
+                ui_KeyboardEvent(event.key.keysym.scancode, 1);
+            break;
+
+            case SDL_KEYUP:
+                ui_KeyboardEvent(event.key.keysym.scancode, 0);
+            break;
+
             case SDL_MOUSEBUTTONDOWN:
             case SDL_MOUSEBUTTONUP:
                 ui_MouseClickEvent(event.button.button, event.type == SDL_MOUSEBUTTONDOWN);
+            break;
+
+            case SDL_TEXTINPUT:
+                for(uint32_t index = 0; event.text.text[index] && index < sizeof(event.text.text); index++)
+                {
+                    ui_TextInputEvent(event.text.text[index]);
+                }
             break;
 
             case SDL_CONTROLLERBUTTONUP:
@@ -122,4 +138,23 @@ uint32_t in_ReadInput()
     }
 
     return quit;
+}
+
+uint32_t in_SetTextInput(uint32_t enable)
+{
+    enable = enable && 1;
+    
+    if(in_text_input != enable)
+    {
+        if(enable)
+        {
+            SDL_StartTextInput();
+        }
+        else
+        {
+            SDL_StopTextInput();
+        }
+    }
+
+    in_text_input = enable;
 }

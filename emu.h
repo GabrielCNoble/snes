@@ -7,6 +7,7 @@
 #include "dma.h"
 #include "apu.h"
 #include "ctrl.h"
+#include "thrd.h"
 
 /*
     Just a small heads-up regarding comments explaining snes aspects. Much of the stuff explained here is explicitly state in many
@@ -57,8 +58,11 @@ enum BREAKPOINT_TYPE
 {
     BREAKPOINT_TYPE_EXECUTION = 0,
     BREAKPOINT_TYPE_REGISTER,
-    BREAKPOINT_TYPE_READ,
-    BREAKPOINT_TYPE_WRITE,
+    BREAKPOINT_TYPE_WRAM_READ,
+    BREAKPOINT_TYPE_WRAM_WRITE,
+    BREAKPOINT_TYPE_VRAM_READ,
+    BREAKPOINT_TYPE_VRAM_WRITE,
+    BREAKPOINT_TYPE_LAST
 };
 
 enum EMU_STATUS
@@ -79,15 +83,37 @@ struct breakpoint_t
 {
     uint32_t type;
     uint32_t reg;
+    uint32_t start_address;
+    uint32_t end_address;
     uint32_t address;
     uint32_t value;
+};
+
+struct breakpoint_list_t
+{
+    struct breakpoint_t breakpoints[MAX_BREAKPOINTS];
+    uint32_t            count;
+};
+
+struct emu_thread_data_t
+{
+    uint32_t                status;
+    struct breakpoint_t *   breakpoint;
+    int32_t                 step_cycles;
+};
+
+
+#define EMU_MAX_LOG_ENTRIES 0xffff
+struct emu_log_t
+{
+    char message[1024];
 };
 
 void set_execution_breakpoint(uint32_t effective_address);
 
 void set_register_breakpoint(uint32_t reg, uint32_t value);
 
-void set_read_write_breakpoint(uint32_t type, uint32_t address);
+void set_read_write_breakpoint(uint32_t type, uint32_t start_address, uint32_t end_address);
 
 void clear_breakpoints();
 
@@ -99,7 +125,13 @@ void shutdown_emu();
 
 void reset_emu();
 
-uint32_t step_emu(int32_t step_cycles);
+// uint32_t emu_BreakpointHandler(int32_t step_cycles);
+
+void emu_EmulationThread(struct thrd_t *thread);
+
+uint32_t emu_Step(int32_t step_cycles);
+
+void emu_Log(const char *fmt, ...);
 
 void dump_emu();
 

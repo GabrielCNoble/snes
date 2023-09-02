@@ -6,8 +6,10 @@
 #include "ppu.h"
 #include "cart.h"
 #include "ctrl.h"
+#include "emu.h"
 #include "dma.h"
 #include "apu.h"
+#include "thrd.h"
 
 // struct mem_write_t cpu_reg_writes[CPU_REGS_END - CPU_REGS_START] = {
 
@@ -23,10 +25,16 @@ uint8_t                 last_bus_value;
 struct mem_write_t *    reg_writes;
 struct mem_read_t *     reg_reads;
 
-extern uint32_t         read_address_buffer[];
-extern uint32_t         read_address_count;
-extern uint32_t         write_address_buffer[];
-extern uint32_t         write_address_count;
+// extern struct breakpoint_t  emu_wram_read_breakpoints[];
+// extern uint32_t             emu_wram_read_breakpoint_count;
+
+// extern struct breakpoint_t  emu_wram_write_breakpoints[];
+// extern uint32_t             emu_wram_write_breakpoint_count;
+
+extern struct breakpoint_list_t emu_breakpoints[];
+
+extern struct thrd_t        emu_main_thread;
+extern struct thrd_t *      emu_emulation_thread;
 
 void init_mem()
 {
@@ -303,9 +311,27 @@ uint32_t access_location(uint32_t effective_address)
 void write_byte(uint32_t effective_address, uint8_t data)
 {
     uint32_t access = access_location(effective_address);
+
     last_bus_value = data;
     if(access == ACCESS_RAM2)
     {
+        struct breakpoint_list_t *wram_write_breakpoints = &emu_breakpoints[BREAKPOINT_TYPE_WRAM_WRITE];
+
+        for(uint32_t breakpoint_index = 0; breakpoint_index < wram_write_breakpoints->count; breakpoint_index++)
+        {
+            struct breakpoint_t *breakpoint = wram_write_breakpoints->breakpoints + breakpoint_index;
+            if(breakpoint->start_address <= effective_address && effective_address <= breakpoint->end_address)
+            {
+                struct emu_thread_data_t *thread_data = emu_emulation_thread->data;
+                breakpoint->value = data;
+                breakpoint->address = effective_address;
+                thread_data->breakpoint = breakpoint;
+                thread_data->status |= EMU_STATUS_BREAKPOINT;
+                thrd_Switch(emu_emulation_thread, &emu_main_thread);
+                break;
+            }
+        }
+
         uint32_t offset = effective_address - RAM2_START;
         ram2[offset] = data;
     }
@@ -324,6 +350,23 @@ void write_byte(uint32_t effective_address, uint8_t data)
     }
     else if(access == ACCESS_RAM1)
     {
+        struct breakpoint_list_t *wram_write_breakpoints = &emu_breakpoints[BREAKPOINT_TYPE_WRAM_WRITE];
+
+        for(uint32_t breakpoint_index = 0; breakpoint_index < wram_write_breakpoints->count; breakpoint_index++)
+        {
+            struct breakpoint_t *breakpoint = wram_write_breakpoints->breakpoints + breakpoint_index;
+            if(breakpoint->start_address <= effective_address && effective_address <= breakpoint->end_address)
+            {
+                struct emu_thread_data_t *thread_data = emu_emulation_thread->data;
+                breakpoint->value = data;
+                breakpoint->address = effective_address;
+                thread_data->breakpoint = breakpoint;
+                thread_data->status |= EMU_STATUS_BREAKPOINT;
+                thrd_Switch(emu_emulation_thread, &emu_main_thread);
+                break;
+            }
+        }
+
         uint32_t offset = (effective_address & 0xffff) - RAM1_REGS_START;
         ram1_regs[offset] = data;
     }
@@ -346,6 +389,22 @@ uint8_t read_byte(uint32_t effective_address)
 
     if(access == ACCESS_RAM2)
     {
+        struct breakpoint_list_t *wram_read_breakpoints = &emu_breakpoints[BREAKPOINT_TYPE_WRAM_READ];
+
+        for(uint32_t breakpoint_index = 0; breakpoint_index < wram_read_breakpoints->count; breakpoint_index++)
+        {
+            struct breakpoint_t *breakpoint = wram_read_breakpoints->breakpoints + breakpoint_index;
+            if(breakpoint->start_address <= effective_address && effective_address <= breakpoint->end_address)
+            {
+                struct emu_thread_data_t *data = emu_emulation_thread->data;
+                breakpoint->address = effective_address;
+                data->breakpoint = breakpoint;
+                data->status |= EMU_STATUS_BREAKPOINT;
+                thrd_Switch(emu_emulation_thread, &emu_main_thread);
+                break;
+            }
+        }
+
         uint32_t offset = effective_address - RAM2_START;
         data = ram2[offset];
     }
@@ -364,6 +423,22 @@ uint8_t read_byte(uint32_t effective_address)
     }
     else if(access == ACCESS_RAM1)
     {
+        struct breakpoint_list_t *wram_read_breakpoints = &emu_breakpoints[BREAKPOINT_TYPE_WRAM_READ];
+
+        for(uint32_t breakpoint_index = 0; breakpoint_index < wram_read_breakpoints->count; breakpoint_index++)
+        {
+            struct breakpoint_t *breakpoint = wram_read_breakpoints->breakpoints + breakpoint_index;
+            if(breakpoint->start_address <= effective_address && effective_address <= breakpoint->end_address)
+            {
+                struct emu_thread_data_t *data = emu_emulation_thread->data;
+                breakpoint->address = effective_address;
+                data->breakpoint = breakpoint;
+                data->status |= EMU_STATUS_BREAKPOINT;
+                thrd_Switch(emu_emulation_thread, &emu_main_thread);
+                break;
+            }
+        }
+
         uint32_t offset = (effective_address & 0xffff) - RAM1_REGS_START;
         data = ram1_regs[offset];
     }

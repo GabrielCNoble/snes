@@ -2,6 +2,7 @@
 #include "GL/glew.h"
 #include "SDL2/SDL.h"
 #include "ppu.h"
+#include "input.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -32,9 +33,50 @@ GLuint          ui_shader_model_view_projection_matrix;
 GLuint          ui_shader_texture;
 
 uint32_t        ui_mouse_button[] = {
-    [SDL_BUTTON_LEFT] = ImGuiMouseButton_Left,
+    [SDL_BUTTON_LEFT]   = ImGuiMouseButton_Left,
     [SDL_BUTTON_MIDDLE] = ImGuiMouseButton_Middle,
-    [SDL_BUTTON_RIGHT] = ImGuiMouseButton_Right,
+    [SDL_BUTTON_RIGHT]  = ImGuiMouseButton_Right,
+};
+
+uint32_t ui_keyboard_map[SDL_NUM_SCANCODES] = {
+    [SDL_SCANCODE_1]            = ImGuiKey_1,
+    [SDL_SCANCODE_2]            = ImGuiKey_2,
+    [SDL_SCANCODE_3]            = ImGuiKey_3,
+    [SDL_SCANCODE_4]            = ImGuiKey_4,
+    [SDL_SCANCODE_5]            = ImGuiKey_5,
+    [SDL_SCANCODE_6]            = ImGuiKey_6,
+    [SDL_SCANCODE_7]            = ImGuiKey_7,
+    [SDL_SCANCODE_8]            = ImGuiKey_8,
+    [SDL_SCANCODE_9]            = ImGuiKey_9,
+    [SDL_SCANCODE_0]            = ImGuiKey_0,
+
+    [SDL_SCANCODE_Q]            = ImGuiKey_Q,
+    [SDL_SCANCODE_W]            = ImGuiKey_W,
+    [SDL_SCANCODE_E]            = ImGuiKey_E,
+    [SDL_SCANCODE_R]            = ImGuiKey_R,
+    [SDL_SCANCODE_T]            = ImGuiKey_T,
+    [SDL_SCANCODE_U]            = ImGuiKey_U,
+    [SDL_SCANCODE_I]            = ImGuiKey_I,
+    [SDL_SCANCODE_O]            = ImGuiKey_O,
+    [SDL_SCANCODE_P]            = ImGuiKey_P,
+    [SDL_SCANCODE_A]            = ImGuiKey_A,
+    [SDL_SCANCODE_S]            = ImGuiKey_S,
+    [SDL_SCANCODE_D]            = ImGuiKey_D,
+    [SDL_SCANCODE_F]            = ImGuiKey_F,
+    [SDL_SCANCODE_G]            = ImGuiKey_G,
+    [SDL_SCANCODE_H]            = ImGuiKey_H,
+    [SDL_SCANCODE_J]            = ImGuiKey_J,
+    [SDL_SCANCODE_K]            = ImGuiKey_K,
+    [SDL_SCANCODE_L]            = ImGuiKey_L,
+    [SDL_SCANCODE_Z]            = ImGuiKey_Z,
+    [SDL_SCANCODE_X]            = ImGuiKey_X,
+    [SDL_SCANCODE_C]            = ImGuiKey_C,
+    [SDL_SCANCODE_V]            = ImGuiKey_V,
+    [SDL_SCANCODE_B]            = ImGuiKey_B,
+    [SDL_SCANCODE_N]            = ImGuiKey_N,
+    [SDL_SCANCODE_M]            = ImGuiKey_M,
+    [SDL_SCANCODE_BACKSPACE]    = ImGuiKey_Backspace,
+    [SDL_SCANCODE_RETURN]       = ImGuiKey_Enter
 };
 
 const char *    ui_vertex_shader =
@@ -184,6 +226,21 @@ void ui_MouseClickEvent(uint32_t button, uint32_t down)
     ImGuiIO_AddMouseButtonEvent(io, ui_mouse_button[button], down);
 }
 
+void ui_KeyboardEvent(uint32_t key, uint32_t key_down)
+{
+    ImGuiIO *io = igGetIO();
+    if(ui_keyboard_map[key] > 0)
+    {
+        ImGuiIO_AddKeyEvent(io, ui_keyboard_map[key], (bool)key_down);
+    }
+}
+
+void ui_TextInputEvent(uint32_t c)
+{
+    ImGuiIO *io = igGetIO();
+    ImGuiIO_AddInputCharacter(io, c);
+}
+
 void ui_Begin()
 {
     ImGuiIO *io = igGetIO();
@@ -194,10 +251,12 @@ void ui_Begin()
     ui_model_view_projection_matrix[5] = -2.0f / (float)emu_window_height;
     ui_model_view_projection_matrix[12] = -1.0f;
     ui_model_view_projection_matrix[13] = 1.0f;
+
     // ui_model_view_projection_matrix[10] = 1.0f;
     // ui_model_view_projection_matrix[15] = 1.0f;
     igNewFrame();
-    // igShowDemoWindow(NULL);
+    
+    in_SetTextInput(io->WantTextInput);
 }
 
 void ui_End()
@@ -206,6 +265,7 @@ void ui_End()
     igRender();
     ImDrawData *draw_data = igGetDrawData();
     glClearColor(0, 0, 0, 0);
+    glClearDepth(1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_CULL_FACE);
@@ -238,7 +298,6 @@ void ui_End()
         glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(struct ImDrawVert) * draw_list->VtxBuffer.Size, draw_list->VtxBuffer.Data);
         glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, sizeof(ImDrawIdx) * draw_list->IdxBuffer.Size, draw_list->IdxBuffer.Data);
         ImTextureID cur_texture_id = NULL;
-        uint32_t index_offset = 0;
         for(uint32_t cmd_index = 0; cmd_index < draw_list->CmdBuffer.Size; cmd_index++)
         {
             ImDrawCmd *draw_cmd = draw_list->CmdBuffer.Data + cmd_index;
@@ -249,8 +308,7 @@ void ui_End()
                 glUniform1i(ui_shader_texture, 0);
             }
             glScissor(draw_cmd->ClipRect.x, (float)emu_window_height - draw_cmd->ClipRect.w, draw_cmd->ClipRect.z - draw_cmd->ClipRect.x, draw_cmd->ClipRect.w - draw_cmd->ClipRect.y);
-            glDrawElements(GL_TRIANGLES, draw_cmd->ElemCount, GL_UNSIGNED_INT, (void *)(sizeof(uint32_t) * index_offset));
-            index_offset += draw_cmd->ElemCount;
+            glDrawElements(GL_TRIANGLES, draw_cmd->ElemCount, GL_UNSIGNED_INT, (void *)(sizeof(uint32_t) * draw_cmd->IdxOffset));
         }
     }
 
