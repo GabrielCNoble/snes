@@ -4848,6 +4848,308 @@ struct opcode_t opcode_matrix[256] =
     [0xfb] = OPCODE(OPCODE_XCE, OPCODE_CLASS_STANDALONE, ADDRESS_MODE_ACCUMULATOR)
 };
 
+struct opcode_info_t opcode_info[] = {
+    [ADC_IMM]           = {.opcode = OPCODE_ADC, .width[0] = 3, .width[1] = 2, .width_flag = STATUS_FLAG_M},
+    [ADC_ABS]           = {.opcode = OPCODE_ADC, .width[0] = 3},
+    [ADC_ABSL]          = {.opcode = OPCODE_ADC, .width[0] = 4},
+    [ADC_DIR]           = {.opcode = OPCODE_ADC, .width[0] = 2},
+    [ADC_DIR_IND]       = {.opcode = OPCODE_ADC, .width[0] = 2},
+    [ADC_DIR_INDL]      = {.opcode = OPCODE_ADC, .width[0] = 2},
+    [ADC_ABS_X]         = {.opcode = OPCODE_ADC, .width[0] = 3},
+    [ADC_ABSL_X]        = {.opcode = OPCODE_ADC, .width[0] = 4},
+    [ADC_ABS_Y]         = {.opcode = OPCODE_ADC, .width[0] = 3},
+    [ADC_DIR_X]         = {.opcode = OPCODE_ADC, .width[0] = 2},
+    [ADC_DIR_X_IND]     = {.opcode = OPCODE_ADC, .width[0] = 2},
+    [ADC_DIR_IND_Y]     = {.opcode = OPCODE_ADC, .width[0] = 2},
+    [ADC_DIR_INDL_Y]    = {.opcode = OPCODE_ADC, .width[0] = 2},
+    [ADC_S_REL]         = {.opcode = OPCODE_ADC, .width[0] = 2},
+    [ADC_S_REL_IND_Y]   = {.opcode = OPCODE_ADC, .width[0] = 2},
+
+    [AND_IMM]           = {.opcode = OPCODE_AND, .width[0] = 3, .width[1] = 2, .width_flag = STATUS_FLAG_M},
+    [AND_ABS]           = {.opcode = OPCODE_AND, .width[0] = 3},
+    [AND_ABSL]          = {.opcode = OPCODE_AND, .width[0] = 4},
+    [AND_DIR]           = {.opcode = OPCODE_AND, .width[0] = 2},
+    [AND_DIR_IND]       = {.opcode = OPCODE_AND, .width[0] = 2},
+    [AND_DIR_INDL]      = {.opcode = OPCODE_AND, .width[0] = 2},
+    [AND_ABS_X]         = {.opcode = OPCODE_AND, .width[0] = 3},
+    [AND_ABSL_X]        = {.opcode = OPCODE_AND, .width[0] = 4},
+    [AND_ABS_Y]         = {.opcode = OPCODE_AND, .width[0] = 3},
+    [AND_DIR_X]         = {.opcode = OPCODE_AND, .width[0] = 2},
+    [AND_DIR_X_IND]     = {.opcode = OPCODE_AND, .width[0] = 2},
+    [AND_DIR_IND_Y]     = {.opcode = OPCODE_AND, .width[0] = 2},
+    [AND_DIR_INDL_Y]    = {.opcode = OPCODE_AND, .width[0] = 2},
+    [AND_S_REL]         = {.opcode = OPCODE_AND, .width[0] = 2},
+    [AND_S_REL_IND_Y]   = {.opcode = OPCODE_AND, .width[0] = 2},
+
+    [ASL_ACC]           = {.opcode = OPCODE_ASL, .width[0] = 1},
+    [ASL_ABS]           = {.opcode = OPCODE_ASL, .width[0] = 3},
+    [ASL_DIR]           = {.opcode = OPCODE_ASL, .width[0] = 2},
+    [ASL_ABS_X]         = {.opcode = OPCODE_ASL, .width[0] = 3},  
+    [ASL_DIR_X]         = {.opcode = OPCODE_ASL, .width[0] = 2},
+
+    [BCC_PC_REL]        = {.opcode = OPCODE_BCC, .width[0] = 2},
+    [BCS_PC_REL]        = {.opcode = OPCODE_BCS, .width[0] = 2},
+    [BEQ_PC_REL]        = {.opcode = OPCODE_BEQ, .width[0] = 2},
+    [BMI_PC_REL]        = {.opcode = OPCODE_BMI, .width[0] = 2},
+    [BNE_PC_REL]        = {.opcode = OPCODE_BNE, .width[0] = 2},
+    [BPL_PC_REL]        = {.opcode = OPCODE_BPL, .width[0] = 2},
+    [BRA_PC_REL]        = {.opcode = OPCODE_BRA, .width[0] = 2},
+    [BRL_PC_RELL]       = {.opcode = OPCODE_BRL, .width[0] = 3},
+    [BVC_PC_REL]        = {.opcode = OPCODE_BVC, .width[0] = 2},
+    [BVS_PC_REL]        = {.opcode = OPCODE_BVS, .width[0] = 2},
+
+    [BIT_IMM]           = {.opcode = OPCODE_BIT, .width[0] = 3, .width[1] = 2, .width_flag = STATUS_FLAG_M},
+    [BIT_ABS]           = {.opcode = OPCODE_BIT, .width[0] = 3},
+    [BIT_DIR]           = {.opcode = OPCODE_BIT, .width[0] = 2},
+    [BIT_ABS_X]         = {.opcode = OPCODE_BIT, .width[0] = 3},
+    [BIT_DIR_X]         = {.opcode = OPCODE_BIT, .width[0] = 2},
+
+    [BRK_S]             = {.opcode = OPCODE_BRK, .width[0] = 2, .width[1] = 1, .width_flag = STATUS_FLAG_E},
+
+    [CLC_IMP]           = {.opcode = OPCODE_CLC, .width[0] = 1},
+    [CLD_IMP]           = {.opcode = OPCODE_CLD, .width[0] = 1},
+    [CLI_IMP]           = {.opcode = OPCODE_CLI, .width[0] = 1},
+    [CLV_IMP]           = {.opcode = OPCODE_CLV, .width[0] = 1},
+
+    [CMP_IMM]           = {.opcode = OPCODE_CMP, .width[0] = 3, .width[1] = 2, .width_flag = STATUS_FLAG_M},
+    [CMP_ABS]           = {.opcode = OPCODE_CMP, .width[0] = 3},
+    [CMP_ABSL]          = {.opcode = OPCODE_CMP, .width[0] = 4},
+    [CMP_DIR]           = {.opcode = OPCODE_CMP, .width[0] = 2},
+    [CMP_DIR_IND]       = {.opcode = OPCODE_CMP, .width[0] = 2},
+    [CMP_DIR_INDL]      = {.opcode = OPCODE_CMP, .width[0] = 2},
+    [CMP_ABS_X]         = {.opcode = OPCODE_CMP, .width[0] = 3},
+    [CMP_ABSL_X]        = {.opcode = OPCODE_CMP, .width[0] = 4},
+    [CMP_ABS_Y]         = {.opcode = OPCODE_CMP, .width[0] = 3},
+    [CMP_DIR_X]         = {.opcode = OPCODE_CMP, .width[0] = 2},
+    [CMP_DIR_X_IND]     = {.opcode = OPCODE_CMP, .width[0] = 2},
+    [CMP_DIR_IND_Y]     = {.opcode = OPCODE_CMP, .width[0] = 2},
+    [CMP_DIR_INDL_Y]    = {.opcode = OPCODE_CMP, .width[0] = 2},
+    [CMP_S_REL]         = {.opcode = OPCODE_CMP, .width[0] = 2},
+    [CMP_S_REL_IND_Y]   = {.opcode = OPCODE_CMP, .width[0] = 2},
+
+    [COP_S]             = {.opcode = OPCODE_COP, .width[0] = 1},
+
+    [CPX_IMM]           = {.opcode = OPCODE_CPX, .width[0] = 3, .width[1] = 2, .width_flag = STATUS_FLAG_X},
+    [CPX_ABS]           = {.opcode = OPCODE_CPX, .width[0] = 3},
+    [CPX_DIR]           = {.opcode = OPCODE_CPX, .width[0] = 2},
+
+    [CPY_IMM]           = {.opcode = OPCODE_CPY, .width[0] = 3, .width[1] = 2, .width_flag = STATUS_FLAG_X},
+    [CPY_ABS]           = {.opcode = OPCODE_CPY, .width[0] = 3},
+    [CPY_DIR]           = {.opcode = OPCODE_CPY, .width[0] = 2},
+
+    [DEC_ACC]           = {.opcode = OPCODE_DEC, .width[0] = 1},
+    [DEC_ABS]           = {.opcode = OPCODE_DEC, .width[0] = 3},
+    [DEC_DIR]           = {.opcode = OPCODE_DEC, .width[0] = 2},
+    [DEC_ABS_X]         = {.opcode = OPCODE_DEC, .width[0] = 3},
+    [DEC_DIR_X]         = {.opcode = OPCODE_DEC, .width[0] = 2},
+
+    [DEX_IMP]           = {.opcode = OPCODE_DEX, .width[0] = 1},
+    [DEY_IMP]           = {.opcode = OPCODE_DEY, .width[0] = 1},
+
+    [EOR_IMM]           = {.opcode = OPCODE_EOR, .width[0] = 3, .width[1] = 2, .width_flag = STATUS_FLAG_M},
+    [EOR_ABS]           = {.opcode = OPCODE_EOR, .width[0] = 3},
+    [EOR_ABSL]          = {.opcode = OPCODE_EOR, .width[0] = 4},
+    [EOR_DIR]           = {.opcode = OPCODE_EOR, .width[0] = 2},
+    [EOR_DIR_IND]       = {.opcode = OPCODE_EOR, .width[0] = 2},
+    [EOR_DIR_INDL]      = {.opcode = OPCODE_EOR, .width[0] = 2},
+    [EOR_ABS_X]         = {.opcode = OPCODE_EOR, .width[0] = 3},
+    [EOR_ABSL_X]        = {.opcode = OPCODE_EOR, .width[0] = 4},
+    [EOR_ABS_Y]         = {.opcode = OPCODE_EOR, .width[0] = 3},
+    [EOR_DIR_X]         = {.opcode = OPCODE_EOR, .width[0] = 2},
+    [EOR_DIR_X_IND]     = {.opcode = OPCODE_EOR, .width[0] = 2},
+    [EOR_DIR_IND_Y]     = {.opcode = OPCODE_EOR, .width[0] = 2},
+    [EOR_DIR_INDL_Y]    = {.opcode = OPCODE_EOR, .width[0] = 2},
+    [EOR_S_REL]         = {.opcode = OPCODE_EOR, .width[0] = 2},
+    [EOR_S_REL_IND_Y]   = {.opcode = OPCODE_EOR, .width[0] = 2},
+
+    [INC_ACC]           = {.opcode = OPCODE_INC, .width[0] = 1},
+    [INC_ABS]           = {.opcode = OPCODE_INC, .width[0] = 3},
+    [INC_DIR]           = {.opcode = OPCODE_INC, .width[0] = 2},
+    [INC_ABS_X]         = {.opcode = OPCODE_INC, .width[0] = 3},
+    [INC_DIR_X]         = {.opcode = OPCODE_INC, .width[0] = 2},
+
+    [INX_IMP]           = {.opcode = OPCODE_INX, .width[0] = 1},
+    [INY_IMP]           = {.opcode = OPCODE_INY, .width[0] = 1},
+
+    [JMP_ABS]           = {.opcode = OPCODE_JMP, .width[0] = 3},
+    [JMP_ABS_IND]       = {.opcode = OPCODE_JMP, .width[0] = 3},
+    [JMP_ABS_X_IND]     = {.opcode = OPCODE_JMP, .width[0] = 3},
+    [JMP_ABSL]          = {.opcode = OPCODE_JMP, .width[0] = 4},
+    [JML_ABS_IND]       = {.opcode = OPCODE_JMP, .width[0] = 3},
+
+    [JSR_ABS]           = {.opcode = OPCODE_JSR, .width[0] = 3},
+    [JSR_ABS_X_IND]     = {.opcode = OPCODE_JSR, .width[0] = 3},
+    [JSL_ABSL]          = {.opcode = OPCODE_JSL, .width[0] = 4},
+
+    [LDA_IMM]           = {.opcode = OPCODE_LDA, .width[0] = 3, .width[1] = 2, .width_flag = STATUS_FLAG_M},
+    [LDA_ABS]           = {.opcode = OPCODE_LDA, .width[0] = 3},
+    [LDA_ABSL]          = {.opcode = OPCODE_LDA, .width[0] = 4},
+    [LDA_DIR]           = {.opcode = OPCODE_LDA, .width[0] = 2},
+    [LDA_DIR_IND]       = {.opcode = OPCODE_LDA, .width[0] = 2},
+    [LDA_DIR_INDL]      = {.opcode = OPCODE_LDA, .width[0] = 2},
+    [LDA_ABS_X]         = {.opcode = OPCODE_LDA, .width[0] = 3},
+    [LDA_ABSL_X]        = {.opcode = OPCODE_LDA, .width[0] = 4},
+    [LDA_ABS_Y]         = {.opcode = OPCODE_LDA, .width[0] = 3},
+    [LDA_DIR_X]         = {.opcode = OPCODE_LDA, .width[0] = 2},
+    [LDA_DIR_X_IND]     = {.opcode = OPCODE_LDA, .width[0] = 2},
+    [LDA_DIR_IND_Y]     = {.opcode = OPCODE_LDA, .width[0] = 2},
+    [LDA_DIR_INDL_Y]    = {.opcode = OPCODE_LDA, .width[0] = 2},
+    [LDA_S_REL]         = {.opcode = OPCODE_LDA, .width[0] = 2},
+    [LDA_S_REL_IND_Y]   = {.opcode = OPCODE_LDA, .width[0] = 2},
+
+    [LDX_IMM]           = {.opcode = OPCODE_LDX, .width[0] = 3, .width[1] = 2, .width_flag = STATUS_FLAG_X},
+    [LDX_ABS]           = {.opcode = OPCODE_LDX, .width[0] = 3},
+    [LDX_DIR]           = {.opcode = OPCODE_LDX, .width[0] = 2},
+    [LDX_ABS_Y]         = {.opcode = OPCODE_LDX, .width[0] = 3},
+    [LDX_DIR_Y]         = {.opcode = OPCODE_LDX, .width[0] = 2},
+
+    [LDY_IMM]           = {.opcode = OPCODE_LDY, .width[0] = 3, .width[1] = 2, .width_flag = STATUS_FLAG_X},
+    [LDY_ABS]           = {.opcode = OPCODE_LDY, .width[0] = 3},
+    [LDY_DIR]           = {.opcode = OPCODE_LDY, .width[0] = 2},
+    [LDY_ABS_X]         = {.opcode = OPCODE_LDY, .width[0] = 3},
+    [LDY_DIR_X]         = {.opcode = OPCODE_LDY, .width[0] = 2},
+
+    [LSR_ACC]           = {.opcode = OPCODE_LSR, .width[0] = 1},
+    [LSR_ABS]           = {.opcode = OPCODE_LSR, .width[0] = 3},
+    [LSR_DIR]           = {.opcode = OPCODE_LSR, .width[0] = 2},
+    [LSR_ABS_X]         = {.opcode = OPCODE_LSR, .width[0] = 3},  
+    [LSR_DIR_X]         = {.opcode = OPCODE_LSR, .width[0] = 2},
+
+    [MVN_BLK]           = {.opcode = OPCODE_MVN, .width[0] = 3},
+    [MVP_BLK]           = {.opcode = OPCODE_MVP, .width[0] = 3},
+
+    [NOP_IMP]           = {.opcode = OPCODE_NOP, .width[0] = 1},
+
+    [ORA_IMM]           = {.opcode = OPCODE_ORA, .width[0] = 3, .width[1] = 2, .width_flag = STATUS_FLAG_M},
+    [ORA_ABS]           = {.opcode = OPCODE_ORA, .width[0] = 3},
+    [ORA_ABSL]          = {.opcode = OPCODE_ORA, .width[0] = 4},
+    [ORA_DIR]           = {.opcode = OPCODE_ORA, .width[0] = 2},
+    [ORA_DIR_IND]       = {.opcode = OPCODE_ORA, .width[0] = 2},
+    [ORA_DIR_INDL]      = {.opcode = OPCODE_ORA, .width[0] = 2},
+    [ORA_ABS_X]         = {.opcode = OPCODE_ORA, .width[0] = 3},
+    [ORA_ABSL_X]        = {.opcode = OPCODE_ORA, .width[0] = 4},
+    [ORA_ABS_Y]         = {.opcode = OPCODE_ORA, .width[0] = 3},
+    [ORA_DIR_X]         = {.opcode = OPCODE_ORA, .width[0] = 2},
+    [ORA_DIR_X_IND]     = {.opcode = OPCODE_ORA, .width[0] = 2},
+    [ORA_DIR_IND_Y]     = {.opcode = OPCODE_ORA, .width[0] = 2},
+    [ORA_DIR_INDL_Y]    = {.opcode = OPCODE_ORA, .width[0] = 2},
+    [ORA_S_REL]         = {.opcode = OPCODE_ORA, .width[0] = 2},
+    [ORA_S_REL_IND_Y]   = {.opcode = OPCODE_ORA, .width[0] = 2},    
+    
+    [PEA_S]             = {.opcode = OPCODE_PEA, .width[0] = 3},
+    [PEI_S]             = {.opcode = OPCODE_PEI, .width[0] = 2},
+    [PER_S]             = {.opcode = OPCODE_PER, .width[0] = 3},
+    [PHA_S]             = {.opcode = OPCODE_PHA, .width[0] = 1},
+    [PHB_S]             = {.opcode = OPCODE_PHB, .width[0] = 1},
+    [PHD_S]             = {.opcode = OPCODE_PHD, .width[0] = 1},
+    [PHK_S]             = {.opcode = OPCODE_PHK, .width[0] = 1},
+    [PHP_S]             = {.opcode = OPCODE_PHP, .width[0] = 1},
+    [PHX_S]             = {.opcode = OPCODE_PHX, .width[0] = 1},
+    [PHY_S]             = {.opcode = OPCODE_PHY, .width[0] = 1},
+
+    [PLA_S]             = {.opcode = OPCODE_PLA, .width[0] = 1},
+    [PLB_S]             = {.opcode = OPCODE_PLB, .width[0] = 1},
+    [PLD_S]             = {.opcode = OPCODE_PLD, .width[0] = 1},
+    [PLP_S]             = {.opcode = OPCODE_PLP, .width[0] = 1},
+    [PLX_S]             = {.opcode = OPCODE_PLX, .width[0] = 1},
+    [PLY_S]             = {.opcode = OPCODE_PLY, .width[0] = 1},
+
+    [REP_IMM]           = {.opcode = OPCODE_REP, .width[0] = 2},
+
+    [ROL_ACC]           = {.opcode = OPCODE_ROL, .width[0] = 1},
+    [ROL_ABS]           = {.opcode = OPCODE_ROL, .width[0] = 3},
+    [ROL_DIR]           = {.opcode = OPCODE_ROL, .width[0] = 2},
+    [ROL_ABS_X]         = {.opcode = OPCODE_ROL, .width[0] = 3},
+    [ROL_DIR_X]         = {.opcode = OPCODE_ROL, .width[0] = 2},
+
+    [ROR_ACC]           = {.opcode = OPCODE_ROR, .width[0] = 1},
+    [ROR_ABS]           = {.opcode = OPCODE_ROR, .width[0] = 3},
+    [ROR_DIR]           = {.opcode = OPCODE_ROR, .width[0] = 2},
+    [ROR_ABS_X]         = {.opcode = OPCODE_ROR, .width[0] = 3},
+    [ROR_DIR_X]         = {.opcode = OPCODE_ROR, .width[0] = 2},
+
+    [RTI_S]             = {.opcode = OPCODE_RTI, .width[0] = 1},
+    [RTL_S]             = {.opcode = OPCODE_RTL, .width[0] = 1},
+    [RTS_S]             = {.opcode = OPCODE_RTS, .width[0] = 1},
+
+    [SBC_IMM]           = {.opcode = OPCODE_SBC, .width[0] = 3, .width[1] = 2, .width_flag = STATUS_FLAG_M},
+    [SBC_ABS]           = {.opcode = OPCODE_SBC, .width[0] = 3},
+    [SBC_ABSL]          = {.opcode = OPCODE_SBC, .width[0] = 4},
+    [SBC_DIR]           = {.opcode = OPCODE_SBC, .width[0] = 2},
+    [SBC_DIR_IND]       = {.opcode = OPCODE_SBC, .width[0] = 2},
+    [SBC_DIR_INDL]      = {.opcode = OPCODE_SBC, .width[0] = 2},
+    [SBC_ABS_X]         = {.opcode = OPCODE_SBC, .width[0] = 3},
+    [SBC_ABSL_X]        = {.opcode = OPCODE_SBC, .width[0] = 4},
+    [SBC_ABS_Y]         = {.opcode = OPCODE_SBC, .width[0] = 3},
+    [SBC_DIR_X]         = {.opcode = OPCODE_SBC, .width[0] = 2},
+    [SBC_DIR_X_IND]     = {.opcode = OPCODE_SBC, .width[0] = 2},
+    [SBC_DIR_IND_Y]     = {.opcode = OPCODE_SBC, .width[0] = 2},
+    [SBC_DIR_INDL_Y]    = {.opcode = OPCODE_SBC, .width[0] = 2},
+    [SBC_S_REL]         = {.opcode = OPCODE_SBC, .width[0] = 2},
+    [SBC_S_REL_IND_Y]   = {.opcode = OPCODE_SBC, .width[0] = 2},
+
+    [SEC_IMP]           = {.opcode = OPCODE_SEC, .width[0] = 1},
+    [SED_IMP]           = {.opcode = OPCODE_SED, .width[0] = 1},
+    [SEI_IMP]           = {.opcode = OPCODE_SEI, .width[0] = 1},
+    [SEP_IMM]           = {.opcode = OPCODE_SEP, .width[0] = 2},
+
+    [STA_ABS]           = {.opcode = OPCODE_STA, .width[0] = 3},
+    [STA_ABSL]          = {.opcode = OPCODE_STA, .width[0] = 4},
+    [STA_DIR]           = {.opcode = OPCODE_STA, .width[0] = 2},
+    [STA_DIR_IND]       = {.opcode = OPCODE_STA, .width[0] = 2},
+    [STA_DIR_INDL]      = {.opcode = OPCODE_STA, .width[0] = 2},
+    [STA_ABS_X]         = {.opcode = OPCODE_STA, .width[0] = 3},
+    [STA_ABSL_X]        = {.opcode = OPCODE_STA, .width[0] = 4},
+    [STA_ABS_Y]         = {.opcode = OPCODE_STA, .width[0] = 3},
+    [STA_DIR_X]         = {.opcode = OPCODE_STA, .width[0] = 2},
+    [STA_DIR_X_IND]     = {.opcode = OPCODE_STA, .width[0] = 2},
+    [STA_DIR_IND_Y]     = {.opcode = OPCODE_STA, .width[0] = 2},
+    [STA_DIR_INDL_Y]    = {.opcode = OPCODE_STA, .width[0] = 2},
+    [STA_S_REL]         = {.opcode = OPCODE_STA, .width[0] = 2},
+    [STA_S_REL_IND_Y]   = {.opcode = OPCODE_STA, .width[0] = 2},
+
+    [STP_IMP]           = {.opcode = OPCODE_STP, .width[0] = 1},
+
+    [STX_ABS]           = {.opcode = OPCODE_STX, .width[0] = 3},
+    [STX_DIR]           = {.opcode = OPCODE_STX, .width[0] = 2},
+    [STX_DIR_Y]         = {.opcode = OPCODE_STX, .width[0] = 2},
+
+    [STY_ABS]           = {.opcode = OPCODE_STY, .width[0] = 3},
+    [STY_DIR]           = {.opcode = OPCODE_STY, .width[0] = 2},
+    [STY_DIR_X]         = {.opcode = OPCODE_STY, .width[0] = 2},
+
+    [STZ_ABS]           = {.opcode = OPCODE_STZ, .width[0] = 3},
+    [STZ_DIR]           = {.opcode = OPCODE_STZ, .width[0] = 2},
+    [STZ_ABS_X]         = {.opcode = OPCODE_STZ, .width[0] = 3},
+    [STZ_DIR_X]         = {.opcode = OPCODE_STZ, .width[0] = 2},
+
+    [TAX_IMP]           = {.opcode = OPCODE_TAX, .width[0] = 1},
+    [TAY_IMP]           = {.opcode = OPCODE_TAY, .width[0] = 1},
+    [TCD_IMP]           = {.opcode = OPCODE_TCD, .width[0] = 1},
+    [TCS_IMP]           = {.opcode = OPCODE_TCS, .width[0] = 1},
+    [TDC_IMP]           = {.opcode = OPCODE_TDC, .width[0] = 1},
+    [TSC_ACC]           = {.opcode = OPCODE_TSC, .width[0] = 1},
+    [TSX_ACC]           = {.opcode = OPCODE_TSX, .width[0] = 1},
+    [TXA_ACC]           = {.opcode = OPCODE_TXA, .width[0] = 1},
+    [TXS_ACC]           = {.opcode = OPCODE_TXS, .width[0] = 1},
+    [TXY_ACC]           = {.opcode = OPCODE_TXY, .width[0] = 1},
+    [TYA_ACC]           = {.opcode = OPCODE_TYA, .width[0] = 1},
+    [TYX_ACC]           = {.opcode = OPCODE_TYX, .width[0] = 1},
+
+    [TRB_ABS]           = {.opcode = OPCODE_TRB, .width[0] = 3},
+    [TRB_DIR]           = {.opcode = OPCODE_TRB, .width[0] = 2},
+
+    [TSB_ABS]           = {.opcode = OPCODE_TSB, .width[0] = 3},
+    [TSB_DIR]           = {.opcode = OPCODE_TSB, .width[0] = 2},
+
+    [WAI_ACC]           = {.opcode = OPCODE_WAI, .width[0] = 1},
+
+    [WDM_ACC]           = {.opcode = OPCODE_WDM, .width[0] = 2},
+
+    [XBA_ACC]           = {.opcode = OPCODE_XBA, .width[0] = 1},
+    [XCE_ACC]           = {.opcode = OPCODE_XCE, .width[0] = 1},
+};
+
 const char *opcode_strs[] = {
     [OPCODE_BRK] = "BRK",
     [OPCODE_BIT] = "BIT",
@@ -6354,6 +6656,37 @@ uint32_t step_cpu(int32_t *cycle_count)
 
     return end_of_instruction;
 }
+
+void init_disasm(struct disasm_state_t *disasm_state, struct cpu_state_t *cpu_state)
+{
+    // disasm_state->reg_pc = cpu_state->regs[REG_PC].word;
+    // disasm_state->reg_pbr = cpu_state->regs[REG_PBR].byte[0];
+    disasm_state->reg_pc = cpu_state->instruction_address & 0xffff;
+    disasm_state->reg_pbr = (cpu_state->instruction_address >> 16) & 0xff;
+    disasm_state->reg_p = (cpu_state->reg_p.m << STATUS_FLAG_M) | (cpu_state->reg_p.x << STATUS_FLAG_X) | (cpu_state->reg_p.e << STATUS_FLAG_E);
+}
+
+struct opcode_info_t *disasm(struct disasm_state_t *disasm_state)
+{
+    uint32_t effective_address = EFFECTIVE_ADDRESS(disasm_state->reg_pbr, disasm_state->reg_pc);
+    uint8_t opcode = peek_byte(effective_address);
+    struct opcode_info_t *info = opcode_info + opcode;
+    disasm_state->reg_pc += info->width[(disasm_state->reg_p & info->width_flag) && 1];    
+    return info;
+}
+
+// void disasm(struct disasm_state_t *disasm_state, uint32_t instruction_count)
+// {
+//     while(instruction_count)
+//     {
+//         uint32_t effective_address = EFFECTIVE_ADDRESS(disasm_state->reg_pbr, disasm_state->reg_pc);
+//         uint8_t opcode = peek_byte(effective_address);
+//         struct opcode_info_t *info = opcode_info + opcode;
+//         printf("[%02x:%04x]: %s\n", disasm_state->reg_pbr, disasm_state->reg_pc, opcode_strs[info->opcode]);
+//         disasm_state->reg_pc += info->width[(disasm_state->reg_p & info->width_flag) && 1];
+//         instruction_count--;
+//     }
+// }
 
 uint8_t io_read(uint32_t effective_address)
 {

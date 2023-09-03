@@ -758,6 +758,13 @@ struct opcode_t
     uint8_t opcode_class : 3;
 };
 
+struct opcode_info_t
+{
+    uint8_t width[2];
+    uint8_t width_flag;
+    uint8_t opcode;
+};
+
 // struct branch_cond_t
 // {
 //     uint8_t condition;
@@ -965,6 +972,13 @@ struct cpu_state_t
 
 #define CPU_MASTER_CYCLES 6
 
+struct disasm_state_t
+{
+    uint8_t     reg_p;
+    uint16_t    reg_pc;
+    uint8_t     reg_pbr;
+};
+
 // enum CPU_SIGNALS
 // {
 //     CPU_SIGNAL_RDY = 0,
@@ -1028,6 +1042,10 @@ void load_uop();
 void next_uop();
 
 uint32_t step_cpu(int32_t *cycle_count);
+
+void init_disasm(struct disasm_state_t *disasm_state, struct cpu_state_t *cpu_state);
+
+struct opcode_info_t *disasm(struct disasm_state_t *disasm_state);
 
 uint8_t io_read(uint32_t effective_address);
 

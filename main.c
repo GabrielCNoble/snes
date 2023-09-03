@@ -20,6 +20,7 @@ extern struct emu_log_t *           emu_log_entries;
 extern uint32_t                     emu_log_entry_count;
 
 extern struct cpu_state_t           cpu_state;
+extern const char *                 opcode_strs[];
 
 extern uint8_t *            vram;
 extern uint8_t *            cgram;
@@ -40,6 +41,14 @@ const char *m_breakpoint_type_names[] = {
 struct viewer_tile_t
 {
     struct dot_t pixels[64];
+};
+
+enum M_RUN_MODE
+{
+    M_RUN_MODE_RUN,
+    M_RUN_MODE_STOP,
+    M_RUN_MODE_NEXT_INSTRUCTION,
+    M_RUN_MODE_NEXT_CYCLE,
 };
 
 
@@ -88,7 +97,7 @@ int main(int argc, char *argv[])
 
     reset_emu();
 
-    uint32_t run_emulation = 0;
+    uint32_t run_mode = M_RUN_MODE_STOP;
     uint32_t tile_bits_per_pixel = 4;
     uint32_t tile_viewer_first_row = 0;
     uint32_t tile_viewer_last_row = 0;
@@ -123,21 +132,51 @@ int main(int argc, char *argv[])
             igEndMainMenuBar();   
         }
 
-        if(run_emulation)
+        uint32_t status = 0;
+
+        switch(run_mode)
         {
-            uint32_t status = 0;
-
-            do
+            case M_RUN_MODE_NEXT_INSTRUCTION:
             {
-                status = emu_Step(4);
-            }
-            while(!(status & (EMU_STATUS_END_OF_FRAME | EMU_STATUS_BREAKPOINT)));
+                do
+                {
+                    status = emu_Step(4);
+                }
+                while(!(status & (EMU_STATUS_BREAKPOINT | EMU_STATUS_END_OF_INSTRUCTION)));
 
-            if(status & EMU_STATUS_BREAKPOINT)
-            {
-                run_emulation = 0;
+                run_mode = M_RUN_MODE_STOP;
             }
+            break;
+
+            case M_RUN_MODE_RUN:
+                do
+                {
+                    status = emu_Step(4);
+                }
+                while(!(status & (EMU_STATUS_END_OF_FRAME | EMU_STATUS_BREAKPOINT)));
+
+                if(status & EMU_STATUS_BREAKPOINT)
+                {
+                    run_mode = M_RUN_MODE_STOP;
+                }
+            break;
         }
+
+        // if(run_emulation)
+        // {
+            
+
+        //     do
+        //     {
+        //         status = emu_Step(4);
+        //     }
+        //     while(!(status & (EMU_STATUS_END_OF_FRAME | EMU_STATUS_BREAKPOINT)));
+
+        //     if(status & EMU_STATUS_BREAKPOINT)
+        //     {
+        //         run_emulation = 0;
+        //     }
+        // }
 
 
         igSetNextWindowSize((ImVec2){emu_window_width, emu_window_height - 18}, 0);
@@ -175,7 +214,7 @@ int main(int argc, char *argv[])
                 {
                     if(igBeginTabItem("CPU", NULL, 0))
                     {
-                        if(igBeginTable("##registers0", 6, ImGuiTableFlags_Borders | ImGuiTableFlags_NoKeepColumnsVisible, (ImVec2){0, 0}, 0))
+                        if(igBeginTable("##registers0", 8, ImGuiTableFlags_Borders | ImGuiTableFlags_NoKeepColumnsVisible, (ImVec2){0, 0}, 0))
                         {
                             igTableNextRow(ImGuiTableRowFlags_Headers, 0);
                             igTableNextColumn();
@@ -184,6 +223,10 @@ int main(int argc, char *argv[])
                             igText("X");
                             igTableNextColumn();
                             igText("Y");
+                            igTableNextColumn();
+                            igText("S");
+                            igTableNextColumn();
+                            igText("D");
                             igTableNextColumn();
                             igText("PC");
                             igTableNextColumn();
@@ -199,6 +242,10 @@ int main(int argc, char *argv[])
                             igTableNextColumn();
                             igText("%04x", cpu_state.regs[REG_Y].word);
                             igTableNextColumn();
+                            igText("%04x", cpu_state.regs[REG_S].word);
+                            igTableNextColumn();
+                            igText("%04x", cpu_state.regs[REG_D].word);
+                            igTableNextColumn();
                             igText("%04x (%04x)", cpu_state.instruction_address & 0xffff, cpu_state.regs[REG_PC].word);
                             igTableNextColumn();
                             igText("%02x", cpu_state.regs[REG_PBR].byte[0]);
@@ -212,56 +259,62 @@ int main(int argc, char *argv[])
                         {
                             igTableNextRow(ImGuiTableRowFlags_Headers, 0);
                             igTableNextColumn();
-                            igText("C");
-                            igTableNextColumn();
-                            igText("Z");
-                            igTableNextColumn();
-                            igText("I");
-                            igTableNextColumn();
-                            igText("D");
-                            igTableNextColumn();
-                            if(cpu_state.reg_p.e)
-                            {
-                                igText("B");
-                            }
-                            else
-                            {
-                                igText("X");
-                            }
-                            igTableNextColumn();
-                            igText("M");
+                            igText("N");
                             igTableNextColumn();
                             igText("V");
                             igTableNextColumn();
-                            igText("E");
-
+                            igText(cpu_state.reg_p.e ? "--" : "M");
+                            igTableNextColumn();
+                            igText(cpu_state.reg_p.e ? "B" : "X");
+                            igTableNextColumn();
+                            igText("D");
+                            igTableNextColumn();
+                            igText("I");
+                            igTableNextColumn();
+                            igText("Z");
+                            igTableNextColumn();
+                            igText("C - E");
+                            
                             igTableNextRow(0, 0);
                             igTableNextColumn();
-                            igText("%d", cpu_state.reg_p.c);
-                            igTableNextColumn();
-                            igText("%d", cpu_state.reg_p.z);
-                            igTableNextColumn();
-                            igText("%d", cpu_state.reg_p.i);
-                            igTableNextColumn();
-                            igText("%d", cpu_state.reg_p.d);
-                            igTableNextColumn();
-                            if(cpu_state.reg_p.e)
-                            {
-                                igText("%d", cpu_state.reg_p.b);
-                            }
-                            else
-                            {
-                                igText("%d", cpu_state.reg_p.x);
-                            }
-                            igTableNextColumn();
-                            igText("%d", cpu_state.reg_p.m);
+                            igText("%d", cpu_state.reg_p.n);
                             igTableNextColumn();
                             igText("%d", cpu_state.reg_p.v);
                             igTableNextColumn();
-                            igText("%d", cpu_state.reg_p.e);
-
+                            igText("%d", cpu_state.reg_p.m);
+                            igTableNextColumn();
+                            igText("%d", cpu_state.reg_p.e ? cpu_state.reg_p.b : cpu_state.reg_p.x);
+                            igTableNextColumn();
+                            igText("%d", cpu_state.reg_p.d);
+                            igTableNextColumn();
+                            igText("%d", cpu_state.reg_p.i);
+                            igTableNextColumn();
+                            igText("%d", cpu_state.reg_p.z);
+                            igTableNextColumn();
+                            igText("%d - %d", cpu_state.reg_p.c, cpu_state.reg_p.e);
+                            
                             igEndTable();
                         }
+
+                        if(igBeginChild_Str("Disasm", (ImVec2){0, 0}, 1, 0))
+                        {
+                            struct disasm_state_t disasm_state;
+                            init_disasm(&disasm_state, &cpu_state);
+
+                            for(uint32_t index = 0; index < 10; index++)
+                            {   
+                                uint16_t pc = disasm_state.reg_pc;
+                                uint8_t pbr = disasm_state.reg_pbr;
+                                struct opcode_info_t *opcode_info = disasm(&disasm_state);
+                                igText("[0x%02x:0x%04x]: %s", pbr, pc, opcode_strs[opcode_info->opcode]);
+                            }
+                            // disasm_state.reg_pc = cpu_state.regs[REG_PC].word;
+                            // disasm_state.reg_pbr = cpu_state.regs[REG_PBR].byte[0];
+                            // disasm_state.reg_p = (cpu_state.reg_p.m << STATUS_FLAG_M) | (cpu_state.reg_p.x << STATUS_FLAG_X) | (cpu_state.reg_p.e << STATUS_FLAG_E);
+
+                            // disasm(&disasm_state, 20);
+                        }
+                        igEndChild();
                         
                         igEndTabItem();
                     }
@@ -591,12 +644,17 @@ int main(int argc, char *argv[])
 
                 if(igButton("Run", (ImVec2){32, 0}))
                 {
-                    run_emulation = 1;
+                    run_mode = M_RUN_MODE_RUN;
+                }
+                igSameLine(0, -1);
+                if(igButton("Next instruction", (ImVec2){96, 0}))
+                {
+                    run_mode = M_RUN_MODE_NEXT_INSTRUCTION;
                 }
                 igSameLine(0, -1);
                 if(igButton("Halt", (ImVec2){48, 0}))
                 {
-                    run_emulation = 0;
+                    run_mode = M_RUN_MODE_STOP;
                 }
 
                 igImage((ImTextureID)(uintptr_t)emu_framebuffer_texture, window_size, (ImVec2){0, 0}, (ImVec2){1, 1}, (ImVec4){1, 1, 1, 1}, (ImVec4){0, 0, 0, 0});
