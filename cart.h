@@ -109,6 +109,8 @@ void *mode20_cart_pointer(uint32_t effective_address, uint32_t write);
 
 void *mode21_cart_pointer(uint32_t effective_address, uint32_t write);
 
+void *no_cart_pointer(uint32_t effective_address, uint32_t write);
+
 // void *cart_pointer(uint32_t effective_address);
 
 uint8_t cart_read(uint32_t effective_address);

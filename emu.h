@@ -58,12 +58,13 @@ enum BREAKPOINT_TYPE
 {
     BREAKPOINT_TYPE_EXECUTION = 0,
     BREAKPOINT_TYPE_REGISTER,
-    BREAKPOINT_TYPE_WRAM_READ,
-    BREAKPOINT_TYPE_WRAM_WRITE,
+    BREAKPOINT_TYPE_MEM_READ,
+    BREAKPOINT_TYPE_MEM_WRITE,
     BREAKPOINT_TYPE_VRAM_READ,
     BREAKPOINT_TYPE_VRAM_WRITE,
     BREAKPOINT_TYPE_REG_READ,
     BREAKPOINT_TYPE_REG_WRITE,
+    BREAKPOINT_TYPE_DMA,
     BREAKPOINT_TYPE_LAST
 };
 
@@ -81,17 +82,37 @@ enum EMU_STATES
     EMU_STATE_STEP,
 };
 
+enum EMU_BREAKPOINT_FLAGS
+{
+    EMU_BREAKPOINT_FLAG_WRITE   = 1,
+    EMU_BREAKPOINT_FLAG_READ    = 1 << 1
+};
+
 struct breakpoint_t
 {
     uint32_t type;
     uint32_t reg;
     uint32_t start_address;
     uint32_t end_address;
+    
     uint32_t address;
     uint32_t value;
-};
 
-struct breakpoint_list_t
+    // union
+    // {
+        struct
+        {
+            uint32_t channel;
+        }dma;
+
+        // struct
+        // {
+        //     uint32_t address;
+        // }mem;
+    // };
+}; 
+
+struct breakpoint_list_t 
 {
     struct breakpoint_t breakpoints[MAX_BREAKPOINTS];
     uint32_t            count;
@@ -102,6 +123,30 @@ struct emu_thread_data_t
     uint32_t                status;
     struct breakpoint_t *   breakpoint;
     int32_t                 step_cycles;
+    uint32_t                breakpoint_type;
+    union
+    {
+        struct
+        {
+            uint32_t    channel;
+            uint32_t    src_address;
+            uint32_t    dst_address;
+            uint32_t    data;
+        }dma;
+
+        struct
+        {
+            uint32_t    address;
+            uint32_t    data;
+        }vram;
+
+        struct
+        {
+            uint32_t    address;
+            uint32_t    location;
+            uint32_t    data;
+        }mem;
+    }breakpoint_data;
 };
 
 
@@ -116,6 +161,10 @@ void set_execution_breakpoint(uint32_t effective_address);
 void set_register_breakpoint(uint32_t reg, uint32_t value);
 
 void set_read_write_breakpoint(uint32_t type, uint32_t start_address, uint32_t end_address);
+
+void set_dma_breakpoint(uint32_t channel);
+
+void remove_breakpoint(struct breakpoint_t *breakpoint);
 
 void clear_breakpoints();
 

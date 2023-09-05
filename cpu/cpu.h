@@ -763,8 +763,16 @@ struct opcode_info_t
     uint8_t width[2];
     uint8_t width_flag;
     uint8_t opcode;
+    uint8_t addr_mode;
 };
 
+struct disasm_inst_t
+{
+    uint8_t         bytes[7];
+    uint8_t         width;
+    const char *    opcode_str;
+    const char *    addr_mode_str;
+};
 // struct branch_cond_t
 // {
 //     uint8_t condition;
@@ -974,7 +982,7 @@ struct cpu_state_t
 
 struct disasm_state_t
 {
-    uint8_t     reg_p;
+    uint16_t    reg_p;
     uint16_t    reg_pc;
     uint8_t     reg_pbr;
 };
@@ -1045,7 +1053,7 @@ uint32_t step_cpu(int32_t *cycle_count);
 
 void init_disasm(struct disasm_state_t *disasm_state, struct cpu_state_t *cpu_state);
 
-struct opcode_info_t *disasm(struct disasm_state_t *disasm_state);
+uint32_t disasm(struct disasm_state_t *disasm_state, struct disasm_inst_t *instruction);
 
 uint8_t io_read(uint32_t effective_address);
 

@@ -337,7 +337,7 @@ uint32_t xba(uint32_t arg)
     return 1;
 }
 
-uint32_t wai(uint32_t)
+uint32_t wai(uint32_t arg)
 {
     cpu_state.wai = 1;
     cpu_state.rdy = 0;

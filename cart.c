@@ -77,7 +77,8 @@ void *(*map_mode_functions[])(uint32_t effective_address, uint32_t write) = {
     [MAP_MODE_21_FAST] = mode21_cart_pointer,
 };
 
-void *(*cart_pointer)(uint32_t effective_address, uint32_t write);
+void *(*cart_pointer)(uint32_t effective_address, uint32_t write) = no_cart_pointer;
+uint32_t                no_cart_data = 0;
 uint8_t *               rom_buffer;
 FILE *                  sram_file;
 uint8_t *               sram;
@@ -311,6 +312,11 @@ void *mode21_cart_pointer(uint32_t effective_address, uint32_t write)
     }
 
     return rom_buffer + effective_address;
+}
+
+void *no_cart_pointer(uint32_t effective_address, uint32_t write)
+{
+    return &no_cart_data;
 }
 
 uint8_t cart_read(uint32_t effective_address)

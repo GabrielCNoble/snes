@@ -1,6 +1,7 @@
 #include "dma.h"
 #include "cpu/cpu.h"
 #include "mem.h"
+#include "emu.h"
 #include <stdio.h>
 
 extern uint8_t *ram1_regs;
@@ -40,6 +41,11 @@ extern uint16_t     vcounter;
 extern int32_t      ppu_cycle_count;
 
 extern uint64_t     master_cycles;
+
+extern struct breakpoint_list_t emu_breakpoints[];
+extern uint32_t                 emu_dma_breakpoint_bitmask;
+extern struct thrd_t            emu_main_thread;
+extern struct thrd_t *          emu_emulation_thread;
 
 uint32_t addr_increments[] = {
     [DMA_ADDR_MODE_FIXED]   = 0,
@@ -90,6 +96,8 @@ void step_dma(int32_t cycle_count)
     uint32_t hdma_active = ram1_regs[CPU_REG_HDMAEN] &&
                             (ram1_regs[CPU_REG_HVBJOY] & (CPU_HVBJOY_FLAG_HBLANK | CPU_HVBJOY_FLAG_VBLANK)) == CPU_HVBJOY_FLAG_HBLANK;
 
+    struct breakpoint_list_t *list = &emu_breakpoints[BREAKPOINT_TYPE_DMA];
+
     if(ram1_regs[CPU_REG_MDMAEN] && !hdma_active)
     {
         dma_cycle_count += cycle_count;
@@ -102,6 +110,18 @@ void step_dma(int32_t cycle_count)
 
             for(uint32_t channel_index = 0; channel_index < 8; channel_index++)
             {
+                // struct breakpoint_t *breakpoint = NULL;
+
+                // for(uint32_t breakpoint_index = 0; breakpoint_index < list->count; breakpoint_index++)
+                // {
+                //     // struct breakpoint_t *breakpoint = list->breakpoints + breakpoint_index;
+                //     if(list->breakpoints[breakpoint_index].dma.channel == channel_index)
+                //     {
+                //         breakpoint = list->breakpoints + breakpoint_index;
+                //         break;
+                //     }
+                // }
+
                 if(active_channels & (1 << channel_index))
                 {
                     struct dma_t *dma = dma_channels + channel_index;
@@ -119,6 +139,32 @@ void step_dma(int32_t cycle_count)
                         {
                             elapsed_cycles += 4;
                             uint8_t data = read_byte(dma->addr);
+
+                            if(emu_dma_breakpoint_bitmask & (1 << channel_index))
+                            {
+                                struct emu_thread_data_t *thread_data = emu_emulation_thread->data;
+                                thread_data->status |= EMU_STATUS_BREAKPOINT;
+                                thread_data->breakpoint_type = BREAKPOINT_TYPE_DMA;
+                                thread_data->breakpoint_data.dma.channel = channel_index;
+                                thread_data->breakpoint_data.dma.src_address = dma->addr;
+                                thread_data->breakpoint_data.dma.dst_address = dma->regs[dma->cur_reg];
+                                thread_data->breakpoint_data.dma.data = data;
+                                thrd_Switch(emu_emulation_thread, &emu_main_thread);
+                            }
+
+                            // if(breakpoint != NULL)
+                            // {
+                            //     struct emu_thread_data_t *thread_data = emu_emulation_thread->data;
+                            //     thread_data->status |= EMU_STATUS_BREAKPOINT;
+                            //     thread_data->breakpoint = breakpoint;
+
+                            //     // breakpoint->dma.channel = channel_index;
+                            //     breakpoint->dma.src_address = dma->addr;
+                            //     breakpoint->dma.dst_address = dma->regs[dma->cur_reg];
+                            //     breakpoint->value = data;
+                            //     thrd_Switch(emu_emulation_thread, &emu_main_thread);
+                            // }
+
                             dma->addr += dma->increment;
                             elapsed_cycles += 4;
                             write_byte(dma->regs[dma->cur_reg], data);
@@ -133,6 +179,32 @@ void step_dma(int32_t cycle_count)
                         {
                             elapsed_cycles += 4;
                             uint8_t data = read_byte(dma->regs[dma->cur_reg]);
+
+                            if(emu_dma_breakpoint_bitmask & (1 << channel_index))
+                            {
+                                struct emu_thread_data_t *thread_data = emu_emulation_thread->data;
+                                thread_data->status |= EMU_STATUS_BREAKPOINT;
+                                thread_data->breakpoint_type = BREAKPOINT_TYPE_DMA;
+                                thread_data->breakpoint_data.dma.channel = channel_index;
+                                thread_data->breakpoint_data.dma.src_address = dma->regs[dma->cur_reg];
+                                thread_data->breakpoint_data.dma.dst_address = dma->addr;
+                                thread_data->breakpoint_data.dma.data = data;
+                                thrd_Switch(emu_emulation_thread, &emu_main_thread);
+                            }
+
+                            // if(breakpoint != NULL)
+                            // {
+                            //     struct emu_thread_data_t *thread_data = emu_emulation_thread->data;
+                            //     thread_data->status |= EMU_STATUS_BREAKPOINT;
+                            //     thread_data->breakpoint = breakpoint;
+
+                            //     breakpoint->dma.channel = channel_index;
+                            //     breakpoint->dma.src_address = dma->regs[dma->cur_reg];
+                            //     breakpoint->dma.dst_address = dma->addr;
+                            //     breakpoint->value = data;
+                            //     thrd_Switch(emu_emulation_thread, &emu_main_thread);
+                            // }
+
                             dma->cur_reg++;
                             elapsed_cycles += 4;
                             write_byte(dma->addr, data);
@@ -489,7 +561,7 @@ uint32_t hdma_transfer_state(int32_t cycle_count)
             while(write_count)
             {
                 uint8_t data = read_byte((uint32_t)data_addr | data_bank);
-                write_byte(channel->regs[channel->cur_reg], data);
+                // write_byte(channel->regs[channel->cur_reg], data);
                 data_addr++;
                 channel->cur_reg++;
                 write_count--;

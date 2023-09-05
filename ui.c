@@ -261,7 +261,7 @@ void ui_Begin()
 
 void ui_End()
 {
-
+    // igShowDemoWindow(NULL);
     igRender();
     ImDrawData *draw_data = igGetDrawData();
     glClearColor(0, 0, 0, 0);

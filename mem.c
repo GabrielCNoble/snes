@@ -39,9 +39,9 @@ extern struct thrd_t *      emu_emulation_thread;
 void init_mem()
 {
     /* 8KB of wram1 + cpu,ppu,etc regs */
-    ram1_regs = calloc(RAM1_REGS_END - RAM1_REGS_START, 1);
+    ram1_regs = calloc(RAM1_REGS_END - RAM1_REGS_START, 2);
     /* 120K of wram2 */
-    ram2 = calloc(0x1e000, 1);
+    ram2 = calloc(0x1000000, 1);
     /* 64K of vram */
     // vram = calloc(0xffff, 1);
     /* write behavior for all mem mapped registers */
@@ -300,7 +300,7 @@ uint32_t access_location(uint32_t effective_address)
         return ACCESS_RAM1;
     }
 
-    if(effective_address >= RAM2_START && effective_address < RAM2_END)
+    if(effective_address >= RAM2_START && effective_address <= RAM2_END)
     {
         return ACCESS_RAM2;
     }
@@ -312,49 +312,36 @@ void write_byte(uint32_t effective_address, uint8_t data)
 {
     uint32_t access = access_location(effective_address);
 
+    struct breakpoint_list_t *mem_write_breakpoints = &emu_breakpoints[BREAKPOINT_TYPE_MEM_WRITE];
+
+    for(uint32_t breakpoint_index = 0; breakpoint_index < mem_write_breakpoints->count; breakpoint_index++)
+    {
+        struct breakpoint_t *breakpoint = mem_write_breakpoints->breakpoints + breakpoint_index;
+        if(breakpoint->start_address <= effective_address && effective_address <= breakpoint->end_address)
+        {
+            struct emu_thread_data_t *thread_data = emu_emulation_thread->data;
+            // breakpoint->value = data;
+            // breakpoint->address = effective_address;
+            thread_data->breakpoint = breakpoint;
+            thread_data->status |= EMU_STATUS_BREAKPOINT;
+            thread_data->breakpoint_type = BREAKPOINT_TYPE_MEM_WRITE;
+            thread_data->breakpoint_data.mem.address = effective_address;
+            thread_data->breakpoint_data.mem.location = access;
+            thread_data->breakpoint_data.mem.data = data;
+            thrd_Switch(emu_emulation_thread, &emu_main_thread);
+            break;
+        }
+    }
+
     last_bus_value = data;
     if(access == ACCESS_RAM2)
     {
-        struct breakpoint_list_t *wram_write_breakpoints = &emu_breakpoints[BREAKPOINT_TYPE_WRAM_WRITE];
-
-        for(uint32_t breakpoint_index = 0; breakpoint_index < wram_write_breakpoints->count; breakpoint_index++)
-        {
-            struct breakpoint_t *breakpoint = wram_write_breakpoints->breakpoints + breakpoint_index;
-            if(breakpoint->start_address <= effective_address && effective_address <= breakpoint->end_address)
-            {
-                struct emu_thread_data_t *thread_data = emu_emulation_thread->data;
-                breakpoint->value = data;
-                breakpoint->address = effective_address;
-                thread_data->breakpoint = breakpoint;
-                thread_data->status |= EMU_STATUS_BREAKPOINT;
-                thrd_Switch(emu_emulation_thread, &emu_main_thread);
-                break;
-            }
-        }
-
         uint32_t offset = effective_address - RAM2_START;
         ram2[offset] = data;
     }
     else if(access == ACCESS_REGS)
     {
         uint32_t offset = (effective_address & 0xffff) - RAM1_REGS_START;
-
-        struct breakpoint_list_t *wram_write_breakpoints = &emu_breakpoints[BREAKPOINT_TYPE_REG_WRITE];
-
-        for(uint32_t breakpoint_index = 0; breakpoint_index < wram_write_breakpoints->count; breakpoint_index++)
-        {
-            struct breakpoint_t *breakpoint = wram_write_breakpoints->breakpoints + breakpoint_index;
-            
-            if(breakpoint->start_address == offset)
-            {
-                struct emu_thread_data_t *thread_data = emu_emulation_thread->data;
-                breakpoint->value = data;
-                thread_data->breakpoint = breakpoint;
-                thread_data->status |= EMU_STATUS_BREAKPOINT;
-                thrd_Switch(emu_emulation_thread, &emu_main_thread);
-                break;
-            }
-        }
 
         if(reg_writes[offset].write)
         {
@@ -367,23 +354,6 @@ void write_byte(uint32_t effective_address, uint8_t data)
     }
     else if(access == ACCESS_RAM1)
     {
-        struct breakpoint_list_t *wram_write_breakpoints = &emu_breakpoints[BREAKPOINT_TYPE_WRAM_WRITE];
-
-        for(uint32_t breakpoint_index = 0; breakpoint_index < wram_write_breakpoints->count; breakpoint_index++)
-        {
-            struct breakpoint_t *breakpoint = wram_write_breakpoints->breakpoints + breakpoint_index;
-            if(breakpoint->start_address <= effective_address && effective_address <= breakpoint->end_address)
-            {
-                struct emu_thread_data_t *thread_data = emu_emulation_thread->data;
-                breakpoint->value = data;
-                breakpoint->address = effective_address;
-                thread_data->breakpoint = breakpoint;
-                thread_data->status |= EMU_STATUS_BREAKPOINT;
-                thrd_Switch(emu_emulation_thread, &emu_main_thread);
-                break;
-            }
-        }
-
         uint32_t offset = (effective_address & 0xffff) - RAM1_REGS_START;
         ram1_regs[offset] = data;
     }
@@ -404,24 +374,27 @@ uint8_t read_byte(uint32_t effective_address)
 //    read_address_buffer[read_address_count] = effective_address;
 //    read_address_count++;
 
+    struct breakpoint_list_t *mem_read_breakpoints = &emu_breakpoints[BREAKPOINT_TYPE_MEM_READ];
+
+    for(uint32_t breakpoint_index = 0; breakpoint_index < mem_read_breakpoints->count; breakpoint_index++)
+    {
+        struct breakpoint_t *breakpoint = mem_read_breakpoints->breakpoints + breakpoint_index;
+        if(breakpoint->start_address <= effective_address && effective_address <= breakpoint->end_address)
+        {
+            struct emu_thread_data_t *thread_data = emu_emulation_thread->data;
+            // breakpoint->address = effective_address;
+            thread_data->breakpoint = breakpoint;
+            thread_data->status |= EMU_STATUS_BREAKPOINT;
+            thread_data->breakpoint_type = BREAKPOINT_TYPE_MEM_READ;
+            thread_data->breakpoint_data.mem.address = effective_address;
+            thread_data->breakpoint_data.mem.location = access;
+            thrd_Switch(emu_emulation_thread, &emu_main_thread);
+            break;
+        }
+    }
+
     if(access == ACCESS_RAM2)
     {
-        struct breakpoint_list_t *wram_read_breakpoints = &emu_breakpoints[BREAKPOINT_TYPE_WRAM_READ];
-
-        for(uint32_t breakpoint_index = 0; breakpoint_index < wram_read_breakpoints->count; breakpoint_index++)
-        {
-            struct breakpoint_t *breakpoint = wram_read_breakpoints->breakpoints + breakpoint_index;
-            if(breakpoint->start_address <= effective_address && effective_address <= breakpoint->end_address)
-            {
-                struct emu_thread_data_t *data = emu_emulation_thread->data;
-                breakpoint->address = effective_address;
-                data->breakpoint = breakpoint;
-                data->status |= EMU_STATUS_BREAKPOINT;
-                thrd_Switch(emu_emulation_thread, &emu_main_thread);
-                break;
-            }
-        }
-
         uint32_t offset = effective_address - RAM2_START;
         data = ram2[offset];
     }
@@ -440,22 +413,6 @@ uint8_t read_byte(uint32_t effective_address)
     }
     else if(access == ACCESS_RAM1)
     {
-        struct breakpoint_list_t *wram_read_breakpoints = &emu_breakpoints[BREAKPOINT_TYPE_WRAM_READ];
-
-        for(uint32_t breakpoint_index = 0; breakpoint_index < wram_read_breakpoints->count; breakpoint_index++)
-        {
-            struct breakpoint_t *breakpoint = wram_read_breakpoints->breakpoints + breakpoint_index;
-            if(breakpoint->start_address <= effective_address && effective_address <= breakpoint->end_address)
-            {
-                struct emu_thread_data_t *data = emu_emulation_thread->data;
-                breakpoint->address = effective_address;
-                data->breakpoint = breakpoint;
-                data->status |= EMU_STATUS_BREAKPOINT;
-                thrd_Switch(emu_emulation_thread, &emu_main_thread);
-                break;
-            }
-        }
-
         uint32_t offset = (effective_address & 0xffff) - RAM1_REGS_START;
         data = ram1_regs[offset];
     }
