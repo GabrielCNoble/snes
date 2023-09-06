@@ -256,6 +256,10 @@ void init_mem()
 
     reg_reads[PPU_REG_OAMDATAR].read = oamdatar_read;
 
+
+    reg_writes[PPU_REG_MPYL].write = mpy_write;
+    reg_writes[PPU_REG_MPYM].write = mpy_write;
+    reg_writes[PPU_REG_MPYH].write = mpy_write;
     reg_reads[PPU_REG_MPYL].read = mpy_read;
     reg_reads[PPU_REG_MPYM].read = mpy_read;
     reg_reads[PPU_REG_MPYH].read = mpy_read;
@@ -291,6 +295,10 @@ uint32_t access_location(uint32_t effective_address)
         {
             return ACCESS_RAM1;
         }
+        else if(offset < PPU_REGS_START)
+        {
+            return ACCESS_OPEN;
+        }
 
         return ACCESS_REGS;
     }
@@ -314,14 +322,17 @@ void write_byte(uint32_t effective_address, uint8_t data)
 
     struct breakpoint_list_t *mem_write_breakpoints = &emu_breakpoints[BREAKPOINT_TYPE_MEM_WRITE];
 
+    if(access == ACCESS_REGS)
+    {
+        effective_address &= 0xffff;
+    }
+
     for(uint32_t breakpoint_index = 0; breakpoint_index < mem_write_breakpoints->count; breakpoint_index++)
     {
         struct breakpoint_t *breakpoint = mem_write_breakpoints->breakpoints + breakpoint_index;
         if(breakpoint->start_address <= effective_address && effective_address <= breakpoint->end_address)
         {
             struct emu_thread_data_t *thread_data = emu_emulation_thread->data;
-            // breakpoint->value = data;
-            // breakpoint->address = effective_address;
             thread_data->breakpoint = breakpoint;
             thread_data->status |= EMU_STATUS_BREAKPOINT;
             thread_data->breakpoint_type = BREAKPOINT_TYPE_MEM_WRITE;
@@ -419,6 +430,10 @@ uint8_t read_byte(uint32_t effective_address)
     else if(access == ACCESS_CART)
     {
         data = cart_read(effective_address);
+    }
+    else
+    {
+        data = last_bus_value;
     }
 
     last_bus_value = data;

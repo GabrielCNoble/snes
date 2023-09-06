@@ -9,6 +9,7 @@ enum ACCESS
     ACCESS_RAM1,
     ACCESS_RAM2,
     ACCESS_CART,
+    ACCESS_OPEN
 };
 
 #define RAM1_START          0x0000

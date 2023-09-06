@@ -249,6 +249,8 @@ void unload_cart()
         free(sram);
         sram = NULL;
     }
+
+    cart_pointer = no_cart_pointer;
 }
 
 void *mode20_cart_pointer(uint32_t effective_address, uint32_t write)

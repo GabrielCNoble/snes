@@ -561,7 +561,7 @@ uint32_t hdma_transfer_state(int32_t cycle_count)
             while(write_count)
             {
                 uint8_t data = read_byte((uint32_t)data_addr | data_bank);
-                // write_byte(channel->regs[channel->cur_reg], data);
+                write_byte(channel->regs[channel->cur_reg], data);
                 data_addr++;
                 channel->cur_reg++;
                 write_count--;

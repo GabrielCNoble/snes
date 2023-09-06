@@ -857,7 +857,7 @@ void vhtime_write(uint32_t effective_address, uint8_t value);
 
 
 
-
+void mpy_write(uint32_t effective_address, uint8_t value);
 
 uint8_t mpy_read(uint32_t effective_address);
 

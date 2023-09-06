@@ -140,9 +140,9 @@ void set_execution_breakpoint(uint32_t effective_address)
     list->count++;
 
     breakpoint->type = BREAKPOINT_TYPE_EXECUTION;
-    breakpoint->address = effective_address;
+    breakpoint->start_address = effective_address;
 
-    emu_Log("breakpoint set on address %02x:%04x\n", (effective_address >> 16), effective_address & 0xffff);
+    emu_Log("execution breakpoint set on address %02x:%04x\n", (effective_address >> 16), effective_address & 0xffff);
 }
 
 void set_register_breakpoint(uint32_t reg, uint32_t value)
@@ -355,8 +355,6 @@ void init_emu()
     emu_framebuffer = calloc(FRAMEBUFFER_WIDTH * FRAMEBUFFER_HEIGHT, sizeof(struct dot_t));
     emu_log_entries = calloc(EMU_MAX_LOG_ENTRIES, sizeof(struct emu_log_t));
 
-    emu_emulation_thread = thrd_Create(emu_EmulationThread);
-    emu_emulation_thread->data = &emu_emulation_data;
     emu_vram_breakpoint_bitmask = calloc(1, PPU_VRAM_SIZE >> 2);
 
     // counter_frequency = SDL_GetPerformanceFrequency();
@@ -382,6 +380,15 @@ void reset_emu()
     master_cycles = 0;
     reset_cpu();
     reset_ppu();
+
+    if(emu_emulation_thread)
+    {
+        thrd_Destroy(emu_emulation_thread);
+    }
+
+    emu_emulation_thread = thrd_Create(emu_EmulationThread);
+    emu_emulation_thread->data = &emu_emulation_data;
+    memset(&emu_emulation_data, 0, sizeof(emu_emulation_data));
 }
 
 // uint32_t emu_BreakpointHandler(int32_t step_cycles)
@@ -521,7 +528,8 @@ uint32_t emu_Step(int32_t step_cycles)
                             breakpoint->end_address >= emu_emulation_data.breakpoint_data.vram.address)
                             {
                                 emu_emulation_data.breakpoint = breakpoint;
-                                emu_Log("VRAM read: read from 0x%06x\n", emu_emulation_data.breakpoint_data.vram.address);        
+                                emu_Log("VRAM read: read 0x%02x from 0x%06x\n", emu_emulation_data.breakpoint_data.vram.data, 
+                                                                                emu_emulation_data.breakpoint_data.vram.address);        
                                 index = list->count;
                             }
                         break;

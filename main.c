@@ -27,6 +27,9 @@ extern uint8_t *            cgram;
 extern uint8_t *            ram1_regs;
 extern struct background_t  backgrounds[4];
 extern const char *         ppu_reg_strs[];
+extern uint16_t             vcounter;
+extern uint16_t             hcounter;
+extern uint32_t             vram_addr;
 
 const char *m_breakpoint_type_names[] = {
     [BREAKPOINT_TYPE_EXECUTION]     = "Execution",
@@ -206,7 +209,7 @@ int main(int argc, char *argv[])
                 igDockBuilderFinish(main_dockspace);
             }
 
-            igDockSpace(main_dockspace, dockspace_size, ImGuiDockNodeFlags_AutoHideTabBar | ImGuiDockNodeFlags_NoTabBar, NULL);
+            igDockSpace(main_dockspace, dockspace_size, ImGuiDockNodeFlags_AutoHideTabBar, NULL);
 
             if(igBegin("##data_viewer", NULL, ImGuiWindowFlags_NoScrollbar))
             {
@@ -357,6 +360,25 @@ int main(int argc, char *argv[])
                         //     uint32_t value = strtoul(register_value_buffer, NULL, 16);
                         //     write_byte(EFFECTIVE_ADDRESS(0, PPU_REG_BG2SC), value);
                         // }
+                        if(igBeginTable("##ppu", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_NoKeepColumnsVisible, (ImVec2){0, 0}, 0))
+                        {
+                            igTableNextRow(ImGuiTableRowFlags_Headers, 0);
+                            igTableNextColumn();
+                            igText("H counter");
+                            igTableNextColumn();
+                            igText("V counter");
+                            igTableNextColumn();
+                            igText("VRAM address");
+
+                            igTableNextRow(0, 0);
+                            igTableNextColumn();
+                            igText("%d", hcounter);
+                            igTableNextColumn();
+                            igText("%d", vcounter);
+                            igTableNextColumn();
+                            igText("%04x", vram_addr);
+                            igEndTable();
+                        }
 
                         if(igBeginChild_Str("##vram", (ImVec2){0, 0}, 1, 0))
                         {
@@ -463,7 +485,7 @@ int main(int argc, char *argv[])
                                                 uint8_t color_index = chr16_dot(vram, tile_index, dot_x, dot_y);
                                                 if(color_index > 0)
                                                 {
-                                                    struct col_t color = pal16_col(&mode0_cgram->bg1_colors, 0, color_index);
+                                                    struct col_t color = pal16_col(&mode0_cgram->bg2_colors, 2, color_index);
                                                     dot->r = color.r;
                                                     dot->g = color.g;
                                                     dot->b = color.b;
@@ -735,6 +757,8 @@ int main(int argc, char *argv[])
 
                 if(igButton("Load", (ImVec2){32, 0}))
                 {
+                    unload_cart();
+
                     if(!load_cart(rom_name_buffer))
                     {
                         printf("couldn't load rom\n");
