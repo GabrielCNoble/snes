@@ -58,7 +58,7 @@ extern uint8_t *    ram1_regs;
 extern uint8_t      last_bus_value;
 extern uint16_t     vcounter;
 extern uint16_t     hcounter;
-extern uint32_t     scanline_cycles;
+// extern uint32_t     scanline_cycles;
 
 #define ALU_WIDTH_WORD 0
 #define ALU_WIDTH_BYTE 1
@@ -5961,304 +5961,304 @@ char *instruction_str(uint32_t effective_address)
 char *instruction_str2(uint32_t effective_address)
 {
     //    char *opcode_str;
-    char opcode_str[16];
-    char addr_mode_str[32] = "";
-    char flags_str[32] = "";
-    char temp_str[32] = "";
-    char regs_str[64] = "";
-    int32_t width = 0;
-    struct opcode_t opcode;
-    uint32_t show_computed_address = 0;
-    uint32_t computed_effective_address = 0;
+//     char opcode_str[16];
+//     char addr_mode_str[32] = "";
+//     char flags_str[32] = "";
+//     char temp_str[32] = "";
+//     char regs_str[64] = "";
+//     int32_t width = 0;
+//     struct opcode_t opcode;
+//     uint32_t show_computed_address = 0;
+//     uint32_t computed_effective_address = 0;
 
-    opcode = opcode_matrix[peek_byte(effective_address)];
-    width = opcode_width(&opcode);
+//     opcode = opcode_matrix[peek_byte(effective_address)];
+//     width = opcode_width(&opcode);
 
-    switch(opcode.address_mode)
-    {
-        case ADDRESS_MODE_ABSOLUTE:
-        {
-            uint16_t address = peek_word(effective_address + 1);
-            sprintf(addr_mode_str, "$%04x", address);
-            computed_effective_address = ((uint32_t)cpu_state.regs[REG_DBR].byte[0] << 16) | address;
-            show_computed_address = 1;
-        }
-        break;
+//     switch(opcode.address_mode)
+//     {
+//         case ADDRESS_MODE_ABSOLUTE:
+//         {
+//             uint16_t address = peek_word(effective_address + 1);
+//             sprintf(addr_mode_str, "$%04x", address);
+//             computed_effective_address = ((uint32_t)cpu_state.regs[REG_DBR].byte[0] << 16) | address;
+//             show_computed_address = 1;
+//         }
+//         break;
 
-        case ADDRESS_MODE_ABSOLUTE_INDEXED_INDIRECT:
-        {
-//            uint16_t address = peek_word(effective_address + 1);
-//            uint16_t target = peek_word(address + cpu_state.regs[REG_X].word);
-//            if(opcode.opcode == OPCODE_JMP)
-//            {
-//
-//                sprintf(addr_mode_str, "[addr(%04x) + X(%04x)] => PBR(%02x):%04x", address, cpu_state.regs[REG_X].word,
-//                                                                            cpu_state.regs[REG_PBR].byte[0], target);
-//            }
-        }
-        break;
+//         case ADDRESS_MODE_ABSOLUTE_INDEXED_INDIRECT:
+//         {
+// //            uint16_t address = peek_word(effective_address + 1);
+// //            uint16_t target = peek_word(address + cpu_state.regs[REG_X].word);
+// //            if(opcode.opcode == OPCODE_JMP)
+// //            {
+// //
+// //                sprintf(addr_mode_str, "[addr(%04x) + X(%04x)] => PBR(%02x):%04x", address, cpu_state.regs[REG_X].word,
+// //                                                                            cpu_state.regs[REG_PBR].byte[0], target);
+// //            }
+//         }
+//         break;
 
-        case ADDRESS_MODE_ABSOLUTE_INDEXED_X:
-        {
-            show_computed_address = 1;
-            uint16_t address = peek_word(effective_address + 1);
-            sprintf(addr_mode_str, "$%04x,x", address);
-            computed_effective_address = (((uint32_t)cpu_state.regs[REG_DBR].byte[0] << 16) | address) + cpu_state.regs[REG_X].word;
-        }
-        break;
+//         case ADDRESS_MODE_ABSOLUTE_INDEXED_X:
+//         {
+//             show_computed_address = 1;
+//             uint16_t address = peek_word(effective_address + 1);
+//             sprintf(addr_mode_str, "$%04x,x", address);
+//             computed_effective_address = (((uint32_t)cpu_state.regs[REG_DBR].byte[0] << 16) | address) + cpu_state.regs[REG_X].word;
+//         }
+//         break;
 
-        case ADDRESS_MODE_ABSOLUTE_INDEXED_Y:
-        {
-            show_computed_address = 1;
-            uint16_t address = peek_word(effective_address + 1);
-            sprintf(addr_mode_str, "$%04x,y", address);
-            computed_effective_address = (((uint32_t)cpu_state.regs[REG_DBR].byte[0] << 16) | address) + cpu_state.regs[REG_Y].word;
-        }
-        break;
+//         case ADDRESS_MODE_ABSOLUTE_INDEXED_Y:
+//         {
+//             show_computed_address = 1;
+//             uint16_t address = peek_word(effective_address + 1);
+//             sprintf(addr_mode_str, "$%04x,y", address);
+//             computed_effective_address = (((uint32_t)cpu_state.regs[REG_DBR].byte[0] << 16) | address) + cpu_state.regs[REG_Y].word;
+//         }
+//         break;
 
-        case ADDRESS_MODE_ABSOLUTE_INDIRECT:
-        {
-//            strcpy(addr_mode_str, "absolute addr ( pointer (");
-//            uint32_t pointer = peek_word(effective_address + 1);
-//            // for(int32_t index = width - 1; index > 0; index--)
-//            // {
-//            sprintf(temp_str, "%04x", pointer);
-//            strcat(addr_mode_str, temp_str);
-//            // }
-//            strcat(addr_mode_str, ") ) = ");
-//            sprintf(temp_str, "(%04x)", peek_word(pointer));
-//            strcat(addr_mode_str, temp_str);
-        }
-        break;
+//         case ADDRESS_MODE_ABSOLUTE_INDIRECT:
+//         {
+// //            strcpy(addr_mode_str, "absolute addr ( pointer (");
+// //            uint32_t pointer = peek_word(effective_address + 1);
+// //            // for(int32_t index = width - 1; index > 0; index--)
+// //            // {
+// //            sprintf(temp_str, "%04x", pointer);
+// //            strcat(addr_mode_str, temp_str);
+// //            // }
+// //            strcat(addr_mode_str, ") ) = ");
+// //            sprintf(temp_str, "(%04x)", peek_word(pointer));
+// //            strcat(addr_mode_str, temp_str);
+//         }
+//         break;
 
-        case ADDRESS_MODE_ABSOLUTE_LONG_INDEXED_X:
-        {
-            show_computed_address = 1;
-            uint32_t address = peek_word(effective_address + 1);
-            address |= (uint32_t)peek_byte(effective_address + 3) << 16;
-            sprintf(addr_mode_str, "$%06x,x", address);
-            computed_effective_address = (((uint32_t)cpu_state.regs[REG_DBR].byte[0] << 16) | address) + cpu_state.regs[REG_X].word;
-        }
-        break;
+//         case ADDRESS_MODE_ABSOLUTE_LONG_INDEXED_X:
+//         {
+//             show_computed_address = 1;
+//             uint32_t address = peek_word(effective_address + 1);
+//             address |= (uint32_t)peek_byte(effective_address + 3) << 16;
+//             sprintf(addr_mode_str, "$%06x,x", address);
+//             computed_effective_address = (((uint32_t)cpu_state.regs[REG_DBR].byte[0] << 16) | address) + cpu_state.regs[REG_X].word;
+//         }
+//         break;
 
-        case ADDRESS_MODE_ABSOLUTE_LONG:
-        {
-            show_computed_address = 1;
-            uint32_t address = peek_word(effective_address + 1);
-            address |= (uint32_t)peek_byte(effective_address + 3) << 16;
-            sprintf(addr_mode_str, "$%06x", address);
-            computed_effective_address = ((uint32_t)cpu_state.regs[REG_DBR].byte[0] << 16) | address;
-        }
-        break;
+//         case ADDRESS_MODE_ABSOLUTE_LONG:
+//         {
+//             show_computed_address = 1;
+//             uint32_t address = peek_word(effective_address + 1);
+//             address |= (uint32_t)peek_byte(effective_address + 3) << 16;
+//             sprintf(addr_mode_str, "$%06x", address);
+//             computed_effective_address = ((uint32_t)cpu_state.regs[REG_DBR].byte[0] << 16) | address;
+//         }
+//         break;
 
-        case ADDRESS_MODE_ACCUMULATOR:
-            // addr_mode_str[0] = '\0';
-            if(opcode.opcode != OPCODE_XCE && opcode.opcode != OPCODE_TXS && opcode.opcode != OPCODE_WDM && opcode.opcode != OPCODE_WAI)
-            {
-                // sprintf(addr_mode_str, "accumulator(%04x)", cpu_state.regs[REG_ACCUM].word);
-                strcpy(addr_mode_str, "a");
-            }
-        break;
+//         case ADDRESS_MODE_ACCUMULATOR:
+//             // addr_mode_str[0] = '\0';
+//             if(opcode.opcode != OPCODE_XCE && opcode.opcode != OPCODE_TXS && opcode.opcode != OPCODE_WDM && opcode.opcode != OPCODE_WAI)
+//             {
+//                 // sprintf(addr_mode_str, "accumulator(%04x)", cpu_state.regs[REG_ACCUM].word);
+//                 strcpy(addr_mode_str, "a");
+//             }
+//         break;
 
-        case ADDRESS_MODE_BLOCK_MOVE:
-            // sprintf(addr_mode_str, "dst addr(%02x:%04x), src addr(%02x:%04x)", peek_byte(effective_address + 1), cpu_state.regs[REG_Y].word,
-            //                                                                    peek_byte(effective_address + 2), cpu_state.regs[REG_X].word);
-        break;
+//         case ADDRESS_MODE_BLOCK_MOVE:
+//             // sprintf(addr_mode_str, "dst addr(%02x:%04x), src addr(%02x:%04x)", peek_byte(effective_address + 1), cpu_state.regs[REG_Y].word,
+//             //                                                                    peek_byte(effective_address + 2), cpu_state.regs[REG_X].word);
+//         break;
 
-        case ADDRESS_MODE_DIRECT_INDEXED_INDIRECT:
-            // strcpy(addr_mode_str, "direct indexed indirect - (d,x)");
-        break;
+//         case ADDRESS_MODE_DIRECT_INDEXED_INDIRECT:
+//             // strcpy(addr_mode_str, "direct indexed indirect - (d,x)");
+//         break;
 
-        case ADDRESS_MODE_DIRECT_INDEXED_X:
-        {
-            uint8_t offset = peek_byte(effective_address + 1);
-            sprintf(addr_mode_str, "$%02x,x", offset);
-            computed_effective_address = (cpu_state.regs[REG_D].word + offset) + cpu_state.regs[REG_X].word;
-            show_computed_address = 1;
-        }
-        break;
+//         case ADDRESS_MODE_DIRECT_INDEXED_X:
+//         {
+//             uint8_t offset = peek_byte(effective_address + 1);
+//             sprintf(addr_mode_str, "$%02x,x", offset);
+//             computed_effective_address = (cpu_state.regs[REG_D].word + offset) + cpu_state.regs[REG_X].word;
+//             show_computed_address = 1;
+//         }
+//         break;
 
-        case ADDRESS_MODE_DIRECT_INDEXED_Y:
-        {
-            uint8_t offset = peek_byte(effective_address + 1);
-            sprintf(addr_mode_str, "$%02x,y", offset);
-            computed_effective_address = (cpu_state.regs[REG_D].word + offset) + cpu_state.regs[REG_Y].word;
-            show_computed_address = 1;
-        }
-        break;
+//         case ADDRESS_MODE_DIRECT_INDEXED_Y:
+//         {
+//             uint8_t offset = peek_byte(effective_address + 1);
+//             sprintf(addr_mode_str, "$%02x,y", offset);
+//             computed_effective_address = (cpu_state.regs[REG_D].word + offset) + cpu_state.regs[REG_Y].word;
+//             show_computed_address = 1;
+//         }
+//         break;
 
-        case ADDRESS_MODE_DIRECT_INDIRECT_INDEXED:
-        // {
-        //     uint8_t offset = peek_byte(effective_address + 1);
-        //     uint16_t address = peek_word(cpu_state.regs[REG_D].word + offset);
-        //     sprintf(addr_mode_str, "DBR:(%02x):[D(%04x) + offset(%02x)]=(%04x) + Y(%04x)",  cpu_state.regs[REG_DBR].byte[0],
-        //                                                                                     cpu_state.regs[REG_D].word, offset,
-        //                                                                                     address, cpu_state.regs[REG_Y].word);
-        // }
-        break;
+//         case ADDRESS_MODE_DIRECT_INDIRECT_INDEXED:
+//         // {
+//         //     uint8_t offset = peek_byte(effective_address + 1);
+//         //     uint16_t address = peek_word(cpu_state.regs[REG_D].word + offset);
+//         //     sprintf(addr_mode_str, "DBR:(%02x):[D(%04x) + offset(%02x)]=(%04x) + Y(%04x)",  cpu_state.regs[REG_DBR].byte[0],
+//         //                                                                                     cpu_state.regs[REG_D].word, offset,
+//         //                                                                                     address, cpu_state.regs[REG_Y].word);
+//         // }
+//         break;
 
-        case ADDRESS_MODE_DIRECT_INDIRECT_LONG_INDEXED:
-            // strcpy(addr_mode_str, "direct indirect long indexed - [d],y");
-        break;
+//         case ADDRESS_MODE_DIRECT_INDIRECT_LONG_INDEXED:
+//             // strcpy(addr_mode_str, "direct indirect long indexed - [d],y");
+//         break;
 
-        case ADDRESS_MODE_DIRECT_INDIRECT_LONG:
-            // strcpy(addr_mode_str, "direct indirect long - [d]");
-        break;
+//         case ADDRESS_MODE_DIRECT_INDIRECT_LONG:
+//             // strcpy(addr_mode_str, "direct indirect long - [d]");
+//         break;
 
-        case ADDRESS_MODE_DIRECT_INDIRECT:
-        // {
-        //     uint8_t offset = peek_byte(effective_address + 1);
-        //     uint16_t address = peek_word(cpu_state.regs[REG_D].word + offset);
-        //     sprintf(addr_mode_str, "[D(%04x) + offset(%02x)](%04x) => DBR(%02x):%04x", address, cpu_state.regs[REG_D].word, offset,
-        //                                                                                 cpu_state.regs[REG_DBR].word, address);
-        // }
-        break;
+//         case ADDRESS_MODE_DIRECT_INDIRECT:
+//         // {
+//         //     uint8_t offset = peek_byte(effective_address + 1);
+//         //     uint16_t address = peek_word(cpu_state.regs[REG_D].word + offset);
+//         //     sprintf(addr_mode_str, "[D(%04x) + offset(%02x)](%04x) => DBR(%02x):%04x", address, cpu_state.regs[REG_D].word, offset,
+//         //                                                                                 cpu_state.regs[REG_DBR].word, address);
+//         // }
+//         break;
 
-        case ADDRESS_MODE_DIRECT:
-        {
-            uint8_t offset = peek_byte(effective_address + 1);
-            sprintf(addr_mode_str, "$%02x", offset);
-            computed_effective_address = cpu_state.regs[REG_D].word + offset;
-            show_computed_address = 1;
-        }
-        // {
-        //     uint8_t offset = peek_byte(effective_address + 1);
-        //     sprintf(addr_mode_str, "D(%04x) + offset(%02x) => 00:%04x", cpu_state.regs[REG_D].word, offset, cpu_state.regs[REG_D].word + offset);
-        // }
-        break;
+//         case ADDRESS_MODE_DIRECT:
+//         {
+//             uint8_t offset = peek_byte(effective_address + 1);
+//             sprintf(addr_mode_str, "$%02x", offset);
+//             computed_effective_address = cpu_state.regs[REG_D].word + offset;
+//             show_computed_address = 1;
+//         }
+//         // {
+//         //     uint8_t offset = peek_byte(effective_address + 1);
+//         //     sprintf(addr_mode_str, "D(%04x) + offset(%02x) => 00:%04x", cpu_state.regs[REG_D].word, offset, cpu_state.regs[REG_D].word + offset);
+//         // }
+//         break;
 
-        case ADDRESS_MODE_IMMEDIATE:
-        {
-            strcpy(addr_mode_str, "#$");
-//            uint32_t immediate = 0;
-            for(int32_t index = width - 1; index > 0; index--)
-            {
-                sprintf(temp_str, "%02x", peek_byte(effective_address + index));
-                strcat(addr_mode_str, temp_str);
-//                immediate <<= 8;
-//                immediate |= peek_byte(effective_address + index);
-            }
+//         case ADDRESS_MODE_IMMEDIATE:
+//         {
+//             strcpy(addr_mode_str, "#$");
+// //            uint32_t immediate = 0;
+//             for(int32_t index = width - 1; index > 0; index--)
+//             {
+//                 sprintf(temp_str, "%02x", peek_byte(effective_address + index));
+//                 strcat(addr_mode_str, temp_str);
+// //                immediate <<= 8;
+// //                immediate |= peek_byte(effective_address + index);
+//             }
 
-//            sprintf(addr_mode_str, "#$%04x", immediate);
-        }
-        break;
+// //            sprintf(addr_mode_str, "#$%04x", immediate);
+//         }
+//         break;
 
-        case ADDRESS_MODE_IMPLIED:
-            // strcpy(addr_mode_str, "");
-        break;
+//         case ADDRESS_MODE_IMPLIED:
+//             // strcpy(addr_mode_str, "");
+//         break;
 
-        case ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE_LONG:
-            // strcpy(addr_mode_str, "program counter relative long - rl");
-        break;
+//         case ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE_LONG:
+//             // strcpy(addr_mode_str, "program counter relative long - rl");
+//         break;
 
-        case ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE:
-        {
-            uint16_t offset = peek_byte(effective_address + 1);
-            if(offset & 0x80)
-            {
-                offset |= 0xff00;
-            }
+//         case ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE:
+//         {
+//             uint16_t offset = peek_byte(effective_address + 1);
+//             if(offset & 0x80)
+//             {
+//                 offset |= 0xff00;
+//             }
 
-            computed_effective_address = ((uint32_t)cpu_state.regs[REG_PBR].word << 16) | ((cpu_state.regs[REG_PC].word + offset + 2) & 0xffff);
-            show_computed_address = 1;
-            sprintf(addr_mode_str, "$%04x", computed_effective_address & 0xffff);
-        //     sprintf(addr_mode_str, "PC(%04x) + offset(%02x) => PBR(%02x):%04x", cpu_state.regs[REG_PC].word + 2, (uint8_t)offset, cpu_state.regs[REG_PBR].byte[0],
-        //                                                                         (uint16_t)((cpu_state.regs[REG_PC].word + 2) + offset));
-        }
-        break;
+//             computed_effective_address = ((uint32_t)cpu_state.regs[REG_PBR].word << 16) | ((cpu_state.regs[REG_PC].word + offset + 2) & 0xffff);
+//             show_computed_address = 1;
+//             sprintf(addr_mode_str, "$%04x", computed_effective_address & 0xffff);
+//         //     sprintf(addr_mode_str, "PC(%04x) + offset(%02x) => PBR(%02x):%04x", cpu_state.regs[REG_PC].word + 2, (uint8_t)offset, cpu_state.regs[REG_PBR].byte[0],
+//         //                                                                         (uint16_t)((cpu_state.regs[REG_PC].word + 2) + offset));
+//         }
+//         break;
 
-        case ADDRESS_MODE_STACK:
-            // addr_mode_str[0] = '\0';
-            // if(opcode.opcode == OPCODE_PEA)
-            // {
-            //     sprintf(temp_str, "immediate (%04x)", peek_word(effective_address + 1));
-            //     strcat(addr_mode_str, temp_str);
-            // }
-        break;
+//         case ADDRESS_MODE_STACK:
+//             // addr_mode_str[0] = '\0';
+//             // if(opcode.opcode == OPCODE_PEA)
+//             // {
+//             //     sprintf(temp_str, "immediate (%04x)", peek_word(effective_address + 1));
+//             //     strcat(addr_mode_str, temp_str);
+//             // }
+//         break;
 
-        case ADDRESS_MODE_STACK_RELATIVE:
-        {
-            uint16_t offset = peek_byte(effective_address + 1);
-            if(offset & 0x80)
-            {
-                offset |= 0xff00;
-            }
-            computed_effective_address = cpu_state.regs[REG_S].word + offset;
-            show_computed_address = 1;
-            sprintf(addr_mode_str, "$%02x,s", offset);
-        }
-            // sprintf(addr_mode_str, "S(%04x) + offset(%02x)", cpu_state.regs[REG_S].word, peek_byte(effective_address + 1));
-        break;
+//         case ADDRESS_MODE_STACK_RELATIVE:
+//         {
+//             uint16_t offset = peek_byte(effective_address + 1);
+//             if(offset & 0x80)
+//             {
+//                 offset |= 0xff00;
+//             }
+//             computed_effective_address = cpu_state.regs[REG_S].word + offset;
+//             show_computed_address = 1;
+//             sprintf(addr_mode_str, "$%02x,s", offset);
+//         }
+//             // sprintf(addr_mode_str, "S(%04x) + offset(%02x)", cpu_state.regs[REG_S].word, peek_byte(effective_address + 1));
+//         break;
 
-        case ADDRESS_MODE_STACK_RELATIVE_INDIRECT_INDEXED:
-        // {
-        //     uint8_t offset = peek_byte(effective_address + 1);
-        //     uint16_t pointer = peek_word(cpu_state.regs[REG_S].word + offset) + cpu_state.regs[REG_Y].word;
-        //     sprintf(addr_mode_str, "[S(%04x) + offset(%02x)]=(%04x) + Y(%04x)", cpu_state.regs[REG_S].word, offset, pointer, cpu_state.regs[REG_Y].word);
-        // }
-//            strcpy(addr_mode_str, "stack relative indirect indexed - (d,s),y");
-        break;
+//         case ADDRESS_MODE_STACK_RELATIVE_INDIRECT_INDEXED:
+//         // {
+//         //     uint8_t offset = peek_byte(effective_address + 1);
+//         //     uint16_t pointer = peek_word(cpu_state.regs[REG_S].word + offset) + cpu_state.regs[REG_Y].word;
+//         //     sprintf(addr_mode_str, "[S(%04x) + offset(%02x)]=(%04x) + Y(%04x)", cpu_state.regs[REG_S].word, offset, pointer, cpu_state.regs[REG_Y].word);
+//         // }
+// //            strcpy(addr_mode_str, "stack relative indirect indexed - (d,s),y");
+//         break;
 
-        default:
-        // case ADDRESS_MODE_UNKNOWN:
-        //     strcpy(addr_mode_str, "unknown");
-        // break;
-    }
+//         default:
+//         // case ADDRESS_MODE_UNKNOWN:
+//         //     strcpy(addr_mode_str, "unknown");
+//         // break;
+//     }
 
-    uint32_t addr_mode_str_len = strlen(addr_mode_str);
-    while(addr_mode_str_len < 18)
-    {
-        addr_mode_str[addr_mode_str_len] = ' ';
-        addr_mode_str_len++;
-    }
+//     uint32_t addr_mode_str_len = strlen(addr_mode_str);
+//     while(addr_mode_str_len < 18)
+//     {
+//         addr_mode_str[addr_mode_str_len] = ' ';
+//         addr_mode_str_len++;
+//     }
 
-    addr_mode_str[addr_mode_str_len] = '\0';
+//     addr_mode_str[addr_mode_str_len] = '\0';
 
-    // opcode_str = opcode_strs[opcode.opcode];
+//     // opcode_str = opcode_strs[opcode.opcode];
 
-    uint32_t index = 0;
-    while(opcode_strs[opcode.opcode][index])
-    {
-        opcode_str[index] = tolower(opcode_strs[opcode.opcode][index]);
-        index++;
-    }
-    opcode_str[index] = '\0';
+//     uint32_t index = 0;
+//     while(opcode_strs[opcode.opcode][index])
+//     {
+//         opcode_str[index] = tolower(opcode_strs[opcode.opcode][index]);
+//         index++;
+//     }
+//     opcode_str[index] = '\0';
 
-    if(show_computed_address)
-    {
-        sprintf(addr_mode_str + 10, "[%06x]", computed_effective_address);
-    }
+//     if(show_computed_address)
+//     {
+//         sprintf(addr_mode_str + 10, "[%06x]", computed_effective_address);
+//     }
 
-    if(cpu_state.reg_p.e)
-    {
-        sprintf(flags_str, "%c%c1%c%c%c%c%c", cpu_state.reg_p.n ? 'N' : 'n',
-                                               cpu_state.reg_p.v ? 'V' : 'v',
-                                               cpu_state.reg_p.b ? 'B' : 'b',
-                                               cpu_state.reg_p.d ? 'D' : 'd',
-                                               cpu_state.reg_p.i ? 'I' : 'i',
-                                               cpu_state.reg_p.z ? 'Z' : 'z',
-                                               cpu_state.reg_p.c ? 'C' : 'c');
-    }
-    else
-    {
-        sprintf(flags_str, "%c%c%c%c%c%c%c%c", cpu_state.reg_p.n ? 'N' : 'n',
-                                               cpu_state.reg_p.v ? 'V' : 'v',
-                                               cpu_state.reg_p.m ? 'M' : 'm',
-                                               cpu_state.reg_p.x ? 'X' : 'x',
-                                               cpu_state.reg_p.d ? 'D' : 'd',
-                                               cpu_state.reg_p.i ? 'I' : 'i',
-                                               cpu_state.reg_p.z ? 'Z' : 'z',
-                                               cpu_state.reg_p.c ? 'C' : 'c');
-    }
+//     if(cpu_state.reg_p.e)
+//     {
+//         sprintf(flags_str, "%c%c1%c%c%c%c%c", cpu_state.reg_p.n ? 'N' : 'n',
+//                                                cpu_state.reg_p.v ? 'V' : 'v',
+//                                                cpu_state.reg_p.b ? 'B' : 'b',
+//                                                cpu_state.reg_p.d ? 'D' : 'd',
+//                                                cpu_state.reg_p.i ? 'I' : 'i',
+//                                                cpu_state.reg_p.z ? 'Z' : 'z',
+//                                                cpu_state.reg_p.c ? 'C' : 'c');
+//     }
+//     else
+//     {
+//         sprintf(flags_str, "%c%c%c%c%c%c%c%c", cpu_state.reg_p.n ? 'N' : 'n',
+//                                                cpu_state.reg_p.v ? 'V' : 'v',
+//                                                cpu_state.reg_p.m ? 'M' : 'm',
+//                                                cpu_state.reg_p.x ? 'X' : 'x',
+//                                                cpu_state.reg_p.d ? 'D' : 'd',
+//                                                cpu_state.reg_p.i ? 'I' : 'i',
+//                                                cpu_state.reg_p.z ? 'Z' : 'z',
+//                                                cpu_state.reg_p.c ? 'C' : 'c');
+//     }
 
-    sprintf(regs_str, "A:%04x X:%04x Y:%04x S:%04x D:%04x DB:%02x %s", cpu_state.regs[REG_ACCUM].word,
-                                                                        cpu_state.regs[REG_X].word,
-                                                                        cpu_state.regs[REG_Y].word,
-                                                                        cpu_state.regs[REG_S].word,
-                                                                        cpu_state.regs[REG_D].word,
-                                                                        cpu_state.regs[REG_DBR].byte[0], flags_str);
+//     sprintf(regs_str, "A:%04x X:%04x Y:%04x S:%04x D:%04x DB:%02x %s", cpu_state.regs[REG_ACCUM].word,
+//                                                                         cpu_state.regs[REG_X].word,
+//                                                                         cpu_state.regs[REG_Y].word,
+//                                                                         cpu_state.regs[REG_S].word,
+//                                                                         cpu_state.regs[REG_D].word,
+//                                                                         cpu_state.regs[REG_DBR].byte[0], flags_str);
 
-    sprintf(instruction_str_buffer, "%06x %s %s %s V:%3d H:%4d", effective_address, opcode_str, addr_mode_str, regs_str, vcounter, scanline_cycles);
+//     sprintf(instruction_str_buffer, "%06x %s %s %s V:%3d H:%4d", effective_address, opcode_str, addr_mode_str, regs_str, vcounter, scanline_cycles);
 
     return instruction_str_buffer;
 }

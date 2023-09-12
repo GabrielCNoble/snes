@@ -352,14 +352,6 @@ int main(int argc, char *argv[])
 
                     if(igBeginTabItem("PPU", NULL, 0))
                     {
-                        // if(igBeginTable("##counters", 2))
-                        // igText("0x2115(VMAINC): 0x%02x", ram1_regs[PPU_REG_VMAINC]);
-                        
-                        // if(igInputText("0x2108(BG2SC)", register_value_buffer, sizeof(register_value_buffer), ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CharsHexadecimal, NULL, NULL))
-                        // {
-                        //     uint32_t value = strtoul(register_value_buffer, NULL, 16);
-                        //     write_byte(EFFECTIVE_ADDRESS(0, PPU_REG_BG2SC), value);
-                        // }
                         if(igBeginTable("##ppu", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_NoKeepColumnsVisible, (ImVec2){0, 0}, 0))
                         {
                             igTableNextRow(ImGuiTableRowFlags_Headers, 0);

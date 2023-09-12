@@ -40,6 +40,12 @@ struct mem_read_t
     uint8_t (*read)(uint32_t effective_address);
 };
 
+struct mem_reg_funcs_t
+{
+    void (*     write)(uint32_t effective_address, uint8_t value);
+    uint8_t (*  read)(uint32_t effective_address);
+};
+
 struct blah_t
 {
     uint64_t clock;

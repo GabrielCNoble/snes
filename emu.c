@@ -80,7 +80,7 @@ extern uint32_t                 cpu_cycle_count;
 extern uint8_t                  active_channels;
 extern uint16_t                 hcounter;
 extern uint16_t                 vcounter;
-extern uint32_t                 scanline_cycles;
+extern uint32_t                 ppu_scanline_master_cycles;
 extern uint32_t                 halt;
 
 uint32_t emu_breakpoint_flag_lut[] = {
@@ -105,7 +105,7 @@ void set_flag_in_range(uint8_t *flag_bytes, uint32_t start_address, uint32_t end
 
         for(uint32_t flags_index = first_flag; flags_index < count; flags_index++)
         {
-            emu_vram_breakpoint_bitmask[byte_index] |= flag << flags_index;
+            emu_vram_breakpoint_bitmask[byte_index] |= flag << (flags_index << 1);
         }
 
         first_flag = 0;
@@ -125,7 +125,7 @@ void clear_flag_in_range(uint8_t *flag_bytes, uint32_t start_address, uint32_t e
 
         for(uint32_t flags_index = first_flag; flags_index < count; flags_index++)
         {
-            emu_vram_breakpoint_bitmask[byte_index] &= ~(flag << flags_index);
+            emu_vram_breakpoint_bitmask[byte_index] &= ~(flag << (flags_index << 1));
         }
 
         first_flag = 0;
@@ -425,7 +425,7 @@ void emu_EmulationThread(struct thrd_t *thread)
             data->status |= EMU_STATUS_END_OF_FRAME;
         }
 
-        if(scanline_cycles >= 538 && scanline_cycles < 578)
+        if(ppu_scanline_master_cycles >= 538 && ppu_scanline_master_cycles < 578)
         {
             /* dram refresh */
             deassert_rdy(0);

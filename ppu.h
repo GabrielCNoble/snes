@@ -13,15 +13,17 @@
 //    uint16_t fpcn;
 //};
 
-#define OBJ_ATTR1_HPOS_MASK     0x01
-#define OBJ_ATTR1_PAL_SHIFT     0x09
-#define OBJ_ATTR1_PAL_MASK      0x07
-#define OBJ_ATTR1_NAME_MASK     0x1ff
-#define OBJ_ATTR1_HFLIP         0x4000
-#define OBJ_ATTR1_VFLIP         0x8000
-#define OBJ_ATTR1_PRI_SHIFT     0x0c
-#define OBJ_ATTR1_PRI_MASK      0x03
-union obj_attr1_t
+// #define OBJ_ATTR1_HPOS_MASK     0x01
+#define PPU_OBJ_ATTR1_POS_MASK      0x0f
+#define PPU_OBJ_ATTR1_VPOS_SHIFT    8
+#define OBJ_ATTR1_PAL_SHIFT         0x09
+#define OBJ_ATTR1_PAL_MASK          0x07
+#define OBJ_ATTR1_NAME_MASK         0x1ff
+#define OBJ_ATTR1_HFLIP             0x4000
+#define OBJ_ATTR1_VFLIP             0x8000
+#define OBJ_ATTR1_PRI_SHIFT         0x0c
+#define OBJ_ATTR1_PRI_MASK          0x03
+union obj_attr1_t 
 {
     struct
     {
@@ -31,9 +33,9 @@ union obj_attr1_t
     };
 
     uint32_t        word;
-};
+}; 
 
-#define OBJ_ATTR2_HPOS_MASK 0x01
+#define PPU_OBJ_ATTR2_HPOS_MASK 0x01
 #define OBJ_ATTR2_SIZE_SHIFT 0x01
 #define OBJ_ATTR2_SIZE_MASK 0x01
 #define OBJ_ATTR2_DATA_MASK 0x03
@@ -44,16 +46,24 @@ struct obj_attr2_t
 
 #define MAX_OBJ_COUNT 128
 #define TILE_SIZE 8
-struct obj_t
+
+enum PPU_OBJ_EVAL_STEPS
 {
-    int16_t     hpos;
-    int16_t     vpos;
-    uint16_t    name;
-    uint8_t     size;
-    uint8_t     pal;
-//    uint8_t     vflip : 1;
-//    uint8_t     hflip : 1;
+    PPU_OBJ_EVAL_STEP_LOAD_LOW_WORD = 0,
+    PPU_OBJ_EVAL_STEP_EVAL_OBJ,
+    // PPU_OAM_SCAN_STEP_TILES,
+    // PPU_OAM_SCAN_STEP_SPANS,
 };
+// struct obj_t
+// {
+//     int16_t     hpos;
+//     int16_t     vpos;
+//     uint16_t    name;
+//     uint8_t     size;
+//     uint8_t     pal;
+// //    uint8_t     vflip : 1;
+// //    uint8_t     hflip : 1;
+// };
 
 //struct dot_objs_t
 //{
@@ -112,6 +122,13 @@ struct dot_obj_draw_tiles_t
     uint16_t                draw_tile_count;
 };
 
+struct obj_span_entry_t
+{
+    uint8_t pixel: 4;
+    uint8_t pallete: 3;
+    uint8_t priority: 2;
+};
+
 //struct draw_tile_list_t
 //{
 //    uint16_t *              tiles;
@@ -129,6 +146,9 @@ struct dot_tiles_t
 {
     struct dot_obj_draw_tiles_t     obj_draw_tiles[OBJ_PRIORITIES];
     struct dot_bg_tiles_t           bg_tiles[OBJ_PRIORITIES];
+
+    // struct draw_tile_t              tiles[MAX_OBJ_COUNT * 2];
+    // uint32_t                        tile_count;
 };
 
 #define PPU_OAM_TABLE1_START 0x0000
@@ -146,12 +166,16 @@ union oam_t
 {
     struct oam_tables_t             tables;
     uint8_t                         bytes[sizeof(struct oam_tables_t)];
+    uint16_t                        words[sizeof(struct oam_tables_t) / sizeof(uint16_t)];
 };
 
 #define SCANLINE_DOT_LENGTH     340
 #define SCANLINE_COUNT          262
-#define H_BLANK_END_DOT         1
-#define H_BLANK_START_DOT       255
+#define PPU_DRAW_START_DOT      22
+#define PPU_DRAW_END_DOT        277
+#define PPU_DRAW_START_LINE     1
+#define PPU_HBLANK_END_DOT      1
+#define PPU_HBLANK_START_DOT    PPU_DRAW_END_DOT
 
 /*
     https://problemkaputt.github.io/fullsnes.htm#snestiminghvevents
@@ -161,9 +185,10 @@ union oam_t
     area described there is 256x224 or 256x239. H-blank starts at dot 274 and ends
     at dot 1. So, there's 21 dots that fall outside the left side of the screen...
 */
-#define DRAW_START_DOT          0
-#define DRAW_END_DOT            255
+// #define DRAW_START_DOT          0
+// #define DRAW_END_DOT            255
 #define DRAW_START_LINE         1
+#define PPU_OAM_ADDR_RESET_DOT  10
 //#define DRAW_END_LINE           224
 
 #define V_BLANK_END_LINE 0
@@ -370,12 +395,16 @@ enum PPU_OBJSEL_SIZE_SEL
     PPU_OBJSEL_SIZE_SEL_32_64,
 };
 
-#define PPU_BGMODE_MODE_MASK            0x07
-#define PPU_BGMODE_BG_CHR_SIZE_MASK     0x01
-#define PPU_BGMODE_BG1_CHR_SIZE_SHIFT   0x04
-#define PPU_BGMODE_BG2_CHR_SIZE_SHIFT   0x05
-#define PPU_BGMODE_BG3_CHR_SIZE_SHIFT   0x06
-#define PPU_BGMODE_BG4_CHR_SIZE_SHIFT   0x07
+#define PPU_BGMODE_MODE_MASK                        0x07
+#define PPU_BGMODE_BG_CHR_SIZE_MASK                 0x01
+#define PPU_BGMODE_BG1_CHR_SIZE_SHIFT               0x04
+#define PPU_BGMODE_BG2_CHR_SIZE_SHIFT               0x05
+#define PPU_BGMODE_BG3_CHR_SIZE_SHIFT               0x06
+#define PPU_BGMODE_BG4_CHR_SIZE_SHIFT               0x07
+#define PPU_MODE7_MAX_UNSIGNED_COORD_VALUE          0x1fff
+#define PPU_MODE7_MAX_POSITIVE_COORD_VALUE          0xfff
+#define PPU_CHAR8_MAX_COORD_VALUE                   0x1ff
+#define PPU_CHAR16_MAX_COORD_VALUE                  0x1ff
 enum PPU_BGMODE_MODES
 {
     PPU_BGMODE_MODE0 = 0,
@@ -712,7 +741,7 @@ uint8_t inidisp_read(uint32_t effective_address);
 void    objsel_write(uint32_t effective_address, uint8_t value);
 uint8_t objsel_read(uint32_t effective_address);
 
-
+void    ppu_ReloadOamAddrReg();
 void    oamadd_write(uint32_t effective_address, uint8_t value);
 uint8_t oamadd_read(uint32_t effective_address);
 
