@@ -136,13 +136,27 @@ int32_t                             ppu_cycle_count = 0;
 int32_t                             ppu_oam_scan_cycle_count = 0;
 uint8_t                             ppu_oam_lsb_latch = 0;
 uint8_t                             ppu_oam_lsb_toggle = 0;
-uint32_t                            ppu_obj_eval_step = 0;
+
 uint32_t                            ppu_obj_eval_index = 0;
-uint16_t                            ppu_obj_low_word_latch;
-uint32_t                            ppu_scanline_potential_entry;
-uint32_t                            ppu_scanline_oam_entries[34];
-uint32_t                            ppu_scanline_oam_entry_count = 0;
+// uint16_t                            ppu_obj_low_word_latch;
+union obj_attr1_t                   ppu_obj_low_attr;
+
+
+// struct obj_attr2_t                  ppu_obj_high_attr;
+// uint32_t                            ppu_scanline_potential_entry;
+
+uint8_t                             ppu_scanline_sprites[32];
+uint32_t                            ppu_scanline_sprite_count = 0;
 uint32_t                            ppu_scanline_master_cycles = 0;
+uint32_t                            ppu_sprite_step = PPU_SPRITE_STEP_NONE;
+uint32_t                            ppu_sprite_substep = 0;
+uint16_t                            ppu_sprite_x_pos;
+uint16_t                            ppu_sprite_y_pos;
+uint16_t                            ppu_sprite_name;
+uint8_t                             ppu_sprite_size;
+uint16_t                            ppu_sprite_flip;
+uint8_t                             ppu_sprite_span_index;
+struct chr16_t *                    ppu_sprite_tile;
 
 struct obj_span_entry_t             ppu_line_buffer[256];
 
@@ -846,6 +860,76 @@ void update_scanline_obj_tiles(uint16_t line)
 //     }
 // }
 
+void ppu_EvalObjsSpriteStep()
+{
+
+}
+
+void ppu_LoadTilesSpriteStep()
+{
+    switch(ppu_sprite_substep)
+    {
+        case 0:
+        {
+            if(ppu_scanline_sprite_count > 0)
+            {
+                ppu_scanline_sprite_count--;
+                uint32_t obj_index = ppu_scanline_sprites[ppu_scanline_sprite_count];
+                uint8_t high_byte = oam.tables.table2[obj_index].size_hpos >> (obj_index & 0x3);
+
+                ppu_sprite_y_pos = oam.tables.table1[obj_index].v_pos;
+                ppu_sprite_x_pos = (uint16_t)oam.tables.table1[obj_index].h_pos | (((uint16_t)high_byte & 1) << 8);
+                ppu_sprite_size = cur_obj_sizes[(high_byte >> 1) & 1];
+                ppu_sprite_name = oam.tables.table1[obj_index].fpcn & OBJ_ATTR1_NAME_MASK;
+                ppu_sprite_flip = oam.tables.table1[obj_index].fpcn;
+                ppu_sprite_substep = 1;
+
+                ppu_sprite_span_index = ppu_sprite_y_pos - vcounter;
+                uint16_t row_index = ppu_sprite_span_index / PPU_TILE_SIZE;
+                ppu_sprite_span_index %= PPU_TILE_SIZE;
+
+                if(ppu_sprite_size > PPU_TILE_SIZE)
+                {
+                    if(ppu_sprite_flip & OBJ_ATTR1_VFLIP)
+                    {
+                        row_index = (ppu_sprite_size - 1) - row_index;
+                        ppu_sprite_span_index = (PPU_TILE_SIZE - 1) - ppu_sprite_span_index;
+                    }
+
+                    ppu_sprite_name += row_index << 4;
+
+                    if(ppu_sprite_flip & OBJ_ATTR1_HFLIP)
+                    {
+                        ppu_sprite_name += ppu_sprite_size / PPU_TILE_SIZE;
+                    }
+                }
+            }
+        }
+
+        case 1:
+        {
+            // ppu_sprite_tile = obj_chr_base[ppu_sprite_name >= 0x100] + ppu_sprite_name;
+        }
+        break;
+
+        // case 2:
+        // {
+        //     if(ppu_sprite_size > 8)
+        //     {
+
+        //     }
+
+        //     ppu_sprite_substep = 0;
+        // }
+        // break;
+    }
+}
+
+void ppu_NoneSpriteStep()
+{
+
+}
+
 uint32_t step_ppu(int32_t cycle_count)
 {
     ppu_cycle_count += cycle_count;
@@ -863,6 +947,23 @@ uint32_t step_ppu(int32_t cycle_count)
         
         if(!(ram1_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK) || !(ram1_regs[CPU_REG_HVBJOY] & CPU_HVBJOY_FLAG_VBLANK))
         {
+            uint32_t next_sprite_step = PPU_SPRITE_STEP_NONE;
+            if(hcounter <= 255)
+            {
+                next_sprite_step = PPU_SPRITE_STEP_EVAL_OBJS;
+            }
+            else if(hcounter >= 277 && hcounter <= 339)
+            {
+                next_sprite_step = PPU_SPRITE_STEP_LOAD_TILES;
+            }
+
+            if(ppu_sprite_step != next_sprite_step)
+            {
+                ppu_sprite_substep = 0;
+            }
+
+            ppu_sprite_step = next_sprite_step;
+
             /*
                 (Internal OAM address sprite evaluation)
                 https://forums.nesdev.org/viewtopic.php?p=234414#p234414
@@ -872,6 +973,9 @@ uint32_t step_ppu(int32_t cycle_count)
 
                 (Accessing OAM during H-blank)
                 https://forums.nesdev.org/viewtopic.php?t=6758
+
+                (PPU bus activity traces)
+                https://forums.nesdev.org/viewtopic.php?t=14467
 
                 (5A22 CPU pinout)
                 https://board.zsnes.com/phpBB3/viewtopic.php?f=6&t=11230&p=204966#p204966
@@ -906,43 +1010,42 @@ uint32_t step_ppu(int32_t cycle_count)
                 PPU1 then sends this to PPU2. The pinout of those chips seem to also confirm this.
 
             */
-            if(ppu_obj_eval_index < 128)
-            {
-                switch(ppu_obj_eval_step)
-                {
-                    case PPU_OBJ_EVAL_STEP_LOAD_LOW_WORD:
-                        ppu_reg_oam_addr = ppu_obj_eval_index << 1;
-                        ppu_obj_low_word_latch = oam.words[ppu_reg_oam_addr];
-                        ppu_reg_oam_addr <<= 1;
-                        ppu_obj_eval_step = PPU_OBJ_EVAL_STEP_EVAL_OBJ; 
-                    break;
 
-                    case PPU_OBJ_EVAL_STEP_EVAL_OBJ:
+            switch(ppu_sprite_step)
+            {
+                case PPU_SPRITE_STEP_EVAL_OBJS:
+                    if(ppu_sprite_substep == 0)
                     {
-                        uint16_t byte_index = ppu_obj_eval_index >> 4;
+                        ppu_reg_oam_addr = ppu_obj_eval_index << 2;
+                        ppu_obj_low_attr = oam.tables.table1[ppu_obj_eval_index];
+                        ppu_sprite_substep = 1; 
+                    }
+                    else
+                    {
+                        uint16_t byte_index = ppu_obj_eval_index >> 2;
                         ppu_reg_oam_addr = PPU_OAM_TABLE2_START | byte_index;
-                        uint8_t size_pos = oam.bytes[ppu_reg_oam_addr];
+                        uint16_t size_pos = oam.bytes[ppu_reg_oam_addr];
                         size_pos >>= (ppu_obj_eval_index & 0x3) << 1;
-                        ppu_obj_eval_step = PPU_OBJ_EVAL_STEP_LOAD_LOW_WORD;
+                        ppu_sprite_substep = 0;
                         uint32_t obj_index = ppu_obj_eval_index;
                         ppu_obj_eval_index++;
 
-                        if(ppu_scanline_oam_entry_count >= 32)
+                        if(ppu_scanline_sprite_count >= 32)
                         {
                             ram1_regs[PPU_REG_STAT77] |= PPU_STAT77_FLAG_33_RANGE_OVER;
+                            ppu_sprite_step = PPU_SPRITE_STEP_NONE;
                             break;
                         }
 
                         uint16_t size = cur_obj_sizes[(size_pos >> OBJ_ATTR2_SIZE_SHIFT) & OBJ_ATTR2_SIZE_MASK];
-                        uint16_t v_pos = ppu_obj_low_word_latch >> PPU_OBJ_ATTR1_VPOS_SHIFT;
 
-                        if(v_pos > next_scanline || v_pos + size < next_scanline)
+                        if(ppu_obj_low_attr.v_pos > next_scanline || ppu_obj_low_attr.v_pos + size < next_scanline)
                         {
                             break;
                         }
 
                         /* TODO: add x = 256 bug */
-                        uint16_t h_pos = (ppu_obj_low_word_latch & PPU_OBJ_ATTR1_POS_MASK) | ((size & PPU_OBJ_ATTR2_HPOS_MASK) << 8);
+                        uint16_t h_pos = (uint16_t)ppu_obj_low_attr.h_pos | ((size_pos & PPU_OBJ_ATTR2_HPOS_MASK) << 8);
                         if(h_pos & 0x100)
                         {
                             h_pos |= 0xff00;
@@ -953,11 +1056,16 @@ uint32_t step_ppu(int32_t cycle_count)
                             break;
                         }
 
-                        ppu_scanline_oam_entries[ppu_scanline_oam_entry_count] = obj_index;
-                        ppu_scanline_oam_entry_count++;
+                        ppu_scanline_sprites[ppu_scanline_sprite_count] = obj_index;
+                        ppu_scanline_sprite_count++;
                     }
-                    break;
+                break;
+
+                case PPU_SPRITE_STEP_LOAD_TILES:
+                {
+                    ppu_LoadTilesSpriteStep();
                 }
+                break;
             }
         }
 
@@ -975,24 +1083,30 @@ uint32_t step_ppu(int32_t cycle_count)
                 hcounter = 0;
                 ppu_scanline_master_cycles = 0;
 
-                if(line_obj_count > 32)
-                {
-                   ram1_regs[PPU_REG_STAT77] |= PPU_STAT77_FLAG_33_RANGE_OVER;
-                }
-
-                if(line_chr_count > 34)
-                {
-                    ram1_regs[PPU_REG_STAT77] |= PPU_STAT77_FLAG_35_TIME_OVER;
-                }
-            }
-
-            if(hcounter == 0 && vcounter >= PPU_DRAW_START_LINE && vcounter < last_draw_scanline)
-            {
-                // update_scanline_obj_tiles(vcounter - PPU_DRAW_START_LINE);
                 ppu_reg_oam_addr = 0;
                 ppu_obj_eval_index = 0;
-                ppu_scanline_oam_entry_count = 0;
+                ppu_sprite_step = PPU_SPRITE_STEP_NONE;
+                ppu_scanline_sprite_count = 0;
+
+                // if(line_obj_count > 32)
+                // {
+                //    ram1_regs[PPU_REG_STAT77] |= PPU_STAT77_FLAG_33_RANGE_OVER;
+                // }
+
+                // if(line_chr_count > 34)
+                // {
+                //     ram1_regs[PPU_REG_STAT77] |= PPU_STAT77_FLAG_35_TIME_OVER;
+                // }
             }
+
+            // if(hcounter == 0 /* && vcounter >= PPU_DRAW_START_LINE && vcounter < last_draw_scanline */)
+            // {
+            //     // update_scanline_obj_tiles(vcounter - PPU_DRAW_START_LINE);
+            //     ppu_reg_oam_addr = 0;
+            //     ppu_obj_eval_index = 0;
+            //     ppu_sprite_step = PPU_SPRITE_STEP_NONE;
+            //     ppu_scanline_oam_entry_count = 0;
+            // }
 
             if(vcounter == V_BLANK_END_LINE)
             {
