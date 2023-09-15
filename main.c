@@ -30,6 +30,8 @@ extern const char *         ppu_reg_strs[];
 extern uint16_t             vcounter;
 extern uint16_t             hcounter;
 extern uint32_t             vram_addr;
+extern uint32_t             cur_obj_sizes[];
+extern union oam_t          oam;
 
 const char *m_breakpoint_type_names[] = {
     [BREAKPOINT_TYPE_EXECUTION]     = "Execution",
@@ -113,6 +115,7 @@ int main(int argc, char *argv[])
     uint32_t tile_bits_per_pixel = 4;
     uint32_t tile_viewer_first_row = 0;
     uint32_t tile_viewer_last_row = 0;
+    uint32_t hovered_sprite = 0xffffffff;
 
     uint32_t cur_breakpoint_tab = BREAKPOINT_TYPE_EXECUTION;
     uint32_t add_breakpoint_type;
@@ -543,6 +546,43 @@ int main(int argc, char *argv[])
                                     igEndTabItem();
                                 }
 
+                                hovered_sprite = 0xffffffff;
+                                if(igBeginTabItem("OAM", NULL, 0))
+                                {
+                                    for(uint32_t index = 0; index < MAX_OBJ_COUNT; index++)
+                                    {
+                                        uint32_t name = oam.tables.table1[index].fpcn & OBJ_ATTR1_NAME_MASK;
+                                        uint32_t flip = oam.tables.table1[index].fpcn & (OBJ_ATTR1_HFLIP | OBJ_ATTR1_VFLIP);
+                                        uint32_t priority = (oam.tables.table1[index].fpcn >> OBJ_ATTR1_PRI_SHIFT) & OBJ_ATTR1_PRI_MASK;
+                                        uint32_t v_pos = oam.tables.table1[index].v_pos;
+                                        uint32_t h_pos = oam.tables.table1[index].h_pos;
+                                        uint32_t size_pos = oam.tables.table2[index >> 3].size_hpos >> ((index & 0x3) << 1);
+
+                                        if(size_pos & PPU_OBJ_ATTR2_HPOS_MASK)
+                                        {
+                                            h_pos |= 0xff00;
+                                        }
+
+                                        igPushID_Ptr(&oam.tables.table1[index]);
+                                        if(igBeginChild_Str("Sprite", (ImVec2){0, 120}, 1, 0))
+                                        {
+                                            if(igIsWindowHovered(0))
+                                            {
+                                                hovered_sprite = index;
+                                            }
+                                            igText("Index: %d", index);
+                                            igText("X: %d, Y: %d", h_pos, v_pos);
+                                            igText("Size: %d", cur_obj_sizes[(size_pos >> OBJ_ATTR2_SIZE_SHIFT) & OBJ_ATTR2_SIZE_MASK]);
+                                            igText("Flip H: %d, Flip V: %d", (flip & OBJ_ATTR1_HFLIP) && 1, (flip & OBJ_ATTR1_VFLIP) && 1);
+                                            igText("Priority: %d", priority);
+                                            igText("Name: %d", name);
+                                        }
+                                        igEndChild();
+                                        igPopID();
+                                    }
+                                    igEndTabItem();
+                                }
+
                                 if(igBeginTabItem("Regs", NULL, 0))
                                 {
                                     for(uint32_t reg = PPU_REG_INIDISP; reg < PPU_REG_WMADDH; reg++)
@@ -800,8 +840,43 @@ int main(int argc, char *argv[])
 
                 igSameLine(0, -1);
                 igText("%.04f ms (%.02f fps)", m_frame_time * 1000.0, 1.0f / m_frame_time);
+                if(igBeginChild_Str("blah", (ImVec2){0, 0}, 0, 0))
+                {
+                    igGetContentRegionAvail(&window_size);
+                    ImVec2 cursor_pos;
+                    ImVec2 image_size;
+                    igGetCursorPos(&cursor_pos);
+                    igPushStyleVar_Vec2(ImGuiStyleVar_FramePadding, (ImVec2){});
+                    igPushStyleVar_Vec2(ImGuiStyleVar_WindowPadding, (ImVec2){});
+                    igImage((ImTextureID)(uintptr_t)emu_framebuffer_texture, window_size, (ImVec2){0, 0}, (ImVec2){1, 1}, (ImVec4){1, 1, 1, 1}, (ImVec4){0, 0, 0, 0});
+                    igGetItemRectSize(&image_size);
 
-                igImage((ImTextureID)(uintptr_t)emu_framebuffer_texture, window_size, (ImVec2){0, 0}, (ImVec2){1, 1}, (ImVec4){1, 1, 1, 1}, (ImVec4){0, 0, 0, 0});
+                    if(hovered_sprite != 0xffffffff)
+                    {
+                        uint16_t v_pos = oam.tables.table1[hovered_sprite].v_pos;
+                        uint16_t h_pos = oam.tables.table1[hovered_sprite].h_pos;
+                        uint16_t size_pos = oam.tables.table2[hovered_sprite >> 3].size_hpos >> ((hovered_sprite & 0x3) << 1);
+
+                        if(size_pos & PPU_OBJ_ATTR2_HPOS_MASK)
+                        {
+                            h_pos |= 0xff00;
+                        }
+
+                        float highlight_x = (float)h_pos / 256.0f;
+                        float highlight_y = (float)v_pos / 225.0f;
+                        // ImVec2 cursor_pos = (ImVec2){window_size.x * highlight_x, window_size.y * highlight_y};
+
+                        cursor_pos.x += highlight_x * image_size.x;
+                        cursor_pos.y += highlight_y * image_size.y;
+                        igSetCursorPos(cursor_pos);
+                        igImage((ImTextureID)(uintptr_t)m_tile_viewer_texture, (ImVec2){16, 16}, (ImVec2){}, (ImVec2){}, (ImVec4){0, 0, 0, 0}, (ImVec4){1, 1, 1, 1});
+                        // igPushStyleColor_Vec4(ImGuiCol_Border)
+                        // igSelectable_Bool("Test", 0, 0, (ImVec2){8, 8});
+                    }
+
+                    igPopStyleVar(2);
+                }
+                igEndChild();
             }
             igEnd();
 

@@ -124,7 +124,7 @@ struct dot_obj_draw_tiles_t
 
 struct obj_span_entry_t
 {
-    uint8_t pixel: 4;
+    uint8_t color: 4;
     uint8_t pallete: 3;
     uint8_t priority: 2;
 };
@@ -447,9 +447,17 @@ struct chr4_t
 
 struct chr16_t
 {
-    uint16_t p01[8];
-    uint16_t p23[8];
-};
+    union
+    {
+        struct
+        {
+            uint16_t    p01[8];
+            uint16_t    p23[8];
+        };
+
+        uint16_t        pixels[2][8];
+    };
+}; 
 
 struct chr256_t
 {
