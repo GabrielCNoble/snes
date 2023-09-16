@@ -500,7 +500,8 @@ uint32_t emu_Step(int32_t step_cycles)
             break;
 
             case BREAKPOINT_TYPE_MEM_READ:
-                emu_Log("MEM read: read from 0x%06x\n", emu_emulation_data.breakpoint_data.mem.address);        
+                emu_Log("MEM read: read 0x%02x from 0x%06x\n", emu_emulation_data.breakpoint_data.mem.data, 
+                                                               emu_emulation_data.breakpoint_data.mem.address);        
             break;
 
             case BREAKPOINT_TYPE_MEM_WRITE:
@@ -509,7 +510,7 @@ uint32_t emu_Step(int32_t step_cycles)
             break;
 
             case BREAKPOINT_TYPE_REG_READ:
-                emu_Log("REG read: read from 0x%04x\n", breakpoint->start_address);        
+                emu_Log("REG read: read 0x%02x from 0x%04x\n", breakpoint->value, breakpoint->start_address);        
             break;
 
             case BREAKPOINT_TYPE_REG_WRITE:
@@ -525,7 +526,7 @@ uint32_t emu_Step(int32_t step_cycles)
                     {
                         case BREAKPOINT_TYPE_VRAM_READ:
                             if(breakpoint->start_address <= emu_emulation_data.breakpoint_data.vram.address && 
-                            breakpoint->end_address >= emu_emulation_data.breakpoint_data.vram.address)
+                               breakpoint->end_address >= emu_emulation_data.breakpoint_data.vram.address)
                             {
                                 emu_emulation_data.breakpoint = breakpoint;
                                 emu_Log("VRAM read: read 0x%02x from 0x%06x\n", emu_emulation_data.breakpoint_data.vram.data, 
@@ -536,7 +537,7 @@ uint32_t emu_Step(int32_t step_cycles)
 
                         case BREAKPOINT_TYPE_VRAM_WRITE:
                             if(breakpoint->start_address <= emu_emulation_data.breakpoint_data.vram.address && 
-                            breakpoint->end_address >= emu_emulation_data.breakpoint_data.vram.address)
+                               breakpoint->end_address >= emu_emulation_data.breakpoint_data.vram.address)
                             {
                                 emu_emulation_data.breakpoint = breakpoint;
                                 emu_Log("VRAM write: write 0x%02x to 0x%06x\n", emu_emulation_data.breakpoint_data.vram.data, 
@@ -561,7 +562,10 @@ uint32_t emu_Step(int32_t step_cycles)
             break;
         }
 
-        
+        if(emu_emulation_data.breakpoint->trace)
+        {
+            emu_emulation_data.status &= ~EMU_STATUS_BREAKPOINT;
+        }
     }
     else
     {
@@ -575,10 +579,22 @@ void emu_Log(const char *fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
-    struct emu_log_t *log_entry = emu_log_entries + emu_log_entry_count;
+    struct emu_log_t *log_entry;
 
-    emu_log_entry_count++;
+    log_entry = emu_log_entries + (emu_log_entry_count + emu_first_log_entry) % EMU_MAX_LOG_ENTRIES;
+    
+    if(emu_log_entry_count < EMU_MAX_LOG_ENTRIES)
+    {
+       emu_log_entry_count++;
+    }
+    else
+    {
+        emu_first_log_entry = (emu_first_log_entry + 1) % EMU_MAX_LOG_ENTRIES;
+        // log_entry = emu_log_entries + emu_first_log_entry;
+    }
+
     vsnprintf(log_entry->message, sizeof(log_entry->message), fmt, args);
+    log_entry->master_clock = master_cycles;
     va_end(args);
 }
 

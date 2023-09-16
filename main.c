@@ -18,12 +18,13 @@ extern struct breakpoint_list_t     emu_breakpoints[];
 extern struct emu_thread_data_t     emu_emulation_data;
 extern struct emu_log_t *           emu_log_entries;
 extern uint32_t                     emu_log_entry_count;
+extern uint32_t                     emu_first_log_entry;
 
 extern struct cpu_state_t           cpu_state;
 extern const char *                 opcode_strs[];
 
 extern uint8_t *            vram;
-extern uint8_t *            cgram;
+extern uint8_t *            ppu_cgram;
 extern uint8_t *            ram1_regs;
 extern struct background_t  backgrounds[4];
 extern const char *         ppu_reg_strs[];
@@ -31,6 +32,9 @@ extern uint16_t             vcounter;
 extern uint16_t             hcounter;
 extern uint32_t             vram_addr;
 extern uint32_t             cur_obj_sizes[];
+extern uint8_t              ppu_oam_lsb_latch;
+extern uint8_t              ppu_oam_lsb_toggle;
+extern uint16_t             ppu_reg_oam_addr;
 extern union oam_t          oam;
 
 const char *m_breakpoint_type_names[] = {
@@ -355,7 +359,7 @@ int main(int argc, char *argv[])
 
                     if(igBeginTabItem("PPU", NULL, 0))
                     {
-                        if(igBeginTable("##ppu", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_NoKeepColumnsVisible, (ImVec2){0, 0}, 0))
+                        if(igBeginTable("##ppu", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_NoKeepColumnsVisible, (ImVec2){0, 0}, 0))
                         {
                             igTableNextRow(ImGuiTableRowFlags_Headers, 0);
                             igTableNextColumn();
@@ -364,6 +368,8 @@ int main(int argc, char *argv[])
                             igText("V counter");
                             igTableNextColumn();
                             igText("VRAM address");
+                            igTableNextColumn();
+                            igText("OAM address");
 
                             igTableNextRow(0, 0);
                             igTableNextColumn();
@@ -372,148 +378,161 @@ int main(int argc, char *argv[])
                             igText("%d", vcounter);
                             igTableNextColumn();
                             igText("%04x", vram_addr);
+                            igTableNextColumn();
+                            igText("%04x", ppu_reg_oam_addr);
                             igEndTable();
                         }
 
-                        if(igBeginChild_Str("##vram", (ImVec2){0, 0}, 1, 0))
+                        if(igBeginChild_Str("##ppu_stuff", (ImVec2){0, 0}, 1, 0))
                         {
-                            if(igBeginTabBar("##views", 0))
+                            if(igBeginTabBar("##ppu_stuff", 0))
                             {
-                                if(igBeginTabItem("VRAM (Raw)", NULL, 0))
+                                if(igBeginTabItem("VRAM", NULL, 0))
                                 {
-                                    if(igBeginTable("##vram_raw", 17, ImGuiTableFlags_ScrollY, (ImVec2){0, 0}, 0.0))
+                                    if(igBeginTabBar("##vram_views", 0))
                                     {
-                                        ImGuiListClipper clipper;
-                                        ImGuiListClipper_ImGuiListClipper(&clipper);
-                                        ImGuiListClipper_Begin(&clipper, 17 * (0xffff / 16), 1.0f);
-                                        while(ImGuiListClipper_Step(&clipper))
+                                        if(igBeginTabItem("Raw", NULL, 0))
                                         {
-                                            uint32_t first_row = clipper.DisplayStart / 17;
-                                            uint32_t last_row = clipper.DisplayEnd / 17;
-
-                                            uint32_t vram_offset = first_row * 16;
-                                            igTableSetupColumn("Address", ImGuiTableColumnFlags_WidthFixed, 48.0f, 0);
-                                            for(uint32_t row_index = first_row; row_index < last_row; row_index++)
+                                            if(igBeginTable("##vram_raw", 17, ImGuiTableFlags_ScrollY, (ImVec2){0, 0}, 0.0))
                                             {
-                                                igTableNextRow(0, 0);
-                                                igTableNextColumn();
-                                                igText("0x%04x: ", vram_offset);
-
-                                                for(uint32_t column_index = 0; column_index < 16; column_index++)
+                                                ImGuiListClipper clipper;
+                                                ImGuiListClipper_ImGuiListClipper(&clipper);
+                                                ImGuiListClipper_Begin(&clipper, 17 * (0xffff / 16), 1.0f);
+                                                while(ImGuiListClipper_Step(&clipper))
                                                 {
-                                                    igTableNextColumn();
-                                                    igText("%02x", vram[column_index + vram_offset]);
+                                                    uint32_t first_row = clipper.DisplayStart / 17;
+                                                    uint32_t last_row = clipper.DisplayEnd / 17;
+
+                                                    uint32_t vram_offset = first_row * 16;
+                                                    igTableSetupColumn("Address", ImGuiTableColumnFlags_WidthFixed, 48.0f, 0);
+                                                    for(uint32_t row_index = first_row; row_index < last_row; row_index++)
+                                                    {
+                                                        igTableNextRow(0, 0);
+                                                        igTableNextColumn();
+                                                        igText("0x%04x: ", vram_offset);
+
+                                                        for(uint32_t column_index = 0; column_index < 16; column_index++)
+                                                        {
+                                                            igTableNextColumn();
+                                                            igText("%02x", vram[column_index + vram_offset]);
+                                                        }
+
+                                                        vram_offset += 16;
+                                                    }
+                                                }
+                                                igEndTable();
+                                            }
+                                            igEndTabItem();
+                                        }
+
+
+                                        if(igBeginTabItem("Tiles", NULL, 0))
+                                        {
+                                            tile_bits_per_pixel = 4;
+                                            igPushStyleVar_Vec2(ImGuiStyleVar_WindowPadding, (ImVec2){0, 0});
+                                            igPushStyleVar_Vec2(ImGuiStyleVar_ItemSpacing, (ImVec2){4, 0});
+                                            igPushStyleVar_Vec2(ImGuiStyleVar_CellPadding , (ImVec2){0, 2});
+                                            if(igBeginTable("##vram_tiles", 1, ImGuiTableFlags_ScrollY | ImGuiTableFlags_NoPadInnerX, (ImVec2){0, 0}, 0.0))
+                                            {
+                                                uint32_t tile_count = 0x10000 / (8 * tile_bits_per_pixel);
+                                                ImGuiListClipper clipper;
+                                                ImGuiListClipper_ImGuiListClipper(&clipper);
+                                                ImGuiListClipper_Begin(&clipper, tile_count / M_TILE_VIEWER_TILES_PER_ROW, -1.0f);
+                                                
+                                                uint32_t last_row = 0;
+                                                uint32_t row_count = 0;
+
+                                                while(ImGuiListClipper_Step(&clipper))
+                                                {   
+
+                                                    last_row = clipper.DisplayEnd;
+                                                    // row_count = clipper.ItemsCount;
+
+                                                    for(uint32_t row_index = clipper.DisplayStart; row_index < clipper.DisplayEnd; row_index++)
+                                                    {
+                                                        uint32_t vram_offset = (row_index * tile_bits_per_pixel * 8) * M_TILE_VIEWER_TILES_PER_ROW;
+                                                        igTableNextRow(0, 0);
+                                                        igTableNextColumn();
+                                                        igText("0x%04x: ", vram_offset);
+                                                        igSameLine(0.0f, -1.0f);
+
+                                                        ImVec2 uv0;
+                                                        ImVec2 uv1;
+                                                        uv0.y = (float)(row_index % M_TILE_VIEWER_MAX_TILE_ROWS) / (float)M_TILE_VIEWER_MAX_TILE_ROWS;
+                                                        uv1.y = uv0.y + 8.0f / (float)(M_TILE_VIEWER_MAX_TILE_ROWS * 8);
+                                                        for(uint32_t column_index = 0; column_index < M_TILE_VIEWER_TILES_PER_ROW; column_index++)
+                                                        {
+                                                            uv0.x = (float)(column_index * 8) / (float)(M_TILE_VIEWER_TILES_PER_ROW * 8);
+                                                            uv1.x = uv0.x + 8.0f / (float)(M_TILE_VIEWER_TILES_PER_ROW * 8);
+                                                            igImage((ImTextureID)(uintptr_t)m_tile_viewer_texture, (ImVec2){32, 32}, uv0, uv1, (ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 1});
+                                                            igSameLine(0.0f, -1.0f);
+                                                        }
+                                                        row_count++;
+                                                    }
                                                 }
 
-                                                vram_offset += 16;
+                                                uint32_t update_start = last_row - row_count;
+                                                uint32_t update_end = last_row;
+
+                                                union mode0_cgram_t *mode0_cgram = (union mode0_cgram_t *)ppu_cgram;
+
+                                                uint32_t changed_row_count = update_end - update_start;
+                                                // printf("update %d rows\n", changed_row_count);
+                                                for(uint32_t row_index = 0; row_index < changed_row_count; row_index++)
+                                                {
+                                                    // uint32_t vram_offset = (row_index * tile_bits_per_pixel * 8) * M_TILE_VIEWER_TILES_PER_ROW;
+
+                                                    struct dot_t *first_dot = m_tile_viewer_dots + row_index * M_TILE_VIEWER_TILES_PER_ROW * 8 * 8;
+                                                    for(uint32_t dot_index = 0; dot_index < 8 * 8 * M_TILE_VIEWER_TILES_PER_ROW; dot_index++)
+                                                    {
+                                                        uint32_t tile_index = (dot_index >> 3) % 8 + ((row_index + update_start) << 3);
+                                                        struct dot_t *dot = first_dot + dot_index;
+                                                        uint32_t dot_x = dot_index % 8;
+                                                        uint32_t dot_y = dot_index / (8 * M_TILE_VIEWER_TILES_PER_ROW);
+
+                                                        uint8_t color_index = chr16_dot(vram, tile_index, dot_x, dot_y);
+                                                        if(color_index > 0)
+                                                        {
+                                                            struct col_t color = pal16_col(&mode0_cgram->bg2_colors, 2, color_index);
+                                                            dot->r = color.r;
+                                                            dot->g = color.g;
+                                                            dot->b = color.b;
+                                                            dot->a = 255;
+                                                        }
+                                                        else
+                                                        {
+                                                            dot->a = 0;
+                                                        }
+                                                    }
+                                                }
+
+                                                update_start %= M_TILE_VIEWER_MAX_TILE_ROWS;
+                                                update_end %= M_TILE_VIEWER_MAX_TILE_ROWS;
+
+                                                uint32_t copy_size = changed_row_count * 8;
+                                                glBindTexture(GL_TEXTURE_2D, m_tile_viewer_texture);
+
+                                                if(update_end < update_start)
+                                                {
+                                                    uint32_t sub_copy_size = update_end * 8;
+                                                    copy_size -= sub_copy_size;
+                                                    struct dot_t *first_dot = m_tile_viewer_dots + copy_size * 8 * M_TILE_VIEWER_TILES_PER_ROW;
+                                                    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 8 * M_TILE_VIEWER_TILES_PER_ROW, sub_copy_size, GL_RGBA, GL_UNSIGNED_BYTE, first_dot);    
+                                                }
+
+                                                uint32_t copy_start = update_start * 8;
+                                                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, copy_start, 8 * M_TILE_VIEWER_TILES_PER_ROW, copy_size, GL_RGBA, GL_UNSIGNED_BYTE, m_tile_viewer_dots);
+                        
+                                                igEndTable();
                                             }
+                                            igPopStyleVar(3);
+
+                                            igEndTabItem();
                                         }
-                                        igEndTable();
+
+                                        igEndTabBar();
                                     }
-                                    igEndTabItem();
-                                }
-
-                                if(igBeginTabItem("VRAM (Tiles)", NULL, 0))
-                                {
-                                    tile_bits_per_pixel = 4;
-                                    igPushStyleVar_Vec2(ImGuiStyleVar_WindowPadding, (ImVec2){0, 0});
-                                    igPushStyleVar_Vec2(ImGuiStyleVar_ItemSpacing, (ImVec2){4, 0});
-                                    igPushStyleVar_Vec2(ImGuiStyleVar_CellPadding , (ImVec2){0, 2});
-                                    if(igBeginTable("##vram_tiles", 1, ImGuiTableFlags_ScrollY | ImGuiTableFlags_NoPadInnerX, (ImVec2){0, 0}, 0.0))
-                                    {
-                                        uint32_t tile_count = 0x10000 / (8 * tile_bits_per_pixel);
-                                        ImGuiListClipper clipper;
-                                        ImGuiListClipper_ImGuiListClipper(&clipper);
-                                        ImGuiListClipper_Begin(&clipper, tile_count / M_TILE_VIEWER_TILES_PER_ROW, -1.0f);
-                                        
-                                        uint32_t last_row = 0;
-                                        uint32_t row_count = 0;
-
-                                        while(ImGuiListClipper_Step(&clipper))
-                                        {   
-
-                                            last_row = clipper.DisplayEnd;
-                                            // row_count = clipper.ItemsCount;
-
-                                            for(uint32_t row_index = clipper.DisplayStart; row_index < clipper.DisplayEnd; row_index++)
-                                            {
-                                                uint32_t vram_offset = (row_index * tile_bits_per_pixel * 8) * M_TILE_VIEWER_TILES_PER_ROW;
-                                                igTableNextRow(0, 0);
-                                                igTableNextColumn();
-                                                igText("0x%04x: ", vram_offset);
-                                                igSameLine(0.0f, -1.0f);
-
-                                                ImVec2 uv0;
-                                                ImVec2 uv1;
-                                                uv0.y = (float)(row_index % M_TILE_VIEWER_MAX_TILE_ROWS) / (float)M_TILE_VIEWER_MAX_TILE_ROWS;
-                                                uv1.y = uv0.y + 8.0f / (float)(M_TILE_VIEWER_MAX_TILE_ROWS * 8);
-                                                for(uint32_t column_index = 0; column_index < M_TILE_VIEWER_TILES_PER_ROW; column_index++)
-                                                {
-                                                    uv0.x = (float)(column_index * 8) / (float)(M_TILE_VIEWER_TILES_PER_ROW * 8);
-                                                    uv1.x = uv0.x + 8.0f / (float)(M_TILE_VIEWER_TILES_PER_ROW * 8);
-                                                    igImage((ImTextureID)(uintptr_t)m_tile_viewer_texture, (ImVec2){32, 32}, uv0, uv1, (ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 1});
-                                                    igSameLine(0.0f, -1.0f);
-                                                }
-                                                row_count++;
-                                            }
-                                        }
-
-                                        uint32_t update_start = last_row - row_count;
-                                        uint32_t update_end = last_row;
-
-                                        struct mode0_cgram_t *mode0_cgram = (struct mode0_cgram_t *)cgram;
-
-                                        uint32_t changed_row_count = update_end - update_start;
-                                        // printf("update %d rows\n", changed_row_count);
-                                        for(uint32_t row_index = 0; row_index < changed_row_count; row_index++)
-                                        {
-                                            // uint32_t vram_offset = (row_index * tile_bits_per_pixel * 8) * M_TILE_VIEWER_TILES_PER_ROW;
-
-                                            struct dot_t *first_dot = m_tile_viewer_dots + row_index * M_TILE_VIEWER_TILES_PER_ROW * 8 * 8;
-                                            for(uint32_t dot_index = 0; dot_index < 8 * 8 * M_TILE_VIEWER_TILES_PER_ROW; dot_index++)
-                                            {
-                                                uint32_t tile_index = (dot_index >> 3) % 8 + ((row_index + update_start) << 3);
-                                                struct dot_t *dot = first_dot + dot_index;
-                                                uint32_t dot_x = dot_index % 8;
-                                                uint32_t dot_y = dot_index / (8 * M_TILE_VIEWER_TILES_PER_ROW);
-
-                                                uint8_t color_index = chr16_dot(vram, tile_index, dot_x, dot_y);
-                                                if(color_index > 0)
-                                                {
-                                                    struct col_t color = pal16_col(&mode0_cgram->bg2_colors, 2, color_index);
-                                                    dot->r = color.r;
-                                                    dot->g = color.g;
-                                                    dot->b = color.b;
-                                                    dot->a = 255;
-                                                }
-                                                else
-                                                {
-                                                    dot->a = 0;
-                                                }
-                                            }
-                                        }
-
-                                        update_start %= M_TILE_VIEWER_MAX_TILE_ROWS;
-                                        update_end %= M_TILE_VIEWER_MAX_TILE_ROWS;
-
-                                        uint32_t copy_size = changed_row_count * 8;
-                                        glBindTexture(GL_TEXTURE_2D, m_tile_viewer_texture);
-
-                                        if(update_end < update_start)
-                                        {
-                                            uint32_t sub_copy_size = update_end * 8;
-                                            copy_size -= sub_copy_size;
-                                            struct dot_t *first_dot = m_tile_viewer_dots + copy_size * 8 * M_TILE_VIEWER_TILES_PER_ROW;
-                                            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 8 * M_TILE_VIEWER_TILES_PER_ROW, sub_copy_size, GL_RGBA, GL_UNSIGNED_BYTE, first_dot);    
-                                        }
-
-                                        uint32_t copy_start = update_start * 8;
-                                        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, copy_start, 8 * M_TILE_VIEWER_TILES_PER_ROW, copy_size, GL_RGBA, GL_UNSIGNED_BYTE, m_tile_viewer_dots);
-                
-                                        igEndTable();
-                                    }
-                                    igPopStyleVar(3);
-
+                                    
                                     igEndTabItem();
                                 }
 
@@ -548,38 +567,81 @@ int main(int argc, char *argv[])
 
                                 hovered_sprite = 0xffffffff;
                                 if(igBeginTabItem("OAM", NULL, 0))
-                                {
-                                    for(uint32_t index = 0; index < MAX_OBJ_COUNT; index++)
+                                {                                 
+                                    igText("Latched LSB: %02x", ppu_oam_lsb_latch);
+                                    igText("LSB toggle: %d", ppu_oam_lsb_toggle);   
+
+                                    if(igBeginTabBar("##oam_views", 0))
                                     {
-                                        uint32_t name = oam.tables.table1[index].fpcn & OBJ_ATTR1_NAME_MASK;
-                                        uint32_t flip = oam.tables.table1[index].fpcn & (OBJ_ATTR1_HFLIP | OBJ_ATTR1_VFLIP);
-                                        uint32_t priority = (oam.tables.table1[index].fpcn >> OBJ_ATTR1_PRI_SHIFT) & OBJ_ATTR1_PRI_MASK;
-                                        uint32_t v_pos = oam.tables.table1[index].v_pos;
-                                        uint32_t h_pos = oam.tables.table1[index].h_pos;
-                                        uint32_t size_pos = oam.tables.table2[index >> 3].size_hpos >> ((index & 0x3) << 1);
-
-                                        if(size_pos & PPU_OBJ_ATTR2_HPOS_MASK)
+                                        if(igBeginTabItem("Sprites", NULL, 0))
                                         {
-                                            h_pos |= 0xff00;
-                                        }
-
-                                        igPushID_Ptr(&oam.tables.table1[index]);
-                                        if(igBeginChild_Str("Sprite", (ImVec2){0, 120}, 1, 0))
-                                        {
-                                            if(igIsWindowHovered(0))
+                                            if(igBeginChild_Str("##sprites", (ImVec2){0, 0}, 0, 0))
                                             {
-                                                hovered_sprite = index;
+                                                for(uint32_t index = 0; index < MAX_OBJ_COUNT; index++)
+                                                {
+                                                    uint32_t name = oam.tables.table1[index].fpcn & OBJ_ATTR1_NAME_MASK;
+                                                    uint32_t flip = oam.tables.table1[index].fpcn & (OBJ_ATTR1_HFLIP | OBJ_ATTR1_VFLIP);
+                                                    uint32_t priority = (oam.tables.table1[index].fpcn >> OBJ_ATTR1_PRI_SHIFT) & OBJ_ATTR1_PRI_MASK;
+                                                    uint32_t v_pos = oam.tables.table1[index].v_pos;
+                                                    uint32_t h_pos = oam.tables.table1[index].h_pos;
+                                                    uint32_t size_pos = oam.tables.table2[index >> 3].size_hpos >> ((index & 0x3) << 1);
+
+                                                    if(size_pos & PPU_OBJ_ATTR2_HPOS_MASK)
+                                                    {
+                                                        h_pos |= 0xff00;
+                                                    }
+
+                                                    igPushID_Ptr(&oam.tables.table1[index]);
+                                                    if(igBeginChild_Str("Sprite", (ImVec2){0, 120}, 1, 0))
+                                                    {
+                                                        if(igIsWindowHovered(0))
+                                                        {
+                                                            hovered_sprite = index;
+                                                        }
+                                                        igText("Index: %d", index);
+                                                        igText("X: %d, Y: %d", h_pos, v_pos);
+                                                        igText("Size: %d", cur_obj_sizes[(size_pos >> OBJ_ATTR2_SIZE_SHIFT) & OBJ_ATTR2_SIZE_MASK]);
+                                                        igText("Flip H: %d, Flip V: %d", (flip & OBJ_ATTR1_HFLIP) && 1, (flip & OBJ_ATTR1_VFLIP) && 1);
+                                                        igText("Priority: %d", priority);
+                                                        igText("Name: %d", name);
+                                                    }
+                                                    igEndChild();
+                                                    igPopID();
+                                                }
                                             }
-                                            igText("Index: %d", index);
-                                            igText("X: %d, Y: %d", h_pos, v_pos);
-                                            igText("Size: %d", cur_obj_sizes[(size_pos >> OBJ_ATTR2_SIZE_SHIFT) & OBJ_ATTR2_SIZE_MASK]);
-                                            igText("Flip H: %d, Flip V: %d", (flip & OBJ_ATTR1_HFLIP) && 1, (flip & OBJ_ATTR1_VFLIP) && 1);
-                                            igText("Priority: %d", priority);
-                                            igText("Name: %d", name);
+                                            igEndChild();
+                                            igEndTabItem();
                                         }
-                                        igEndChild();
-                                        igPopID();
+
+                                        if(igBeginTabItem("Raw", NULL, 0))
+                                        {
+                                            if(igBeginTable("##raw", 2, ImGuiTableFlags_ScrollY | ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_BordersInnerH, (ImVec2){0, 0}, 0))
+                                            {
+                                                igTableSetupColumn("Address", 0, 96.0f, 0);
+                                                igTableNextRow(ImGuiTableRowFlags_Headers, 0);
+                                                igTableNextColumn();
+                                                igText("Address");
+                                                igTableNextColumn();
+                                                igText("Value");
+                                                for(uint32_t addr = 0; addr < PPU_OAM_SIZE; addr += 2)
+                                                {
+                                                    igTableNextRow(0, 0);
+                                                    igTableNextColumn();
+                                                    igText("%04x", addr);
+                                                    igTableNextColumn();
+
+                                                    ImVec4 color = (ppu_reg_oam_addr == addr) ? (ImVec4){1, 1, 0, 1} : (ImVec4){1, 1, 1, 1};
+                                                    igTextColored(color, "|%02x|%02x|", oam.bytes[addr + 1], oam.bytes[addr]);
+                                                }
+                                                igEndTable();
+                                            }
+                                            igEndTabItem();
+                                        }
+
+
+                                        igEndTabBar();
                                     }
+                                    
                                     igEndTabItem();
                                 }
 
@@ -757,6 +819,10 @@ int main(int argc, char *argv[])
                                                     igTextColored(color, "Channel: %d", breakpoint->dma.channel);
                                                 break;
                                             }
+
+                                            bool trace = breakpoint->trace;
+                                            igCheckbox("Trace", &trace);
+                                            breakpoint->trace = trace;
                                         }
                                         igEndChild();
                                         igPopID();
@@ -884,10 +950,33 @@ int main(int argc, char *argv[])
             {
                 if(igBeginChild_Str("##trace_window",(ImVec2){0, 0}, 1, 0))
                 {
-                    for(uint32_t entry_index = emu_log_entry_count - 1; entry_index < 0xffffffff; entry_index--)
+                    if(igBeginTable("##trace", 1, 0, (ImVec2){}, 0))
                     {
-                        struct emu_log_t *log = emu_log_entries + entry_index;
-                        igText("%s", log->message);
+                        ImGuiListClipper list_clipper;
+                        ImGuiListClipper_ImGuiListClipper(&list_clipper);
+                        ImGuiListClipper_Begin(&list_clipper, emu_log_entry_count, -1);
+
+                        while(ImGuiListClipper_Step(&list_clipper))
+                        {
+                            for(uint32_t index = list_clipper.DisplayStart; index < list_clipper.DisplayEnd; index++)
+                            {
+                                // uint32_t entry_index = (index + emu_first_log_entry) % EMU_MAX_LOG_ENTRIES;
+                                igTableNextRow(0, 0);
+                                igTableNextColumn();
+                                uint32_t entry_index = (((emu_log_entry_count - 1) - index) + emu_first_log_entry) % EMU_MAX_LOG_ENTRIES;
+                                struct emu_log_t *log = emu_log_entries + entry_index;
+                                igText("[%lld]: %s", log->master_clock, log->message);
+                            }
+                        }
+
+                        // for(uint32_t index = emu_log_entry_count - 1; index < 0xffffffff; index--)
+                        // {
+                        //     uint32_t entry_index = (index + emu_first_log_entry) % EMU_MAX_LOG_ENTRIES;
+                        //     struct emu_log_t *log = emu_log_entries + entry_index;
+                        //     igText("[%lld]: %s", log->master_clock, log->message);
+                        // }
+
+                        igEndTable();
                     }
                 }
                 igEndChild();

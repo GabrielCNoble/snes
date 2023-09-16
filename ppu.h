@@ -122,7 +122,7 @@ struct dot_obj_draw_tiles_t
     uint16_t                draw_tile_count;
 };
 
-struct obj_span_entry_t
+struct line_pixel_t
 {
     uint8_t color: 4;
     uint8_t pallete: 3;
@@ -151,11 +151,12 @@ struct dot_tiles_t
     // uint32_t                        tile_count;
 };
 
-#define PPU_OAM_TABLE1_START 0x0000
-#define PPU_OAM_TABLE2_START 0x0200
-#define PPU_OAM_SIZE 0x220
-#define PPU_CGRAM_SIZE 0x200
-#define PPU_VRAM_SIZE 0xffff
+#define PPU_OAM_TABLE1_START    0x0000
+#define PPU_OAM_TABLE2_START    0x0200
+#define PPU_OAM_SIZE            0x220
+#define PPU_CGRAM_SIZE          0x200
+#define PPU_CGRAM_WORD_COUNT    0x100
+#define PPU_VRAM_SIZE           0xffff
 
 struct oam_tables_t
 {
@@ -527,23 +528,34 @@ struct bg7_tile_t
      uint8_t b;
  };
 
-struct mode0_cgram_t
+union mode0_cgram_t
 {
-    struct pal4_t       bg1_colors[8];
-    struct pal4_t       bg2_colors[8];
-    struct pal4_t       bg3_colors[8];
-    struct pal4_t       bg4_colors[8];
-    struct pal16_t      obj_colors[8];
+    struct
+    {
+        struct pal4_t       bg1_colors[8];
+        struct pal4_t       bg2_colors[8];
+        struct pal4_t       bg3_colors[8];
+        struct pal4_t       bg4_colors[8];
+        struct pal16_t      obj_colors[8];
+    };
+
+    uint16_t                entries[PPU_CGRAM_WORD_COUNT];
 };
 
-struct mode12_cgram_t
+union mode12_cgram_t
 {
-    union
+    struct
     {
-        struct pal4_t       bg3_colors[8];
-        struct pal16_t      bg12_colors[8];
+        union
+        {
+            struct pal4_t       bg3_colors[8];
+            struct pal16_t      bg12_colors[8];
+        };
+
+        struct pal16_t          obj_colors[8];
     };
-    struct pal16_t      obj_colors[8];
+
+    uint16_t                    entries[PPU_CGRAM_WORD_COUNT];
 };
 
 // struct mode3_cgram_t
@@ -552,24 +564,34 @@ struct mode12_cgram_t
 //     struct pal256_t     bg1_colors;
 // };
 
-struct mode56_cgram_t
+union mode56_cgram_t
 {
-    union
+    struct
     {
-        struct pal4_t   bg2_colors[8];
-        struct pal16_t  bg1_colors[8];
-    };
+        union
+        {
+            struct pal4_t   bg2_colors[8];
+            struct pal16_t  bg1_colors[8];
+        };
 
-    struct pal16_t      obj_colors[8];
-};
-
-struct mode7_cgram_t
-{
-    union
-    {
-        struct pal256_t     bg1_colors;
         struct pal16_t      obj_colors[8];
     };
+
+    uint16_t                entries[PPU_CGRAM_WORD_COUNT];
+};
+
+union mode7_cgram_t
+{
+    struct
+    {
+        union
+        {
+            struct pal256_t     bg1_colors;
+            struct pal16_t      obj_colors[8];
+        };
+    };
+
+    uint16_t                    entries[PPU_CGRAM_WORD_COUNT];
 };
 
 struct bg_draw_t

@@ -98,6 +98,8 @@ struct breakpoint_t
     uint32_t address;
     uint32_t value;
 
+    uint32_t trace;
+
     // union
     // {
         struct
@@ -150,10 +152,11 @@ struct emu_thread_data_t
 };
 
 
-#define EMU_MAX_LOG_ENTRIES 0xffff
+#define EMU_MAX_LOG_ENTRIES 0x20000
 struct emu_log_t
 {
-    char message[1024];
+    char        message[248];
+    uint64_t    master_clock;
 };
 
 void set_execution_breakpoint(uint32_t effective_address);

@@ -386,25 +386,6 @@ uint8_t read_byte(uint32_t effective_address)
 //    read_address_buffer[read_address_count] = effective_address;
 //    read_address_count++;
 
-    struct breakpoint_list_t *mem_read_breakpoints = &emu_breakpoints[BREAKPOINT_TYPE_MEM_READ];
-
-    for(uint32_t breakpoint_index = 0; breakpoint_index < mem_read_breakpoints->count; breakpoint_index++)
-    {
-        struct breakpoint_t *breakpoint = mem_read_breakpoints->breakpoints + breakpoint_index;
-        if(breakpoint->start_address <= effective_address && effective_address <= breakpoint->end_address)
-        {
-            struct emu_thread_data_t *thread_data = emu_emulation_thread->data;
-            // breakpoint->address = effective_address;
-            thread_data->breakpoint = breakpoint;
-            thread_data->status |= EMU_STATUS_BREAKPOINT;
-            thread_data->breakpoint_type = BREAKPOINT_TYPE_MEM_READ;
-            thread_data->breakpoint_data.mem.address = effective_address;
-            thread_data->breakpoint_data.mem.location = access;
-            thrd_Switch(emu_emulation_thread, &emu_main_thread);
-            break;
-        }
-    }
-
     if(access == ACCESS_RAM2)
     {
         uint32_t offset = effective_address - RAM2_START;
@@ -438,6 +419,26 @@ uint8_t read_byte(uint32_t effective_address)
     }
 
     last_bus_value = data;
+
+    struct breakpoint_list_t *mem_read_breakpoints = &emu_breakpoints[BREAKPOINT_TYPE_MEM_READ];
+
+    for(uint32_t breakpoint_index = 0; breakpoint_index < mem_read_breakpoints->count; breakpoint_index++)
+    {
+        struct breakpoint_t *breakpoint = mem_read_breakpoints->breakpoints + breakpoint_index;
+        if(breakpoint->start_address <= effective_address && effective_address <= breakpoint->end_address)
+        {
+            struct emu_thread_data_t *thread_data = emu_emulation_thread->data;
+            // breakpoint->address = effective_address;
+            thread_data->breakpoint = breakpoint;
+            thread_data->status |= EMU_STATUS_BREAKPOINT;
+            thread_data->breakpoint_type = BREAKPOINT_TYPE_MEM_READ;
+            thread_data->breakpoint_data.mem.address = effective_address;
+            thread_data->breakpoint_data.mem.location = access;
+            thread_data->breakpoint_data.mem.data = data;
+            thrd_Switch(emu_emulation_thread, &emu_main_thread);
+            break;
+        }
+    }
 
     return data;
 }

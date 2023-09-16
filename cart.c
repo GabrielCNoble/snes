@@ -10,6 +10,7 @@
 //struct rom_t current_rom;
 
 uint32_t rom_sizes[] = {
+    [0]     = 0x400000,
     [ROM_SIZE_3_4M]     = 0x400000,
     [ROM_SIZE_5_8M]     = 0x800000,
     [ROM_SIZE_9_16M]    = 0x1000000,
@@ -18,6 +19,7 @@ uint32_t rom_sizes[] = {
 };
 
 uint32_t mode_sram_sizes[] = {
+    [0] = 0x7fff,
     [MAP_MODE_20_SLOW] = 0x7fff,
     [MAP_MODE_20_FAST] = 0x7fff,
     [MAP_MODE_21_SLOW] = 0x2000,
@@ -34,6 +36,7 @@ uint32_t sram_sizes[] = {
 };
 
 const char *rom_size_strs[] = {
+    [0]                 = "??",
     [ROM_SIZE_3_4M]     = "3 - 4M",
     [ROM_SIZE_5_8M]     = "5 - 8M",
     [ROM_SIZE_9_16M]    = "9 - 16M",
@@ -60,6 +63,7 @@ const char *ram_size_strs[] = {
 };
 
 const char *map_mode_strs[] = {
+    [0]                = "??",
     [MAP_MODE_20_SLOW] = "Mode 20, slow",
     [MAP_MODE_21_SLOW] = "Mode 21, slow",
     [MAP_MODE_23_SLOW] = "Mode 23, slow",
@@ -70,6 +74,7 @@ const char *map_mode_strs[] = {
 };
 
 void *(*map_mode_functions[])(uint32_t effective_address, uint32_t write) = {
+    [0]                = mode20_cart_pointer,
     [MAP_MODE_20_SLOW] = mode20_cart_pointer,
 //    [MAP_MODE_21_SLOW] = mode21_cart_pointer,
     [MAP_MODE_21_SLOW] = mode20_cart_pointer,
@@ -108,6 +113,7 @@ struct rom_header_t *get_rom_header(void *rom)
 
         switch(header->map_mode)
         {
+            case 0:
             case MAP_MODE_20_FAST:
             case MAP_MODE_20_SLOW:
             case MAP_MODE_21_FAST:
@@ -178,10 +184,10 @@ uint32_t load_cart(char *file_name)
 
     strncpy(game_name, (const char *)rom_header->game_title, 21);
 
-    printf("rom type: %s\n", rom_type_str);
-    printf("rom size: %s\n", rom_size_str);
-    printf("ram size: %s\n", ram_size_str);
-    printf("game name: %s\n", game_name);
+    // printf("rom type: %s\n", rom_type_str);
+    // printf("rom size: %s\n", rom_size_str);
+    // printf("ram size: %s\n", ram_size_str);
+    // printf("game name: %s\n", game_name);
 
     if(!rom_sizes[rom_header->rom_size])
     {
