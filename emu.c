@@ -36,7 +36,7 @@ struct thrd_t                   emu_main_thread;
 struct thrd_t *                 emu_emulation_thread;
 struct emu_thread_data_t        emu_emulation_data;
 struct emu_log_t *              emu_log_entries;
-uint32_t                        emu_first_log_entry;
+uint32_t                        emu_last_log_entry;
 uint32_t                        emu_log_entry_count;
 
 // SDL_Renderer *  renderer = NULL;
@@ -357,6 +357,12 @@ void init_emu()
 
     emu_vram_breakpoint_bitmask = calloc(1, PPU_VRAM_SIZE >> 2);
 
+    trace_file = fopen("./trace.log", "w");
+    if(trace_file == NULL)
+    {
+        printf("couldn't open trace file\n");
+    }
+
     // counter_frequency = SDL_GetPerformanceFrequency();
     // prev_count = SDL_GetPerformanceCounter();
     ui_Init();
@@ -368,6 +374,8 @@ void init_emu()
 
 void shutdown_emu()
 {
+    emu_FlushLog();
+    fclose(trace_file);
     free(emu_framebuffer);
     // free(framebuffers[1]);
     ui_Shutdown();
@@ -581,7 +589,7 @@ void emu_Log(const char *fmt, ...)
     va_start(args, fmt);
     struct emu_log_t *log_entry;
 
-    log_entry = emu_log_entries + (emu_log_entry_count + emu_first_log_entry) % EMU_MAX_LOG_ENTRIES;
+    log_entry = emu_log_entries + (emu_log_entry_count + emu_last_log_entry) % EMU_MAX_LOG_ENTRIES;
     
     if(emu_log_entry_count < EMU_MAX_LOG_ENTRIES)
     {
@@ -589,8 +597,8 @@ void emu_Log(const char *fmt, ...)
     }
     else
     {
-        emu_first_log_entry = (emu_first_log_entry + 1) % EMU_MAX_LOG_ENTRIES;
-        // log_entry = emu_log_entries + emu_first_log_entry;
+        fprintf(trace_file, "[%lld]: %s", log_entry->master_clock, log_entry->message);
+        emu_last_log_entry = (emu_last_log_entry + 1) % EMU_MAX_LOG_ENTRIES;
     }
 
     vsnprintf(log_entry->message, sizeof(log_entry->message), fmt, args);
@@ -598,14 +606,35 @@ void emu_Log(const char *fmt, ...)
     va_end(args);
 }
 
-void dump_emu()
+void emu_FlushLog()
 {
-    printf("master cycles: %llu\n", master_cycles);
-    dump_dma();
-    dump_ppu();
-    dump_cpu(1);
-    printf("\n");
+    if(emu_log_entry_count < EMU_MAX_LOG_ENTRIES)
+    {
+        for(uint32_t index = 0; index < emu_log_entry_count; index++)
+        {
+            struct emu_log_t *log_entry = emu_log_entries + index;
+            fprintf(trace_file, "[%lld]: %s", log_entry->master_clock, log_entry->message);
+        }
+    }
+    else
+    {
+        for(uint32_t index = 0; index < EMU_MAX_LOG_ENTRIES; index++)
+        {
+            uint32_t entry_index = (emu_last_log_entry + index) % EMU_MAX_LOG_ENTRIES;
+            struct emu_log_t *log_entry = emu_log_entries + entry_index;
+            fprintf(trace_file, "[%lld]: %s", log_entry->master_clock, log_entry->message);
+        }
+    }
 }
+
+// void dump_emu()
+// {
+//     printf("master cycles: %llu\n", master_cycles);
+//     dump_dma();
+//     dump_ppu();
+//     dump_cpu(1);
+//     printf("\n");
+// }
 
 void write_trace()
 {

@@ -187,6 +187,8 @@ uint32_t emu_Step(int32_t step_cycles);
 
 void emu_Log(const char *fmt, ...);
 
+void emu_FlushLog();
+
 void dump_emu();
 
 void write_trace();

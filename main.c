@@ -18,24 +18,24 @@ extern struct breakpoint_list_t     emu_breakpoints[];
 extern struct emu_thread_data_t     emu_emulation_data;
 extern struct emu_log_t *           emu_log_entries;
 extern uint32_t                     emu_log_entry_count;
-extern uint32_t                     emu_first_log_entry;
+extern uint32_t                     emu_last_log_entry;
 
 extern struct cpu_state_t           cpu_state;
 extern const char *                 opcode_strs[];
 
-extern uint8_t *            vram;
-extern uint8_t *            ppu_cgram;
-extern uint8_t *            ram1_regs;
-extern struct background_t  backgrounds[4];
-extern const char *         ppu_reg_strs[];
-extern uint16_t             vcounter;
-extern uint16_t             hcounter;
-extern uint32_t             vram_addr;
-extern uint32_t             cur_obj_sizes[];
-extern uint8_t              ppu_oam_lsb_latch;
-extern uint8_t              ppu_oam_lsb_toggle;
-extern uint16_t             ppu_reg_oam_addr;
-extern union oam_t          oam;
+extern uint8_t *                    vram;
+extern uint8_t *                    ppu_cgram;
+extern uint8_t *                    ram1_regs;
+extern struct background_t          backgrounds[4];
+extern const char *                 ppu_reg_strs[];
+extern uint16_t                     vcounter;
+extern uint16_t                     hcounter;
+extern uint32_t                     vram_addr;
+extern uint32_t                     cur_obj_sizes[];
+extern uint8_t                      ppu_oam_lsb_latch;
+extern uint8_t                      ppu_oam_lsb_toggle;
+extern uint16_t                     ppu_reg_oam_addr;
+extern union oam_t                  oam;
 
 const char *m_breakpoint_type_names[] = {
     [BREAKPOINT_TYPE_EXECUTION]     = "Execution",
@@ -120,6 +120,8 @@ int main(int argc, char *argv[])
     uint32_t tile_viewer_first_row = 0;
     uint32_t tile_viewer_last_row = 0;
     uint32_t hovered_sprite = 0xffffffff;
+    uint32_t highlighted_sprites[PPU_MAX_OBJ_COUNT];
+    // uint32_t highlighted_sprite_count = 0;
 
     uint32_t cur_breakpoint_tab = BREAKPOINT_TYPE_EXECUTION;
     uint32_t add_breakpoint_type;
@@ -132,6 +134,8 @@ int main(int argc, char *argv[])
 
     m_counter_frequency = SDL_GetPerformanceFrequency();
     m_prev_count = SDL_GetPerformanceCounter();
+
+    memset(highlighted_sprites, 0xffffffff, sizeof(highlighted_sprites));
 
     while(!in_ReadInput())
     {
@@ -577,14 +581,14 @@ int main(int argc, char *argv[])
                                         {
                                             if(igBeginChild_Str("##sprites", (ImVec2){0, 0}, 0, 0))
                                             {
-                                                for(uint32_t index = 0; index < MAX_OBJ_COUNT; index++)
+                                                for(uint32_t index = 0; index < PPU_MAX_OBJ_COUNT; index++)
                                                 {
-                                                    uint32_t name = oam.tables.table1[index].fpcn & OBJ_ATTR1_NAME_MASK;
-                                                    uint32_t flip = oam.tables.table1[index].fpcn & (OBJ_ATTR1_HFLIP | OBJ_ATTR1_VFLIP);
-                                                    uint32_t priority = (oam.tables.table1[index].fpcn >> OBJ_ATTR1_PRI_SHIFT) & OBJ_ATTR1_PRI_MASK;
+                                                    uint32_t name = oam.tables.table1[index].fpcn & PPU_OBJ_ATTR1_NAME_MASK;
+                                                    uint32_t flip = oam.tables.table1[index].fpcn & (PPU_OBJ_ATTR1_HFLIP | PPU_OBJ_ATTR1_VFLIP);
+                                                    uint32_t priority = (oam.tables.table1[index].fpcn >> PPU_OBJ_ATTR1_PRI_SHIFT) & PPU_OBJ_ATTR1_PRI_MASK;
                                                     uint32_t v_pos = oam.tables.table1[index].v_pos;
                                                     uint32_t h_pos = oam.tables.table1[index].h_pos;
-                                                    uint32_t size_pos = oam.tables.table2[index >> 3].size_hpos >> ((index & 0x3) << 1);
+                                                    uint32_t size_pos = oam.tables.table2[index >> 3].size_hpos >> ((index & 0x7) << 1);
 
                                                     if(size_pos & PPU_OBJ_ATTR2_HPOS_MASK)
                                                     {
@@ -598,12 +602,20 @@ int main(int argc, char *argv[])
                                                         {
                                                             hovered_sprite = index;
                                                         }
+
+                                                        bool highlighted = (highlighted_sprites[index] != 0xffffffff);
+                                                        
+
                                                         igText("Index: %d", index);
+                                                        igSameLine(0, -1);
+                                                        igCheckbox("Highlight", &highlighted);
                                                         igText("X: %d, Y: %d", h_pos, v_pos);
-                                                        igText("Size: %d", cur_obj_sizes[(size_pos >> OBJ_ATTR2_SIZE_SHIFT) & OBJ_ATTR2_SIZE_MASK]);
-                                                        igText("Flip H: %d, Flip V: %d", (flip & OBJ_ATTR1_HFLIP) && 1, (flip & OBJ_ATTR1_VFLIP) && 1);
+                                                        igText("Size: %d", cur_obj_sizes[(size_pos >> PPU_OBJ_ATTR2_SIZE_SHIFT) & PPU_OBJ_ATTR2_SIZE_MASK]);
+                                                        igText("Flip H: %d, Flip V: %d", (flip & PPU_OBJ_ATTR1_HFLIP) && 1, (flip & PPU_OBJ_ATTR1_VFLIP) && 1);
                                                         igText("Priority: %d", priority);
                                                         igText("Name: %d", name);
+
+                                                        highlighted_sprites[index] = highlighted ? index : 0xffffffff;
                                                     }
                                                     igEndChild();
                                                     igPopID();
@@ -844,11 +856,9 @@ int main(int argc, char *argv[])
 
             // ImVec2 window_size = (ImVec2){FRAMEBUFFER_WIDTH * 2, FRAMEBUFFER_HEIGHT * 2};
             // igSetNextWindowSize(window_size, 0);
+
             if(igBegin("##framebuffer", NULL, ImGuiWindowFlags_NoScrollbar))
             {
-                ImVec2 window_size;
-                igGetContentRegionAvail(&window_size);
-
                 igSetNextItemWidth(260.0);
                 igInputText("ROM", rom_name_buffer, sizeof(rom_name_buffer), ImGuiInputTextFlags_EnterReturnsTrue, NULL, NULL);
                 igSameLine(0, -1);
@@ -906,42 +916,62 @@ int main(int argc, char *argv[])
 
                 igSameLine(0, -1);
                 igText("%.04f ms (%.02f fps)", m_frame_time * 1000.0, 1.0f / m_frame_time);
-                if(igBeginChild_Str("blah", (ImVec2){0, 0}, 0, 0))
-                {
-                    igGetContentRegionAvail(&window_size);
+                igPushStyleVar_Vec2(ImGuiStyleVar_FramePadding, (ImVec2){});
+                igPushStyleVar_Vec2(ImGuiStyleVar_WindowPadding, (ImVec2){});
+
+                ImVec2 window_size;
+                // igGetWindowSize(&window_size);
+
+                igGetContentRegionAvail(&window_size);
+                // igGetWindowContentRegionMax(&window_size);
+                if(igBeginChild_Str("blah", window_size, 1, ImGuiWindowFlags_NoScrollbar))
+                {                    
                     ImVec2 cursor_pos;
                     ImVec2 image_size;
-                    igGetCursorPos(&cursor_pos);
-                    igPushStyleVar_Vec2(ImGuiStyleVar_FramePadding, (ImVec2){});
-                    igPushStyleVar_Vec2(ImGuiStyleVar_WindowPadding, (ImVec2){});
-                    igImage((ImTextureID)(uintptr_t)emu_framebuffer_texture, window_size, (ImVec2){0, 0}, (ImVec2){1, 1}, (ImVec4){1, 1, 1, 1}, (ImVec4){0, 0, 0, 0});
+
+                    float u = 256.0f / (float)FRAMEBUFFER_WIDTH;
+                    float v = 225.0f / (float)FRAMEBUFFER_HEIGHT;
+                    
+                    igSetCursorPos((ImVec2){});
+                    igImage((ImTextureID)(uintptr_t)emu_framebuffer_texture, window_size, (ImVec2){0, 0}, (ImVec2){u, v}, (ImVec4){1, 1, 1, 1}, (ImVec4){0, 0, 0, 0});
                     igGetItemRectSize(&image_size);
 
-                    if(hovered_sprite != 0xffffffff)
-                    {
-                        uint16_t v_pos = oam.tables.table1[hovered_sprite].v_pos;
-                        uint16_t h_pos = oam.tables.table1[hovered_sprite].h_pos;
-                        uint16_t size_pos = oam.tables.table2[hovered_sprite >> 3].size_hpos >> ((hovered_sprite & 0x3) << 1);
+                    float ratio_u = image_size.x / 256.0f;
+                    float ratio_v = image_size.y / 225.0f;
 
-                        if(size_pos & PPU_OBJ_ATTR2_HPOS_MASK)
+                    for(uint32_t index = 0; index < PPU_MAX_OBJ_COUNT; index++)
+                    {
+                        uint32_t sprite_index = highlighted_sprites[index];
+
+                        if(index == hovered_sprite)
                         {
-                            h_pos |= 0xff00;
+                            sprite_index = index;
                         }
 
-                        float highlight_x = (float)h_pos / 256.0f;
-                        float highlight_y = (float)v_pos / 225.0f;
-                        // ImVec2 cursor_pos = (ImVec2){window_size.x * highlight_x, window_size.y * highlight_y};
+                        if(sprite_index != 0xffffffff)
+                        {
+                            uint16_t v_pos = oam.tables.table1[sprite_index].v_pos;
+                            uint16_t h_pos = oam.tables.table1[sprite_index].h_pos;
+                            uint16_t size_pos = oam.tables.table2[sprite_index >> 3].size_hpos >> ((sprite_index & 0x7) << 1);
+                            float size = cur_obj_sizes[(size_pos >> PPU_OBJ_ATTR2_SIZE_SHIFT) & PPU_OBJ_ATTR2_SIZE_MASK];
 
-                        cursor_pos.x += highlight_x * image_size.x;
-                        cursor_pos.y += highlight_y * image_size.y;
-                        igSetCursorPos(cursor_pos);
-                        igImage((ImTextureID)(uintptr_t)m_tile_viewer_texture, (ImVec2){16, 16}, (ImVec2){}, (ImVec2){}, (ImVec4){0, 0, 0, 0}, (ImVec4){1, 1, 1, 1});
-                        // igPushStyleColor_Vec4(ImGuiCol_Border)
-                        // igSelectable_Bool("Test", 0, 0, (ImVec2){8, 8});
+                            if(size_pos & PPU_OBJ_ATTR2_HPOS_MASK)
+                            {
+                                h_pos |= 0xff00;
+                            }
+
+                            float highlight_x = (float)h_pos / 256.0f;
+                            float highlight_y = (float)v_pos / 225.0f;
+
+                            cursor_pos.x = highlight_x * image_size.x;
+                            cursor_pos.y = highlight_y * image_size.y;
+                            igSetCursorPos(cursor_pos);
+                            igImage((ImTextureID)(uintptr_t)m_tile_viewer_texture, (ImVec2){ratio_u * size, ratio_v * size}, (ImVec2){}, (ImVec2){}, (ImVec4){0, 0, 0, 0}, (ImVec4){1, 1, 1, 1});
+                        }
                     }
-
-                    igPopStyleVar(2);
                 }
+
+                igPopStyleVar(2);
                 igEndChild();
             }
             igEnd();
@@ -960,21 +990,13 @@ int main(int argc, char *argv[])
                         {
                             for(uint32_t index = list_clipper.DisplayStart; index < list_clipper.DisplayEnd; index++)
                             {
-                                // uint32_t entry_index = (index + emu_first_log_entry) % EMU_MAX_LOG_ENTRIES;
                                 igTableNextRow(0, 0);
                                 igTableNextColumn();
-                                uint32_t entry_index = (((emu_log_entry_count - 1) - index) + emu_first_log_entry) % EMU_MAX_LOG_ENTRIES;
+                                uint32_t entry_index = (((emu_log_entry_count - 1) - index) + emu_last_log_entry) % EMU_MAX_LOG_ENTRIES;
                                 struct emu_log_t *log = emu_log_entries + entry_index;
                                 igText("[%lld]: %s", log->master_clock, log->message);
                             }
                         }
-
-                        // for(uint32_t index = emu_log_entry_count - 1; index < 0xffffffff; index--)
-                        // {
-                        //     uint32_t entry_index = (index + emu_first_log_entry) % EMU_MAX_LOG_ENTRIES;
-                        //     struct emu_log_t *log = emu_log_entries + entry_index;
-                        //     igText("[%lld]: %s", log->master_clock, log->message);
-                        // }
 
                         igEndTable();
                     }

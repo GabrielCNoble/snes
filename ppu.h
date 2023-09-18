@@ -16,13 +16,13 @@
 // #define OBJ_ATTR1_HPOS_MASK     0x01
 #define PPU_OBJ_ATTR1_POS_MASK      0x0f
 #define PPU_OBJ_ATTR1_VPOS_SHIFT    8
-#define OBJ_ATTR1_PAL_SHIFT         0x09
-#define OBJ_ATTR1_PAL_MASK          0x07
-#define OBJ_ATTR1_NAME_MASK         0x1ff
-#define OBJ_ATTR1_HFLIP             0x4000
-#define OBJ_ATTR1_VFLIP             0x8000
-#define OBJ_ATTR1_PRI_SHIFT         0x0c
-#define OBJ_ATTR1_PRI_MASK          0x03
+#define PPU_OBJ_ATTR1_PAL_SHIFT         0x09
+#define PPU_OBJ_ATTR1_PAL_MASK          0x07
+#define PPU_OBJ_ATTR1_NAME_MASK         0x1ff
+#define PPU_OBJ_ATTR1_HFLIP             0x4000
+#define PPU_OBJ_ATTR1_VFLIP             0x8000
+#define PPU_OBJ_ATTR1_PRI_SHIFT         0x0c
+#define PPU_OBJ_ATTR1_PRI_MASK          0x03
 union obj_attr1_t 
 {
     struct
@@ -36,15 +36,34 @@ union obj_attr1_t
 }; 
 
 #define PPU_OBJ_ATTR2_HPOS_MASK 0x01
-#define OBJ_ATTR2_SIZE_SHIFT 0x01
-#define OBJ_ATTR2_SIZE_MASK 0x01
-#define OBJ_ATTR2_DATA_MASK 0x03
+#define PPU_OBJ_ATTR2_SIZE_SHIFT 0x01
+#define PPU_OBJ_ATTR2_SIZE_MASK 0x01
+#define PPU_OBJ_ATTR2_DATA_MASK 0x03
 struct obj_attr2_t
 {
     uint16_t size_hpos;
 };
 
-#define MAX_OBJ_COUNT 128
+#define PPU_OAM_TABLE1_START    0x0000
+#define PPU_OAM_TABLE2_START    0x0200
+#define PPU_OAM_SIZE            0x220
+#define PPU_CGRAM_SIZE          0x200
+#define PPU_CGRAM_WORD_COUNT    0x100
+#define PPU_VRAM_SIZE           0xffff
+
+struct oam_tables_t
+{
+    union obj_attr1_t table1    [128];
+    struct obj_attr2_t table2   [32];
+};
+union oam_t
+{
+    struct oam_tables_t             tables;
+    uint8_t                         bytes[sizeof(struct oam_tables_t)];
+    uint16_t                        words[sizeof(struct oam_tables_t) / sizeof(uint16_t)];
+};
+
+#define PPU_MAX_OBJ_COUNT 128
 #define PPU_TILE_SIZE 8
 
 enum PPU_SPRITE_STEPS
@@ -53,6 +72,14 @@ enum PPU_SPRITE_STEPS
     PPU_SPRITE_STEP_LOAD_TILES,
     PPU_SPRITE_STEP_NONE,
     // PPU_OAM_SCAN_STEP_SPANS,
+};
+
+
+enum PPU_BACKGROUND_STEPS
+{
+    PPU_BACKGROUND_STEP_LOAD_NAMES,
+    PPU_BACKGROUND_STEP_LOAD_TILES,
+    PPU_BACKGROUND_STEP_NONE
 };
 // struct obj_t
 // {
@@ -101,26 +128,26 @@ enum COLOR_FUNCS
     COLOR_FUNC_CHR256,
 };
 
-struct draw_tile_t
-{
-    uint16_t    name;
-    uint16_t    start_x;
-    uint8_t     start_y;
-    uint8_t     pallete     : 4;
-    uint8_t     color_func  : 4;
-};
+// struct draw_tile_t
+// {
+//     uint16_t    name;
+//     uint16_t    start_x;
+//     uint8_t     start_y;
+//     uint8_t     pallete     : 4;
+//     uint8_t     color_func  : 4;
+// };
 
-struct bg_draw_tile_t
-{
-    struct draw_tile_t  tile;
-    uint8_t             background;
-};
+// struct bg_draw_tile_t
+// {
+//     struct draw_tile_t  tile;
+//     uint8_t             background;
+// };
 
-struct dot_obj_draw_tiles_t
-{
-    uint16_t                draw_tiles[MAX_OBJ_COUNT];
-    uint16_t                draw_tile_count;
-};
+// struct dot_obj_draw_tiles_t
+// {
+//     uint16_t                draw_tiles[MAX_OBJ_COUNT];
+//     uint16_t                draw_tile_count;
+// };
 
 struct line_pixel_t
 {
@@ -135,40 +162,21 @@ struct line_pixel_t
 //    uint16_t                tile_count;
 //};
 
-struct dot_bg_tiles_t
-{
-    /* there will be at most 2 tiles overlapping the same dot per priority */
-    uint16_t                tiles[2];
-    uint16_t                tile_count;
-};
+// struct dot_bg_tiles_t
+// {
+//     /* there will be at most 2 tiles overlapping the same dot per priority */
+//     uint16_t                tiles[2];
+//     uint16_t                tile_count;
+// };
 
-struct dot_tiles_t
-{
-    struct dot_obj_draw_tiles_t     obj_draw_tiles[OBJ_PRIORITIES];
-    struct dot_bg_tiles_t           bg_tiles[OBJ_PRIORITIES];
+// struct dot_tiles_t
+// {
+//     // struct dot_obj_draw_tiles_t     obj_draw_tiles[OBJ_PRIORITIES];
+//     struct dot_bg_tiles_t           bg_tiles[OBJ_PRIORITIES];
 
-    // struct draw_tile_t              tiles[MAX_OBJ_COUNT * 2];
-    // uint32_t                        tile_count;
-};
-
-#define PPU_OAM_TABLE1_START    0x0000
-#define PPU_OAM_TABLE2_START    0x0200
-#define PPU_OAM_SIZE            0x220
-#define PPU_CGRAM_SIZE          0x200
-#define PPU_CGRAM_WORD_COUNT    0x100
-#define PPU_VRAM_SIZE           0xffff
-
-struct oam_tables_t
-{
-    union obj_attr1_t table1    [128];
-    struct obj_attr2_t table2   [32];
-};
-union oam_t
-{
-    struct oam_tables_t             tables;
-    uint8_t                         bytes[sizeof(struct oam_tables_t)];
-    uint16_t                        words[sizeof(struct oam_tables_t) / sizeof(uint16_t)];
-};
+//     // struct draw_tile_t              tiles[MAX_OBJ_COUNT * 2];
+//     // uint32_t                        tile_count;
+// };
 
 #define SCANLINE_DOT_LENGTH     340
 #define SCANLINE_COUNT          262
@@ -558,7 +566,7 @@ union mode12_cgram_t
     uint16_t                    entries[PPU_CGRAM_WORD_COUNT];
 };
 
-// struct mode3_cgram_t
+// union mode34_cgram_t
 // {
 //     struct pal4_t       bg2_colors[8];
 //     struct pal256_t     bg1_colors;
@@ -580,7 +588,7 @@ union mode56_cgram_t
     uint16_t                entries[PPU_CGRAM_WORD_COUNT];
 };
 
-union mode7_cgram_t
+union mode347_cgram_t
 {
     struct
     {
@@ -588,6 +596,8 @@ union mode7_cgram_t
         {
             struct pal256_t     bg1_colors;
             struct pal16_t      obj_colors[8];
+            struct pal16_t      mode3_bg2_colors[8];
+            struct pal4_t       mode4_bg2_colors[8];
         };
     };
 
@@ -678,23 +688,29 @@ uint16_t bg7_pal256_col(uint32_t dot_h, uint32_t dot_v, struct background_t *bac
 
 //uint8_t
 
-void update_objs();
+// void update_objs();
 
-void update_line_objs(uint16_t line);
+// void update_line_objs(uint16_t line);
 
-void clear_scanline_objs();
+// void clear_scanline_objs();
 
-void update_scanline_objs(uint16_t line);
+// void update_scanline_objs(uint16_t line);
 
-void update_scanline_obj_tiles(uint16_t line);
+// void update_scanline_obj_tiles(uint16_t line);
 
-void update_scanline_bg_tiles(uint16_t line, uint16_t dot);
+// void update_scanline_bg_tiles(uint16_t line, uint16_t dot);
+
+void ppu_EvalObjsSpriteStep();
+
+void ppu_LoadTilesSpriteStep();
+
+void ppu_NoneSpriteStep();
 
 uint32_t step_ppu(int32_t cycle_count);
 
-void dump_ppu();
+// void dump_ppu();
 
-void dump_vram(uint32_t start, uint32_t end);
+// void dump_vram(uint32_t start, uint32_t end);
 
 
 

@@ -53,8 +53,8 @@
 uint16_t mhcounter = 0;
 uint16_t vcounter = 0;
 uint16_t hcounter = 0;
-uint8_t  sub_dot = 0;
-uint8_t  dot_length = 4;
+// uint8_t  sub_dot = 0;
+// uint8_t  dot_length = 4;
 uint32_t latched_counter_reads[2] = {};
 uint16_t latched_counters[2];
 // uint32_t scanline_cycles = 0;
@@ -131,12 +131,12 @@ uint8_t color_lut[] = {
 extern uint8_t *                    ram1_regs;
 extern uint8_t *                    ram2;
 extern uint64_t                     master_cycles;
-uint32_t                            cur_field = 0;
+// uint32_t                            cur_field = 0;
 int32_t                             ppu_cycle_count = 0;
 int32_t                             ppu_oam_scan_cycle_count = 0;
 
 
-uint32_t                            ppu_obj_eval_index = 0;
+
 // uint16_t                            ppu_obj_low_word_latch;
 union obj_attr1_t                   ppu_obj_low_attr;
 
@@ -144,28 +144,16 @@ union obj_attr1_t                   ppu_obj_low_attr;
 // struct obj_attr2_t                  ppu_obj_high_attr;
 // uint32_t                            ppu_scanline_potential_entry;
 
-uint8_t                             ppu_scanline_sprites[34];
-uint32_t                            ppu_scanline_sprite_count = 0;
-uint32_t                            ppu_scanline_tile_count = 0;
+void (*ppu_SpriteStepFunc[])() = {
+    [PPU_SPRITE_STEP_EVAL_OBJS]     = ppu_EvalObjsSpriteStep,
+    [PPU_SPRITE_STEP_LOAD_TILES]    = ppu_LoadTilesSpriteStep,
+    [PPU_SPRITE_STEP_NONE]          = ppu_NoneSpriteStep
+};
+
 uint32_t                            ppu_scanline_master_cycles = 0;
-uint32_t                            ppu_sprite_step = PPU_SPRITE_STEP_NONE;
-uint32_t                            ppu_sprite_substep = 0;
+// uint32_t                            ppu_sprite_step = PPU_SPRITE_STEP_NONE;
+// uint32_t                            ppu_sprite_substep = 0;
 // uint16_t                            ppu_sprite_x_pos;
-uint16_t                            ppu_sprite_y_pos;
-uint16_t                            ppu_sprite_tile_x;
-uint16_t                            ppu_sprite_name;
-uint8_t                             ppu_sprite_size;
-uint16_t                            ppu_sprite_flip;
-uint8_t                             ppu_sprite_priority;
-uint8_t                             ppu_sprite_pallete;
-uint16_t                            ppu_sprite_spans[2];
-uint8_t                             ppu_sprite_span_index;
-// uint32_t                            ppu_sprite_first_tile;
-// uint32_t                            ppu_sprite_size_hpos;
-// uint32_t                            ppu_sprite_index;
-uint16_t                            ppu_sprite_tile_pixel_offset;
-uint16_t                            ppu_sprite_tile_pixel_count;
-struct chr16_t *                    ppu_sprite_tile;
 
 struct line_pixel_t                 ppu_line_buffer[256];
 
@@ -198,18 +186,117 @@ uint16_t                            rot_values_bytes = 0;
 int16_t                             rot_values[4];
 int16_t                             pos_values[2];
 
+struct 
+{
+    uint8_t         background_count;
+
+    struct
+    {
+        uint8_t     color_depth;
+        uint16_t    pallete_offset;
+
+    }               backgrounds[4];
+    
+} ppu_bgmode_info[] = {
+
+    [PPU_BGMODE_MODE0] = {
+        .background_count = 4,
+        .backgrounds[0] = { .color_depth = 2, .pallete_offset = offsetof(union mode0_cgram_t, bg1_colors) },
+        .backgrounds[1] = { .color_depth = 2, .pallete_offset = offsetof(union mode0_cgram_t, bg2_colors) },
+        .backgrounds[2] = { .color_depth = 2, .pallete_offset = offsetof(union mode0_cgram_t, bg3_colors) },
+        .backgrounds[3] = { .color_depth = 2, .pallete_offset = offsetof(union mode0_cgram_t, bg4_colors) },
+    },
+    [PPU_BGMODE_MODE1] = {
+        .background_count = 3,
+        .backgrounds[0] = { .color_depth = 4, .pallete_offset = offsetof(union mode12_cgram_t, bg12_colors) },
+        .backgrounds[1] = { .color_depth = 4, .pallete_offset = offsetof(union mode12_cgram_t, bg12_colors) },
+        .backgrounds[2] = { .color_depth = 2, .pallete_offset = offsetof(union mode12_cgram_t, bg3_colors) },
+    },
+    [PPU_BGMODE_MODE2] = {
+        .background_count = 2,
+        .backgrounds[0] = { .color_depth = 4, .pallete_offset = offsetof(union mode12_cgram_t, bg12_colors) },
+        .backgrounds[1] = { .color_depth = 4, .pallete_offset = offsetof(union mode12_cgram_t, bg12_colors) },
+    },
+    [PPU_BGMODE_MODE3] = {
+        .background_count = 2,
+        .backgrounds[0] = { .color_depth = 8, .pallete_offset = offsetof(union mode347_cgram_t, bg1_colors) },
+        .backgrounds[1] = { .color_depth = 4, .pallete_offset = offsetof(union mode347_cgram_t, mode3_bg2_colors) },
+    },
+    [PPU_BGMODE_MODE4] = {
+        .background_count = 2,
+        .backgrounds[0] = { .color_depth = 8, .pallete_offset = offsetof(union mode347_cgram_t, bg1_colors) },
+        .backgrounds[1] = { .color_depth = 2, .pallete_offset = offsetof(union mode347_cgram_t, mode4_bg2_colors) },
+    },
+    [PPU_BGMODE_MODE5] = {
+        .background_count = 2,
+        .backgrounds[0] = { .color_depth = 4, .pallete_offset = offsetof(union mode56_cgram_t, bg1_colors) },
+        .backgrounds[1] = { .color_depth = 2, .pallete_offset = offsetof(union mode56_cgram_t, bg2_colors) },
+    },
+    [PPU_BGMODE_MODE6] = {
+        .background_count = 1,
+        .backgrounds[0] = { .color_depth = 4, .pallete_offset = offsetof(union mode56_cgram_t, bg1_colors) },
+    },
+    [PPU_BGMODE_MODE7] = {
+        .background_count = 1,
+        .backgrounds[0] = { .color_depth = 8, .pallete_offset = offsetof(union mode347_cgram_t, bg1_colors) },
+    }
+};
+
+struct
+{
+    uint32_t                            step;
+    uint32_t                            substep;
+
+    uint16_t                            sprite_y_pos;
+    uint16_t                            sprite_tile_x;
+    uint16_t                            sprite_name;
+    uint8_t                             sprite_size;
+    uint16_t                            sprite_flip;
+    uint8_t                             sprite_priority;
+    uint8_t                             sprite_pallete;
+    uint16_t                            sprite_spans[2];
+    uint8_t                             sprite_span_index;
+    uint16_t                            sprite_tile_pixel_offset;
+    uint16_t                            sprite_tile_pixel_count;
+    struct chr16_t *                    sprite_tile;
+
+    uint8_t                             scanline_sprites[34];
+    uint32_t                            scanline_sprite_count;
+    uint32_t                            scanline_tile_count;
+
+    uint32_t                            sprite_eval_index;
+} ppu_sprite_state;
+
+struct
+{
+    uint32_t                            step;
+    uint32_t                            substep;
+
+    uint8_t                             names[4];
+    uint16_t                            next_spans[12];
+    uint16_t                            cur_spans[12];
+
+    uint8_t                             cur_background;
+
+    struct
+    {
+                                        // void *
+    }                                   backgrounds[4];
+
+} ppu_background_state;
+
 // struct obj_t                        objects[128];
 //struct dot_objs_t *                 line_objects;
 //struct dot_obj_priorities_t *       scanline_objs;
 
-struct draw_tile_t *                obj_draw_tiles;
-uint32_t                            obj_draw_tile_count;
+// struct draw_tile_t *                obj_draw_tiles;
+// uint32_t                            obj_draw_tile_count;
 
-struct draw_tile_t *                bg_tiles;
-uint32_t                            bg_tile_count;
+// struct draw_tile_t *                bg_tiles;
+// uint32_t                            bg_tile_count;
 
-struct dot_tiles_t *                main_scanline_tiles;
-struct dot_tiles_t *                sub_scanline_tiles;
+// struct dot_tiles_t *                main_scanline_tiles;
+// struct dot_tiles_t *                sub_scanline_tiles;
 
 
 //struct tile_dot_priorities_t        main_screen_tiles;
@@ -314,8 +401,8 @@ struct col_t (*pal_col_funcs[4])(void *pal_base, uint8_t pallete, uint8_t index)
     [COLOR_FUNC_CHR256] = pal256_col,
 };
 
-uint32_t                            line_obj_count = 0;
-uint32_t                            line_chr_count = 0;
+// uint32_t                            line_obj_count = 0;
+// uint32_t                            line_chr_count = 0;
 //struct line_obj_t   line_objs[128];
 struct chr16_t *                    obj_chr_base[2];
 // void  *             obj_chr_base[2];
@@ -357,10 +444,10 @@ void init_ppu()
 
 //    scanline_obj_tiles = calloc(SCANLINE_DOT_LENGTH, sizeof(struct dot_obj_priorities_t));
     /* worst case scenario where all objs are 32x32 wide */
-    obj_draw_tiles = calloc(MAX_OBJ_COUNT * 16, sizeof(struct draw_tile_t));
-    bg_tiles = calloc(8, sizeof(struct draw_tile_t));
-    main_scanline_tiles = calloc(SCANLINE_DOT_LENGTH, sizeof(struct dot_tiles_t));
-    sub_scanline_tiles = calloc(SCANLINE_DOT_LENGTH, sizeof(struct dot_tiles_t));
+    // obj_draw_tiles = calloc(MAX_OBJ_COUNT * 16, sizeof(struct draw_tile_t));
+    // bg_tiles = calloc(8, sizeof(struct draw_tile_t));
+    // main_scanline_tiles = calloc(SCANLINE_DOT_LENGTH, sizeof(struct dot_tiles_t));
+    // sub_scanline_tiles = calloc(SCANLINE_DOT_LENGTH, sizeof(struct dot_tiles_t));
     last_draw_scanline = 224;
 
     backgrounds[0] = (struct background_t){.chr_base = vram, .data_base = (struct bg_sc_data_t *)vram, .pal_base = vram};
@@ -375,9 +462,9 @@ void init_ppu()
 void shutdown_ppu()
 {
 //    free(framebuffer);
-    free(obj_draw_tiles);
-    free(main_scanline_tiles);
-    free(sub_scanline_tiles);
+    // free(obj_draw_tiles);
+    // free(main_scanline_tiles);
+    // free(sub_scanline_tiles);
     free(ppu_cgram);
     free(vram);
 }
@@ -878,32 +965,32 @@ void ppu_EvalObjsSpriteStep()
 {
     uint32_t next_scanline = vcounter == SCANLINE_COUNT ? 0 : (vcounter + 1);
 
-    switch(ppu_sprite_substep)
+    switch(ppu_sprite_state.substep)
     {
         case 0:
-            ppu_reg_oam_addr = ppu_obj_eval_index << 2;
-            ppu_obj_low_attr = oam.tables.table1[ppu_obj_eval_index];
-            ppu_sprite_substep = 1; 
+            ppu_reg_oam_addr = ppu_sprite_state.sprite_eval_index << 2;
+            ppu_obj_low_attr = oam.tables.table1[ppu_sprite_state.sprite_eval_index];
+            ppu_sprite_state.substep = 1; 
         break;
 
         case 1:
         {
-            if(ppu_scanline_sprite_count >= 32)
+            if(ppu_sprite_state.scanline_sprite_count >= 32)
             {
                 ram1_regs[PPU_REG_STAT77] |= PPU_STAT77_FLAG_33_RANGE_OVER;
                 break;
             }
 
-            uint16_t byte_index = ppu_obj_eval_index >> 2;
+            uint16_t byte_index = ppu_sprite_state.sprite_eval_index >> 2;
             ppu_reg_oam_addr = PPU_OAM_TABLE2_START | byte_index;
             // uint16_t size_pos = oam.bytes[ppu_reg_oam_addr];
-            uint8_t size_pos = oam.tables.table2[ppu_obj_eval_index >> 3].size_hpos >> ((ppu_obj_eval_index & 0x7) << 1);
+            uint8_t size_pos = oam.tables.table2[ppu_sprite_state.sprite_eval_index >> 3].size_hpos >> ((ppu_sprite_state.sprite_eval_index & 0x7) << 1);
             // size_pos >>= (ppu_obj_eval_index & 0x3) << 1;
-            ppu_sprite_substep = 0;
-            uint32_t obj_index = ppu_obj_eval_index;
-            ppu_obj_eval_index++;
+            ppu_sprite_state.substep = 0;
+            uint32_t obj_index = ppu_sprite_state.sprite_eval_index;
+            ppu_sprite_state.sprite_eval_index++;
 
-            uint16_t size = cur_obj_sizes[(size_pos >> OBJ_ATTR2_SIZE_SHIFT) & OBJ_ATTR2_SIZE_MASK];
+            uint16_t size = cur_obj_sizes[(size_pos >> PPU_OBJ_ATTR2_SIZE_SHIFT) & PPU_OBJ_ATTR2_SIZE_MASK];
 
             if(ppu_obj_low_attr.v_pos > next_scanline || ppu_obj_low_attr.v_pos + (size - 1) < next_scanline)
             {
@@ -922,8 +1009,8 @@ void ppu_EvalObjsSpriteStep()
                 break;
             }
 
-            ppu_scanline_sprites[ppu_scanline_sprite_count] = obj_index;
-            ppu_scanline_sprite_count++;
+            ppu_sprite_state.scanline_sprites[ppu_sprite_state.scanline_sprite_count] = obj_index;
+            ppu_sprite_state.scanline_sprite_count++;
 
             // printf("sprite %d, %d (%d %d) is visible, total is %d\n", obj_index, size_pos, h_pos, ppu_obj_low_attr.v_pos, ppu_scanline_sprite_count);
         }
@@ -935,44 +1022,44 @@ void ppu_LoadTilesSpriteStep()
 {
     uint32_t next_scanline = vcounter == SCANLINE_COUNT ? 0 : (vcounter + 1);
 
-    switch(ppu_sprite_substep)
+    switch(ppu_sprite_state.substep)
     {
         case 0:
         {
-            if(ppu_scanline_sprite_count == 0)
+            if(ppu_sprite_state.scanline_sprite_count == 0)
             {
                 break;
             }
 
-            ppu_scanline_sprite_count--;
-            uint32_t sprite_index = ppu_scanline_sprites[ppu_scanline_sprite_count];
+            ppu_sprite_state.scanline_sprite_count--;
+            uint32_t sprite_index = ppu_sprite_state.scanline_sprites[ppu_sprite_state.scanline_sprite_count];
             uint16_t size_pos = oam.tables.table2[sprite_index >> 3].size_hpos >> ((sprite_index & 0x7) << 1);
 
             // printf("load tiles for sprite %d (%d)\n", ppu_sprite_index, ppu_sprite_size_hpos);
 
-            ppu_sprite_y_pos = oam.tables.table1[sprite_index].v_pos;
+            ppu_sprite_state.sprite_y_pos = oam.tables.table1[sprite_index].v_pos;
             // ppu_sprite_x_pos = (uint16_t)oam.tables.table1[obj_index].h_pos | (((uint16_t)high_byte & 1) << 8);
-            ppu_sprite_tile_x = oam.tables.table1[sprite_index].h_pos;
-            ppu_sprite_name = oam.tables.table1[sprite_index].fpcn & OBJ_ATTR1_NAME_MASK;
-            ppu_sprite_flip = oam.tables.table1[sprite_index].fpcn;
-            ppu_sprite_size = cur_obj_sizes[(size_pos >> OBJ_ATTR2_SIZE_SHIFT) & OBJ_ATTR2_SIZE_MASK];
-            ppu_sprite_pallete = (oam.tables.table1[sprite_index].fpcn >> OBJ_ATTR1_PAL_SHIFT) & OBJ_ATTR1_PAL_MASK;
-            ppu_sprite_priority = (oam.tables.table1[sprite_index].fpcn >> OBJ_ATTR1_PRI_SHIFT) & OBJ_ATTR1_PRI_MASK;
+            ppu_sprite_state.sprite_tile_x = oam.tables.table1[sprite_index].h_pos;
+            ppu_sprite_state.sprite_name = oam.tables.table1[sprite_index].fpcn & PPU_OBJ_ATTR1_NAME_MASK;
+            ppu_sprite_state.sprite_flip = oam.tables.table1[sprite_index].fpcn;
+            ppu_sprite_state.sprite_size = cur_obj_sizes[(size_pos >> PPU_OBJ_ATTR2_SIZE_SHIFT) & PPU_OBJ_ATTR2_SIZE_MASK];
+            ppu_sprite_state.sprite_pallete = (oam.tables.table1[sprite_index].fpcn >> PPU_OBJ_ATTR1_PAL_SHIFT) & PPU_OBJ_ATTR1_PAL_MASK;
+            ppu_sprite_state.sprite_priority = (oam.tables.table1[sprite_index].fpcn >> PPU_OBJ_ATTR1_PRI_SHIFT) & PPU_OBJ_ATTR1_PRI_MASK;
 
-            ppu_sprite_span_index = next_scanline - ppu_sprite_y_pos;
-            uint16_t tile_row_index = ppu_sprite_span_index / PPU_TILE_SIZE;
-            uint32_t tile_count = ppu_sprite_size / PPU_TILE_SIZE;
-            ppu_sprite_span_index %= PPU_TILE_SIZE;
+            ppu_sprite_state.sprite_span_index = next_scanline - ppu_sprite_state.sprite_y_pos;
+            uint16_t tile_row_index = ppu_sprite_state.sprite_span_index / PPU_TILE_SIZE;
+            uint32_t tile_count = ppu_sprite_state.sprite_size / PPU_TILE_SIZE;
+            ppu_sprite_state.sprite_span_index %= PPU_TILE_SIZE;
             // uint16_t first_tile = 0;
             uint32_t first_tile = 0;
-            uint16_t sprite_x = ppu_sprite_tile_x;
+            uint16_t sprite_x = ppu_sprite_state.sprite_tile_x;
 
             // ppu_sprite_x_pos = ppu_sprite_tile_x;
 
             if(size_pos & PPU_OBJ_ATTR2_HPOS_MASK)
             {
                 /* sign extend */
-                ppu_sprite_tile_x |= 0xff00;
+                ppu_sprite_state.sprite_tile_x |= 0xff00;
             }
 
             if(tile_count > 1)
@@ -982,131 +1069,131 @@ void ppu_LoadTilesSpriteStep()
                     first_tile = (0xff - sprite_x) / PPU_TILE_SIZE;
                 }
                 
-                if(ppu_sprite_flip & OBJ_ATTR1_VFLIP)
+                if(ppu_sprite_state.sprite_flip & PPU_OBJ_ATTR1_VFLIP)
                 {
                     // row_index = (ppu_sprite_size - 1) - row_index;
                     tile_row_index = (tile_count - 1) - tile_row_index;
-                    ppu_sprite_span_index = (PPU_TILE_SIZE - 1) - ppu_sprite_span_index;
+                    ppu_sprite_state.sprite_span_index = (PPU_TILE_SIZE - 1) - ppu_sprite_state.sprite_span_index;
                 }
 
-                ppu_sprite_name += tile_row_index << 4;
+                ppu_sprite_state.sprite_name += tile_row_index << 4;
 
-                if(ppu_sprite_flip & OBJ_ATTR1_HFLIP)
+                if(ppu_sprite_state.sprite_flip & PPU_OBJ_ATTR1_HFLIP)
                 {
-                    ppu_sprite_name += tile_count - 1;
-                    ppu_sprite_name -= first_tile;
+                    ppu_sprite_state.sprite_name += tile_count - 1;
+                    ppu_sprite_state.sprite_name -= first_tile;
                 }
                 else
                 {
-                    ppu_sprite_name += first_tile;
+                    ppu_sprite_state.sprite_name += first_tile;
                 }
 
-                ppu_sprite_tile_x += first_tile << 3;
-                ppu_sprite_size -= first_tile << 3;
+                ppu_sprite_state.sprite_tile_x += first_tile << 3;
+                ppu_sprite_state.sprite_size -= first_tile << 3;
             }
-            else if(ppu_sprite_flip & OBJ_ATTR1_VFLIP)
+            else if(ppu_sprite_state.sprite_flip & PPU_OBJ_ATTR1_VFLIP)
             {
-                ppu_sprite_span_index = (PPU_TILE_SIZE - 1) - ppu_sprite_span_index;
+                ppu_sprite_state.sprite_span_index = (PPU_TILE_SIZE - 1) - ppu_sprite_state.sprite_span_index;
             }
 
-            ppu_sprite_substep = 1;
+            ppu_sprite_state.substep = 1;
         }
 
         case 1:
         {
-            if(ppu_scanline_tile_count >= 34)
+            if(ppu_sprite_state.scanline_tile_count >= 34)
             {
                 ram1_regs[PPU_REG_STAT77] |= PPU_STAT77_FLAG_35_TIME_OVER;
                 break;
             }
 
-            ppu_scanline_tile_count++;
+            ppu_sprite_state.scanline_tile_count++;
 
-            ppu_sprite_size -= 8;
-            ppu_sprite_tile = obj_chr_base[ppu_sprite_name >= 0x100] + ppu_sprite_name;
-            ppu_sprite_tile_pixel_offset = 0;
-            ppu_sprite_tile_pixel_count = PPU_TILE_SIZE;
+            ppu_sprite_state.sprite_size -= 8;
+            ppu_sprite_state.sprite_tile = obj_chr_base[ppu_sprite_state.sprite_name >= 0x100] + ppu_sprite_state.sprite_name;
+            ppu_sprite_state.sprite_tile_pixel_offset = 0;
+            ppu_sprite_state.sprite_tile_pixel_count = PPU_TILE_SIZE;
 
-            if(ppu_sprite_tile_x & 0x8000)
+            if(ppu_sprite_state.sprite_tile_x & 0x8000)
             {
-                ppu_sprite_tile_pixel_offset = 0xff - (ppu_sprite_tile_x & 0xff);
-                ppu_sprite_tile_pixel_count = PPU_TILE_SIZE - ppu_sprite_tile_pixel_offset;
-                ppu_sprite_tile_x = 0;
+                ppu_sprite_state.sprite_tile_pixel_offset = 0xff - (ppu_sprite_state.sprite_tile_x & 0xff);
+                ppu_sprite_state.sprite_tile_pixel_count = PPU_TILE_SIZE - ppu_sprite_state.sprite_tile_pixel_offset;
+                ppu_sprite_state.sprite_tile_x = 0;
             }
-            else if(ppu_sprite_tile_x + PPU_TILE_SIZE > 255)
+            else if(ppu_sprite_state.sprite_tile_x + PPU_TILE_SIZE > 255)
             {
-                ppu_sprite_tile_pixel_count = 255 - ppu_sprite_tile_x;
+                ppu_sprite_state.sprite_tile_pixel_count = 255 - ppu_sprite_state.sprite_tile_x;
             }
         }
         case 2:
         {
-            uint32_t plane_index = ppu_sprite_substep == 2;
-            ppu_sprite_spans[plane_index] = ppu_sprite_tile->pixels[plane_index][ppu_sprite_span_index];
+            uint32_t plane_index = ppu_sprite_state.substep == 2;
+            ppu_sprite_state.sprite_spans[plane_index] = ppu_sprite_state.sprite_tile->pixels[plane_index][ppu_sprite_state.sprite_span_index];
 
-            if(ppu_sprite_substep == 2)
+            if(ppu_sprite_state.substep == 2)
             {
-                struct line_pixel_t *line_buffer = ppu_line_buffer + ppu_sprite_tile_x;
+                struct line_pixel_t *line_buffer = ppu_line_buffer + ppu_sprite_state.sprite_tile_x;
                 // uint32_t plane_shift = ppu_sprite_substep & 0x2;
 
-                if(ppu_sprite_flip & OBJ_ATTR1_HFLIP)
+                if(ppu_sprite_state.sprite_flip & PPU_OBJ_ATTR1_HFLIP)
                 {
-                    for(uint32_t pixel_index = 0; pixel_index < ppu_sprite_tile_pixel_count; pixel_index++)
+                    for(uint32_t pixel_index = 0; pixel_index < ppu_sprite_state.sprite_tile_pixel_count; pixel_index++)
                     {
-                        uint8_t color = ((ppu_sprite_spans[0] & 0x1) | ((ppu_sprite_spans[0] & 0x100) >> 7));
-                        color |= ((ppu_sprite_spans[1] & 0x1) | ((ppu_sprite_spans[1] & 0x100) >> 7)) << 2;
+                        uint8_t color = ((ppu_sprite_state.sprite_spans[0] & 0x1) | ((ppu_sprite_state.sprite_spans[0] & 0x100) >> 7));
+                        color |= ((ppu_sprite_state.sprite_spans[1] & 0x1) | ((ppu_sprite_state.sprite_spans[1] & 0x100) >> 7)) << 2;
 
-                        if(color != 0 && ppu_sprite_priority >= line_buffer[pixel_index].priority)
+                        if(color != 0 && ppu_sprite_state.sprite_priority >= line_buffer[pixel_index].priority)
                         {
-                            line_buffer[pixel_index].pallete = ppu_sprite_pallete;
-                            line_buffer[pixel_index].priority = ppu_sprite_priority;
+                            line_buffer[pixel_index].pallete = ppu_sprite_state.sprite_pallete;
+                            line_buffer[pixel_index].priority = ppu_sprite_state.sprite_priority;
                             line_buffer[pixel_index].color = color;
                         }
 
-                        ppu_sprite_spans[0] >>= 1;
-                        ppu_sprite_spans[1] >>= 1;
+                        ppu_sprite_state.sprite_spans[0] >>= 1;
+                        ppu_sprite_state.sprite_spans[1] >>= 1;
                     }
                 }
                 else
                 {
-                    for(uint32_t pixel_index = 0; pixel_index < ppu_sprite_tile_pixel_count; pixel_index++)
+                    for(uint32_t pixel_index = 0; pixel_index < ppu_sprite_state.sprite_tile_pixel_count; pixel_index++)
                     {
-                        uint8_t color = (((ppu_sprite_spans[0] & 0x80) >> 7) | ((ppu_sprite_spans[0] & 0x8000) >> 14));
-                        color |= (((ppu_sprite_spans[1] & 0x80) >> 7) | ((ppu_sprite_spans[1] & 0x8000) >> 14)) << 2;
+                        uint8_t color = (((ppu_sprite_state.sprite_spans[0] & 0x80) >> 7) | ((ppu_sprite_state.sprite_spans[0] & 0x8000) >> 14));
+                        color |= (((ppu_sprite_state.sprite_spans[1] & 0x80) >> 7) | ((ppu_sprite_state.sprite_spans[1] & 0x8000) >> 14)) << 2;
 
-                        if(color != 0 && ppu_sprite_priority >= line_buffer[pixel_index].priority)
+                        if(color != 0 && ppu_sprite_state.sprite_priority >= line_buffer[pixel_index].priority)
                         {
-                            line_buffer[pixel_index].pallete = ppu_sprite_pallete;
-                            line_buffer[pixel_index].priority = ppu_sprite_priority;
+                            line_buffer[pixel_index].pallete = ppu_sprite_state.sprite_pallete;
+                            line_buffer[pixel_index].priority = ppu_sprite_state.sprite_priority;
                             line_buffer[pixel_index].color = color;
                         }
 
-                        ppu_sprite_spans[0] <<= 1;
-                        ppu_sprite_spans[1] <<= 1;
+                        ppu_sprite_state.sprite_spans[0] <<= 1;
+                        ppu_sprite_state.sprite_spans[1] <<= 1;
                     }
                 }
 
-                if(ppu_sprite_size == 0)
+                if(ppu_sprite_state.sprite_size == 0)
                 {
-                    ppu_sprite_substep = 0;
+                    ppu_sprite_state.substep = 0;
                 }
                 else
                 {
-                    ppu_sprite_substep = 1;
-                    ppu_sprite_tile_x += ppu_sprite_tile_pixel_count;
+                    ppu_sprite_state.substep = 1;
+                    ppu_sprite_state.sprite_tile_x += ppu_sprite_state.sprite_tile_pixel_count;
 
-                    if(ppu_sprite_flip & OBJ_ATTR1_HFLIP)
+                    if(ppu_sprite_state.sprite_flip & PPU_OBJ_ATTR1_HFLIP)
                     {
-                        ppu_sprite_name--;
+                        ppu_sprite_state.sprite_name--;
                     }
                     else
                     {
-                        ppu_sprite_name++;
+                        ppu_sprite_state.sprite_name++;
                     }
                 }
             }
             else
             {
-                ppu_sprite_substep = 2;
+                ppu_sprite_state.substep = 2;
             }
         }
         break;
@@ -1118,6 +1205,22 @@ void ppu_NoneSpriteStep()
 
 }
 
+void ppu_LoadNamesBackgroundStep()
+{
+    switch(ppu_background_state.substep)
+    {
+        case 0:
+            // if(ppu_background_state.cur_background)
+        break;
+    }
+}
+
+void ppu_LoadTilesBackgroundStep()
+{
+
+}
+
+/* TODO: finish background fetch sequence */
 uint32_t step_ppu(int32_t cycle_count)
 {
     ppu_cycle_count += cycle_count;
@@ -1144,12 +1247,12 @@ uint32_t step_ppu(int32_t cycle_count)
                 next_sprite_step = PPU_SPRITE_STEP_LOAD_TILES;
             }
 
-            if(ppu_sprite_step != next_sprite_step)
+            if(ppu_sprite_state.step != next_sprite_step)
             {
-                ppu_sprite_substep = 0;
+                ppu_sprite_state.substep = 0;
             }
 
-            ppu_sprite_step = next_sprite_step;
+            ppu_sprite_state.step = next_sprite_step;
 
             /*
                 (Internal OAM address sprite evaluation)
@@ -1201,16 +1304,18 @@ uint32_t step_ppu(int32_t cycle_count)
 
             */
 
-            switch(ppu_sprite_step)
-            {
-                case PPU_SPRITE_STEP_EVAL_OBJS:
-                    ppu_EvalObjsSpriteStep();
-                break;
+            // switch(ppu_sprite_step)
+            // {
+            //     case PPU_SPRITE_STEP_EVAL_OBJS:
+            //         ppu_EvalObjsSpriteStep();
+            //     break;
 
-                case PPU_SPRITE_STEP_LOAD_TILES:
-                    ppu_LoadTilesSpriteStep();
-                break;
-            }
+            //     case PPU_SPRITE_STEP_LOAD_TILES:
+            //         ppu_LoadTilesSpriteStep();
+            //     break;
+            // }
+
+            ppu_SpriteStepFunc[ppu_sprite_state.step]();
         }
 
         if(ppu_cycle_count >= dot_length)
@@ -1230,10 +1335,10 @@ uint32_t step_ppu(int32_t cycle_count)
                 if(vcounter < last_draw_scanline && !(ram1_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK))
                 {
                     ppu_reg_oam_addr = 0;
-                    ppu_obj_eval_index = 0;
-                    ppu_sprite_step = PPU_SPRITE_STEP_NONE;
-                    ppu_scanline_sprite_count = 0;
-                    ppu_scanline_tile_count = 0;
+                    ppu_sprite_state.sprite_eval_index = 0;
+                    ppu_sprite_state.step = PPU_SPRITE_STEP_NONE;
+                    ppu_sprite_state.scanline_sprite_count = 0;
+                    ppu_sprite_state.scanline_tile_count = 0;
                 }
 
                 // if(line_obj_count > 32)
@@ -1323,8 +1428,6 @@ uint32_t step_ppu(int32_t cycle_count)
                 irq_hold_timer -= cycle_count;
                 ram1_regs[CPU_REG_TIMEUP] |= 1 << 7;
             }
-
-            // ppu_StepOAMScan();
 
             uint8_t hvbjoy = ram1_regs[CPU_REG_HVBJOY];
 
@@ -1459,67 +1562,67 @@ uint32_t step_ppu(int32_t cycle_count)
     return entered_vblank;
 }
 
-void dump_ppu()
-{
-   printf("===================== PPU ========================\n");
-   printf("current dot: (H: %d, V: %d)\n", hcounter, vcounter);
-   printf("v-blank: %d -- h-blank: %d\n", (ram1_regs[CPU_REG_HVBJOY] & CPU_HVBJOY_FLAG_VBLANK) && 1, (ram1_regs[CPU_REG_HVBJOY] & CPU_HVBJOY_FLAG_HBLANK) && 1);
-   printf("--------------------------------------------------\n");
-   printf("BG Mode: Mode %d\n", ram1_regs[PPU_REG_BGMODE] & PPU_BGMODE_MODE_MASK);
-   printf("\n");
-}
+// void dump_ppu()
+// {
+//    printf("===================== PPU ========================\n");
+//    printf("current dot: (H: %d, V: %d)\n", hcounter, vcounter);
+//    printf("v-blank: %d -- h-blank: %d\n", (ram1_regs[CPU_REG_HVBJOY] & CPU_HVBJOY_FLAG_VBLANK) && 1, (ram1_regs[CPU_REG_HVBJOY] & CPU_HVBJOY_FLAG_HBLANK) && 1);
+//    printf("--------------------------------------------------\n");
+//    printf("BG Mode: Mode %d\n", ram1_regs[PPU_REG_BGMODE] & PPU_BGMODE_MODE_MASK);
+//    printf("\n");
+// }
 
-void dump_vram(uint32_t start, uint32_t end)
-{
-    if(start > PPU_VRAM_SIZE)
-    {
-        start = PPU_VRAM_SIZE;
-    }
+// void dump_vram(uint32_t start, uint32_t end)
+// {
+//     if(start > PPU_VRAM_SIZE)
+//     {
+//         start = PPU_VRAM_SIZE;
+//     }
 
-    if(end > PPU_VRAM_SIZE)
-    {
-        end = PPU_VRAM_SIZE;
-    }
+//     if(end > PPU_VRAM_SIZE)
+//     {
+//         end = PPU_VRAM_SIZE;
+//     }
 
-    if(start > end)
-    {
-        uint32_t temp = start;
-        start = end;
-        end = temp;
-    }
+//     if(start > end)
+//     {
+//         uint32_t temp = start;
+//         start = end;
+//         end = temp;
+//     }
 
-    start &= 0xfffe;
-    printf("----------- VRAM -----------\n");
-    while(start < end)
-    {
-        uint32_t count = end - start;
+//     start &= 0xfffe;
+//     printf("----------- VRAM -----------\n");
+//     while(start < end)
+//     {
+//         uint32_t count = end - start;
 
-        if(count > 16)
-        {
-            count = 16;
-        }
+//         if(count > 16)
+//         {
+//             count = 16;
+//         }
 
-        printf("%04x: ", start);
+//         printf("%04x: ", start);
 
-        for(uint32_t byte = 0; byte < count; byte++)
-        {
-            printf("%02x ", vram[start]);
-            start++;
-        }
+//         for(uint32_t byte = 0; byte < count; byte++)
+//         {
+//             printf("%02x ", vram[start]);
+//             start++;
+//         }
 
-        printf("\n");
-    }
+//         printf("\n");
+//     }
 
-    printf("----------------------------\n");
+//     printf("----------------------------\n");
 
-//    for(uint32_t line = 0; line <= lines; line++)
-//    {
-//        for(uint32_t byte = 0; byte < 16 && ; byte++)
-//        {
-//            printf("")
-//        }
-//    }
-}
+// //    for(uint32_t line = 0; line <= lines; line++)
+// //    {
+// //        for(uint32_t byte = 0; byte < 16 && ; byte++)
+// //        {
+// //            printf("")
+// //        }
+// //    }
+// }
 
 
 void inidisp_write(uint32_t effective_address, uint8_t value)
