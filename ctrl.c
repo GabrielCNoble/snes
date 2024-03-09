@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include "ctrl.h"
-#include "cpu/cpu.h"
+#include "cpu.h"
 #include "ppu.h"
 #include "SDL2/SDL.h"
 #include "ui.h"

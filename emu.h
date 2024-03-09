@@ -2,7 +2,7 @@
 #define EMU_H
 
 #include "mem.h"
-#include "cpu/cpu.h"
+#include "cpu.h"
 #include "ppu.h"
 #include "dma.h"
 #include "apu.h"

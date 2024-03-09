@@ -3,7 +3,7 @@
 
 #include "GL/glew.h"
 #include "cart.h"
-#include "cpu/cpu.h"
+#include "cpu.h"
 #include "ppu.h"
 #include "emu.h"
 #include "input.h"

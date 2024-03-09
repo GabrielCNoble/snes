@@ -1,5 +1,5 @@
 #include "dma.h"
-#include "cpu/cpu.h"
+#include "cpu.h"
 #include "mem.h"
 #include "emu.h"
 #include <stdio.h>

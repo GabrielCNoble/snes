@@ -4,7 +4,7 @@
 
 #include "ppu.h"
 #include "addr.h"
-#include "cpu/cpu.h"
+#include "cpu.h"
 #include "mem.h"
 #include "emu.h"
 
@@ -1881,7 +1881,7 @@ void update_bg_state()
 
         case PPU_BGMODE_MODE7:
         {
-            union mode7_cgram_t *mode7_cgram = (union mode7_cgram_t *)ppu_cgram;
+            union mode347_cgram_t *mode7_cgram = (union mode347_cgram_t *)ppu_cgram;
             backgrounds[0].pal_base = &mode7_cgram->bg1_colors;
             backgrounds[0].color_func = bg7_pal256_col;
 

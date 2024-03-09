@@ -19,3 +19,4 @@ snes
 *.swp
 *.cscope_file_list
 *.out
+*.log

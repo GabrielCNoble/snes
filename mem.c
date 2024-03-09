@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include "mem.h"
 #include "addr.h"
-#include "cpu/cpu.h"
+#include "cpu.h"
 #include "ppu.h"
 #include "cart.h"
 #include "ctrl.h"

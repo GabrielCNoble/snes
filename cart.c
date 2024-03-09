@@ -1,5 +1,5 @@
 #include "cart.h"
-#include "cpu/cpu.h"
+#include "cpu.h"
 
 #include <stdio.h>
 #include <stdlib.h>
