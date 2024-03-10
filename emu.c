@@ -388,6 +388,7 @@ void reset_emu()
     master_cycles = 0;
     reset_cpu();
     reset_ppu();
+    reset_apu();
 
     if(emu_emulation_thread)
     {
@@ -411,7 +412,7 @@ void emu_EmulationThread(struct thrd_t *thread)
         struct emu_thread_data_t *data = thread->data;
         data->status = 0;
 
-        if(!ram1_regs[CPU_REG_MDMAEN])
+        if(!ram1_regs[CPU_MEM_REG_MDMAEN])
         {
             if(step_cpu(&data->step_cycles))
             {
@@ -443,7 +444,7 @@ void emu_EmulationThread(struct thrd_t *thread)
             assert_rdy(0);
         }
 
-        if(ram1_regs[CPU_REG_TIMEUP] & 0x80)
+        if(ram1_regs[CPU_MEM_REG_TIMEUP] & 0x80)
         {
             assert_irq(1);
         }
@@ -639,5 +640,5 @@ void emu_FlushLog()
 void write_trace()
 {
 //    fprintf(trace_file, "[%llu]: %s\n", master_cycles, instruction_str(cpu_state.instruction_address));
-    fprintf(trace_file, "%s\n", instruction_str2(cpu_state.instruction_address));
+    // fprintf(trace_file, "%s\n", instruction_str2(cpu_state.instruction_address));
 }

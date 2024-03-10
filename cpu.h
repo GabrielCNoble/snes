@@ -36,10 +36,10 @@ enum ALU_OP
     ALU_OP_LAST
 };
 
-enum OPCODES
+enum CPU_INSTS
 {
-    OPCODE_BRK = 0,                        /* Force break */
-    OPCODE_BIT,                            /* Bit test */
+    CPU_INST_BRK = 0,                        /* Force break */
+    CPU_INST_BIT,                            /* Bit test */
 
     /* ====================================== */
     /* DO NOT CHANGE THE ORDER OF THOSE ENUMS */
@@ -53,34 +53,34 @@ enum OPCODES
     values right by one then yields the same value, which is used to index the condition table.
     The LSB then is used to decide whether the branch should be taken or not. */
 
-    OPCODE_BCC,                            /* Branch on carry clear (C == 0) */
-    OPCODE_BCS,                            /* Branch on carry set (C == 1) */
+    CPU_INST_BCC,                            /* Branch on carry clear (C == 0) */
+    CPU_INST_BCS,                            /* Branch on carry set (C == 1) */
 
-    OPCODE_BNE,                            /* Branch if not equal (Z == 0) */
-    OPCODE_BEQ,                            /* Branch if equal (Z == 1) */
+    CPU_INST_BNE,                            /* Branch if not equal (Z == 0) */
+    CPU_INST_BEQ,                            /* Branch if equal (Z == 1) */
 
-    OPCODE_BPL,                            /* Branch if result plus (N == 0) */
-    OPCODE_BMI,                            /* Branch if result minus (N == 1) */
+    CPU_INST_BPL,                            /* Branch if result plus (N == 0) */
+    CPU_INST_BMI,                            /* Branch if result minus (N == 1) */
 
-    OPCODE_BVC,                            /* Branch on overflow clear (V == 0) */
-    OPCODE_BVS,                            /* Branch on overflow set (V == 1) */
+    CPU_INST_BVC,                            /* Branch on overflow clear (V == 0) */
+    CPU_INST_BVS,                            /* Branch on overflow set (V == 1) */
 
-    OPCODE_BRA,                            /* Branch always */
-    OPCODE_BRL,                            /* Branch always long */
+    CPU_INST_BRA,                            /* Branch always */
+    CPU_INST_BRL,                            /* Branch always long */
 
     /* ====================================== */
     /* ====================================== */
 
 
-    OPCODE_CLC,                            /* Clear carry flag */
-    OPCODE_CLD,                            /* Clear decimal mode */
-    OPCODE_CLV,                            /* Clear overflow flag */
-    OPCODE_CLI,                            /* Clear interrupt disable bit */
+    CPU_INST_CLC,                            /* Clear carry flag */
+    CPU_INST_CLD,                            /* Clear decimal mode */
+    CPU_INST_CLV,                            /* Clear overflow flag */
+    CPU_INST_CLI,                            /* Clear interrupt disable bit */
 
 
-    OPCODE_CMP,                            /* Compare memory and accumulator */
-    OPCODE_CPX,                            /* Compare memory and index X */
-    OPCODE_CPY,                            /* Compare memory and index Y */
+    CPU_INST_CMP,                            /* Compare memory and accumulator */
+    CPU_INST_CPX,                            /* Compare memory and index X */
+    CPU_INST_CPY,                            /* Compare memory and index Y */
 
 
     /* ====================================== */
@@ -89,137 +89,137 @@ enum OPCODES
     /* bit 0 of those constants are used to index into an array containing "opposite"
     alu operations, so their order must be preserved */
 
-    OPCODE_ADC,                            /* Add memory to accumulator with carry */
-    OPCODE_AND,                            /* AND memory with accumulator */
-    OPCODE_SBC,                            /* Subtract memory from accumulator with borrow */
-    OPCODE_EOR,                            /* Exclusive OR memory with accumulator */
-    OPCODE_ORA,                            /* OR memory with accumulator */
+    CPU_INST_ADC,                            /* Add memory to accumulator with carry */
+    CPU_INST_AND,                            /* AND memory with accumulator */
+    CPU_INST_SBC,                            /* Subtract memory from accumulator with borrow */
+    CPU_INST_EOR,                            /* Exclusive OR memory with accumulator */
+    CPU_INST_ORA,                            /* OR memory with accumulator */
 
-    OPCODE_ROL,                            /* Rotate left one bit (memory or accumulator) */
-    OPCODE_ROR,                            /* Rotate right one bit (memory or accumulator) */
-    OPCODE_DEC,                            /* Decrement memory or accumulator */
-    OPCODE_INC,                            /* Increment memory or accumulator */
-    OPCODE_ASL,                            /* Shift one bit left, memory or accumulator */
-    OPCODE_LSR,                            /* Shift one bit right, memory or accumulator */
+    CPU_INST_ROL,                            /* Rotate left one bit (memory or accumulator) */
+    CPU_INST_ROR,                            /* Rotate right one bit (memory or accumulator) */
+    CPU_INST_DEC,                            /* Decrement memory or accumulator */
+    CPU_INST_INC,                            /* Increment memory or accumulator */
+    CPU_INST_ASL,                            /* Shift one bit left, memory or accumulator */
+    CPU_INST_LSR,                            /* Shift one bit right, memory or accumulator */
 
-    OPCODE_DEX,                            /* Decrement index X */
-    OPCODE_INX,                            /* Increment index X */
-    OPCODE_DEY,                            /* Decrement index Y */
-    OPCODE_INY,                            /* Increment index Y */
+    CPU_INST_DEX,                            /* Decrement index X */
+    CPU_INST_INX,                            /* Increment index X */
+    CPU_INST_DEY,                            /* Decrement index Y */
+    CPU_INST_INY,                            /* Increment index Y */
 
-    OPCODE_TRB,                            /* Test and reset bit */
-    OPCODE_TSB,                            /* Test and set bit */
+    CPU_INST_TRB,                            /* Test and reset bit */
+    CPU_INST_TSB,                            /* Test and set bit */
 
-    /* ====================================== */
-    /* ====================================== */
-
-
-
-    OPCODE_JMP,                            /* Jump */
-    OPCODE_JML,                            /* Jump long */
-    OPCODE_JSL,                            /* Jump subroutine long */
-    OPCODE_JSR,                            /* Jump and save return */
-
-
-    /* ====================================== */
-    /* DO NOT CHANGE THE ORDER OF THOSE ENUMS */
-    OPCODE_LDA,                            /* Load accumulator with memory */
-    OPCODE_LDX,                            /* Load index X with memory */
-    OPCODE_LDY,                            /* Load index Y with memory */
-
-    OPCODE_STA,                            /* Store accumulator in memory */
-    OPCODE_STX,                            /* Store index X in memory */
-    OPCODE_STY,                            /* Store index Y in memory */
-    OPCODE_STZ,                            /* Store zero in memory */
     /* ====================================== */
     /* ====================================== */
 
 
 
-    OPCODE_MVN,                            /* Block move negative */
-    OPCODE_MVP,                            /* Block move positive */
-    OPCODE_NOP,                            /* No operation */
+    CPU_INST_JMP,                            /* Jump */
+    CPU_INST_JML,                            /* Jump long */
+    CPU_INST_JSL,                            /* Jump subroutine long */
+    CPU_INST_JSR,                            /* Jump and save return */
 
 
     /* ====================================== */
     /* DO NOT CHANGE THE ORDER OF THOSE ENUMS */
-    OPCODE_PEA,                            /* Push effective absolute address on stack (or push immediate data on stack) */
-    OPCODE_PEI,                            /* Push effective absolute address on stack (or push direct data on stack) */
-    OPCODE_PER,                            /* Push effective program counter relative address on stack */
-    OPCODE_PHA,                            /* Push accumulator on stack */
-    OPCODE_PHB,                            /* Push data bank register on stack */
-    OPCODE_PHD,                            /* Push direct register on stack */
-    OPCODE_PHK,                            /* Push program bank register on stack */
-    OPCODE_PHP,                            /* Push processor status on stack */
-    OPCODE_PHX,                            /* Push index X on stack */
-    OPCODE_PHY,                            /* Push index Y on stack */
+    CPU_INST_LDA,                            /* Load accumulator with memory */
+    CPU_INST_LDX,                            /* Load index X with memory */
+    CPU_INST_LDY,                            /* Load index Y with memory */
 
-    OPCODE_PLA,                            /* Pull accumulator from stack */
-    OPCODE_PLB,                            /* Pull data bank register from stack */
-    OPCODE_PLD,                            /* Pull direct register from stack */
-    OPCODE_PLP,                            /* Pull processor status from stack */
-    OPCODE_PLX,                            /* Pull index X from stack */
-    OPCODE_PLY,                            /* Pull index Y from stack */
+    CPU_INST_STA,                            /* Store accumulator in memory */
+    CPU_INST_STX,                            /* Store index X in memory */
+    CPU_INST_STY,                            /* Store index Y in memory */
+    CPU_INST_STZ,                            /* Store zero in memory */
     /* ====================================== */
     /* ====================================== */
 
 
-    OPCODE_REP,                            /* Reset status bits */
+
+    CPU_INST_MVN,                            /* Block move negative */
+    CPU_INST_MVP,                            /* Block move positive */
+    CPU_INST_NOP,                            /* No operation */
 
 
-    OPCODE_RTI,                            /* Return from interrupt */
-    OPCODE_RTL,                            /* Return from subroutine long */
-    OPCODE_RTS,                            /* Return from subroutine */
+    /* ====================================== */
+    /* DO NOT CHANGE THE ORDER OF THOSE ENUMS */
+    CPU_INST_PEA,                            /* Push effective absolute address on stack (or push immediate data on stack) */
+    CPU_INST_PEI,                            /* Push effective absolute address on stack (or push direct data on stack) */
+    CPU_INST_PER,                            /* Push effective program counter relative address on stack */
+    CPU_INST_PHA,                            /* Push accumulator on stack */
+    CPU_INST_PHB,                            /* Push data bank register on stack */
+    CPU_INST_PHD,                            /* Push direct register on stack */
+    CPU_INST_PHK,                            /* Push program bank register on stack */
+    CPU_INST_PHP,                            /* Push processor status on stack */
+    CPU_INST_PHX,                            /* Push index X on stack */
+    CPU_INST_PHY,                            /* Push index Y on stack */
+
+    CPU_INST_PLA,                            /* Pull accumulator from stack */
+    CPU_INST_PLB,                            /* Pull data bank register from stack */
+    CPU_INST_PLD,                            /* Pull direct register from stack */
+    CPU_INST_PLP,                            /* Pull processor status from stack */
+    CPU_INST_PLX,                            /* Pull index X from stack */
+    CPU_INST_PLY,                            /* Pull index Y from stack */
+    /* ====================================== */
+    /* ====================================== */
+
+
+    CPU_INST_REP,                            /* Reset status bits */
+
+
+    CPU_INST_RTI,                            /* Return from interrupt */
+    CPU_INST_RTL,                            /* Return from subroutine long */
+    CPU_INST_RTS,                            /* Return from subroutine */
 
 
 //    OPCODE_SBC,                            /* Subtract memory from accumulator with borrow */
 
 
-    OPCODE_SEP,                            /* Set processor status bit */
-    OPCODE_SEC,                            /* Set carry flag */
-    OPCODE_SED,                            /* Set decimal mode */
-    OPCODE_SEI,                            /* Set interrupt disable status */
+    CPU_INST_SEP,                            /* Set processor status bit */
+    CPU_INST_SEC,                            /* Set carry flag */
+    CPU_INST_SED,                            /* Set decimal mode */
+    CPU_INST_SEI,                            /* Set interrupt disable status */
 
 
     /* ====================================== */
     /* DO NOT CHANGE THE ORDER OF THOSE ENUMS */
 
-    OPCODE_TAX,                            /* Transfer accumulator to index X */
-    OPCODE_TAY,                            /* Transfer accumulator to index Y */
-    OPCODE_TCD,                            /* Transfer C accumulator to direct register */
-    OPCODE_TCS,                            /* Transfer C accumulator to stack pointer */
-    OPCODE_TDC,                            /* Transfer direct register to C accumulator */
-    OPCODE_TSC,                            /* Transfer stack pointer to C accumulator */
-    OPCODE_TSX,                            /* Transfer stack pointer to index X */
-    OPCODE_TXA,                            /* Transfer index X to accumulator */
-    OPCODE_TXS,                            /* Transfer index X to stack pointer */
-    OPCODE_TXY,                            /* Transfer index X to index Y */
-    OPCODE_TYA,                            /* Transfer index Y to accumulator */
-    OPCODE_TYX,                            /* Transfer index Y to index X */
+    CPU_INST_TAX,                            /* Transfer accumulator to index X */
+    CPU_INST_TAY,                            /* Transfer accumulator to index Y */
+    CPU_INST_TCD,                            /* Transfer C accumulator to direct register */
+    CPU_INST_TCS,                            /* Transfer C accumulator to stack pointer */
+    CPU_INST_TDC,                            /* Transfer direct register to C accumulator */
+    CPU_INST_TSC,                            /* Transfer stack pointer to C accumulator */
+    CPU_INST_TSX,                            /* Transfer stack pointer to index X */
+    CPU_INST_TXA,                            /* Transfer index X to accumulator */
+    CPU_INST_TXS,                            /* Transfer index X to stack pointer */
+    CPU_INST_TXY,                            /* Transfer index X to index Y */
+    CPU_INST_TYA,                            /* Transfer index Y to accumulator */
+    CPU_INST_TYX,                            /* Transfer index Y to index X */
 
     /* ====================================== */
     /* ====================================== */
 
 
-    OPCODE_WAI,                            /* Wait for interrupt */
+    CPU_INST_WAI,                            /* Wait for interrupt */
 
 
-    OPCODE_WDM,                            /* Reserved */
+    CPU_INST_WDM,                            /* Reserved */
 
 
-    OPCODE_XBA,                            /* Exchange B and A accumulator??? */
+    CPU_INST_XBA,                            /* Exchange B and A accumulator??? */
 
 
 
-    OPCODE_STP,                            /* Stop the clock */
+    CPU_INST_STP,                            /* Stop the clock */
 
 
-    OPCODE_COP,                            /* Coprocessor */
+    CPU_INST_COP,                            /* Coprocessor */
 
 
-    OPCODE_XCE,                            /* Exchange carry and emulation bits */
+    CPU_INST_XCE,                            /* Exchange carry and emulation bits */
 
-    OPCODE_UNKNOWN,
+    CPU_INST_UNKNOWN,
 };
 
 
@@ -253,378 +253,378 @@ enum ADDRESS_MODES
 
 };
 
-enum INSTRUCTIONS
+enum CPU_OPCODES
 {
-    ADC_ABS             = 0x6d,
-    ADC_ABS_X           = 0x7d,
-    ADC_ABS_Y           = 0x79,
-    ADC_ABSL            = 0x6f,
-    ADC_ABSL_X          = 0x7f,
-    ADC_DIR             = 0x65,
-    ADC_S_REL           = 0x63,
-    ADC_DIR_X           = 0x75,
-    ADC_DIR_IND         = 0x72,
-    ADC_DIR_INDL        = 0x67,
-    ADC_S_REL_IND_Y     = 0x73,
-    ADC_DIR_X_IND       = 0x61,
-    ADC_DIR_IND_Y       = 0x71,
-    ADC_DIR_INDL_Y      = 0x77,
-    ADC_IMM             = 0x69,
-
-    AND_ABS             = 0x2d,
-    AND_ABS_X           = 0x3d,
-    AND_ABS_Y           = 0x39,
-    AND_ABSL            = 0x2f,
-    AND_ABSL_X          = 0x3f,
-    AND_DIR             = 0x25,
-    AND_S_REL           = 0x23,
-    AND_DIR_X           = 0x35,
-    AND_DIR_IND         = 0x32,
-    AND_DIR_INDL        = 0x27,
-    AND_S_REL_IND_Y     = 0x33,
-    AND_DIR_X_IND       = 0x21,
-    AND_DIR_IND_Y       = 0x31,
-    AND_DIR_INDL_Y      = 0x37,
-    AND_IMM             = 0x29,
-
-    ASL_ABS             = 0x0e,
-    ASL_ACC             = 0x0a,
-    ASL_ABS_X           = 0x1e,
-    ASL_DIR             = 0x06,
-    ASL_DIR_X           = 0X16,
-
-    BCC_PC_REL          = 0x90,
-
-    BCS_PC_REL          = 0xb0,
-
-    BEQ_PC_REL          = 0xf0,
-
-    BIT_ABS             = 0x2c,
-    BIT_ABS_X           = 0x3c,
-    BIT_DIR             = 0x24,
-    BIT_DIR_X           = 0x34,
-    BIT_IMM             = 0x89,
-
-    BMI_PC_REL          = 0x30,
-
-    BNE_PC_REL          = 0xd0,
-
-    BPL_PC_REL          = 0x10,
-
-    BRA_PC_REL          = 0x80,
-
-    BRK_S               = 0x00,
-
-    BRL_PC_RELL         = 0x82,
-
-    BVC_PC_REL          = 0x50,
-
-    BVS_PC_REL          = 0x70,
-
-    CLC_IMP             = 0x18,
-
-    CLD_IMP             = 0xd8,
-
-    CLI_IMP             = 0x58,
-
-    CLV_IMP             = 0xb8,
-
-    CMP_ABS             = 0xcd,
-    CMP_ABS_X           = 0xdd,
-    CMP_ABS_Y           = 0xd9,
-    CMP_ABSL            = 0xcf,
-    CMP_ABSL_X          = 0xdf,
-    CMP_DIR             = 0xc5,
-    CMP_S_REL           = 0xc3,
-    CMP_DIR_X           = 0xd5,
-    CMP_DIR_IND         = 0xd2,
-    CMP_DIR_INDL        = 0xc7,
-    CMP_S_REL_IND_Y     = 0xd3,
-    CMP_DIR_X_IND       = 0xc1,
-    CMP_DIR_IND_Y       = 0xd1,
-    CMP_DIR_INDL_Y      = 0xd7,
-    CMP_IMM             = 0xc9,
-
-    COP_S               = 0x02,
-
-    CPX_ABS             = 0xec,
-    CPX_DIR             = 0xe4,
-    CPX_IMM             = 0xe0,
-
-    CPY_ABS             = 0xcc,
-    CPY_DIR             = 0xc4,
-    CPY_IMM             = 0xc0,
-
-    DEC_ABS             = 0xce,
-    DEC_ACC             = 0x3a,
-    DEC_ABS_X           = 0xde,
-    DEC_DIR             = 0xc6,
-    DEC_DIR_X           = 0xd6,
-
-    DEX_IMP             = 0xca,
-
-    DEY_IMP             = 0x88,
-
-    EOR_ABS             = 0x4d,
-    EOR_ABS_X           = 0x5d,
-    EOR_ABS_Y           = 0x59,
-    EOR_ABSL            = 0x4f,
-    EOR_ABSL_X          = 0x5f,
-    EOR_DIR             = 0x45,
-    EOR_S_REL           = 0x43,
-    EOR_DIR_X           = 0x55,
-    EOR_DIR_IND         = 0x52,
-    EOR_DIR_INDL        = 0x47,
-    EOR_S_REL_IND_Y     = 0x53,
-    EOR_DIR_X_IND       = 0x41,
-    EOR_DIR_IND_Y       = 0x51,
-    EOR_DIR_INDL_Y      = 0x57,
-    EOR_IMM             = 0x49,
-
-    INC_ABS             = 0xee,
-    INC_ACC             = 0x1a,
-    INC_ABS_X           = 0xfe,
-    INC_DIR             = 0xe6,
-    INC_DIR_X           = 0xf6,
-
-    INX_IMP             = 0xe8,
-
-    INY_IMP             = 0xc8,
+    CPU_OPCODE_ADC_ABS             = 0x6d,
+    CPU_OPCODE_ADC_ABS_X           = 0x7d,
+    CPU_OPCODE_ADC_ABS_Y           = 0x79,
+    CPU_OPCODE_ADC_ABSL            = 0x6f,
+    CPU_OPCODE_ADC_ABSL_X          = 0x7f,
+    CPU_OPCODE_ADC_DIR             = 0x65,
+    CPU_OPCODE_ADC_S_REL           = 0x63,
+    CPU_OPCODE_ADC_DIR_X           = 0x75,
+    CPU_OPCODE_ADC_DIR_IND         = 0x72,
+    CPU_OPCODE_ADC_DIR_INDL        = 0x67,
+    CPU_OPCODE_ADC_S_REL_IND_Y     = 0x73,
+    CPU_OPCODE_ADC_DIR_X_IND       = 0x61,
+    CPU_OPCODE_ADC_DIR_IND_Y       = 0x71,
+    CPU_OPCODE_ADC_DIR_INDL_Y      = 0x77,
+    CPU_OPCODE_ADC_IMM             = 0x69,
+
+    CPU_OPCODE_AND_ABS             = 0x2d,
+    CPU_OPCODE_AND_ABS_X           = 0x3d,
+    CPU_OPCODE_AND_ABS_Y           = 0x39,
+    CPU_OPCODE_AND_ABSL            = 0x2f,
+    CPU_OPCODE_AND_ABSL_X          = 0x3f,
+    CPU_OPCODE_AND_DIR             = 0x25,
+    CPU_OPCODE_AND_S_REL           = 0x23,
+    CPU_OPCODE_AND_DIR_X           = 0x35,
+    CPU_OPCODE_AND_DIR_IND         = 0x32,
+    CPU_OPCODE_AND_DIR_INDL        = 0x27,
+    CPU_OPCODE_AND_S_REL_IND_Y     = 0x33,
+    CPU_OPCODE_AND_DIR_X_IND       = 0x21,
+    CPU_OPCODE_AND_DIR_IND_Y       = 0x31,
+    CPU_OPCODE_AND_DIR_INDL_Y      = 0x37,
+    CPU_OPCODE_AND_IMM             = 0x29,
+
+    CPU_OPCODE_ASL_ABS             = 0x0e,
+    CPU_OPCODE_ASL_ACC             = 0x0a,
+    CPU_OPCODE_ASL_ABS_X           = 0x1e,
+    CPU_OPCODE_ASL_DIR             = 0x06,
+    CPU_OPCODE_ASL_DIR_X           = 0X16,
+
+    CPU_OPCODE_BCC_PC_REL          = 0x90,
+
+    CPU_OPCODE_BCS_PC_REL          = 0xb0,
+
+    CPU_OPCODE_BEQ_PC_REL          = 0xf0,
+
+    CPU_OPCODE_BIT_ABS             = 0x2c,
+    CPU_OPCODE_BIT_ABS_X           = 0x3c,
+    CPU_OPCODE_BIT_DIR             = 0x24,
+    CPU_OPCODE_BIT_DIR_X           = 0x34,
+    CPU_OPCODE_BIT_IMM             = 0x89,
+
+    CPU_OPCODE_BMI_PC_REL          = 0x30,
+
+    CPU_OPCODE_BNE_PC_REL          = 0xd0,
+
+    CPU_OPCODE_BPL_PC_REL          = 0x10,
+
+    CPU_OPCODE_BRA_PC_REL          = 0x80,
+
+    CPU_OPCODE_BRK_S               = 0x00,
+
+    CPU_OPCODE_BRL_PC_RELL         = 0x82,
+
+    CPU_OPCODE_BVC_PC_REL          = 0x50,
+
+    CPU_OPCODE_BVS_PC_REL          = 0x70,
+
+    CPU_OPCODE_CLC_IMP             = 0x18,
+
+    CPU_OPCODE_CLD_IMP             = 0xd8,
+
+    CPU_OPCODE_CLI_IMP             = 0x58,
+
+    CPU_OPCODE_CLV_IMP             = 0xb8,
+
+    CPU_OPCODE_CMP_ABS             = 0xcd,
+    CPU_OPCODE_CMP_ABS_X           = 0xdd,
+    CPU_OPCODE_CMP_ABS_Y           = 0xd9,
+    CPU_OPCODE_CMP_ABSL            = 0xcf,
+    CPU_OPCODE_CMP_ABSL_X          = 0xdf,
+    CPU_OPCODE_CMP_DIR             = 0xc5,
+    CPU_OPCODE_CMP_S_REL           = 0xc3,
+    CPU_OPCODE_CMP_DIR_X           = 0xd5,
+    CPU_OPCODE_CMP_DIR_IND         = 0xd2,
+    CPU_OPCODE_CMP_DIR_INDL        = 0xc7,
+    CPU_OPCODE_CMP_S_REL_IND_Y     = 0xd3,
+    CPU_OPCODE_CMP_DIR_X_IND       = 0xc1,
+    CPU_OPCODE_CMP_DIR_IND_Y       = 0xd1,
+    CPU_OPCODE_CMP_DIR_INDL_Y      = 0xd7,
+    CPU_OPCODE_CMP_IMM             = 0xc9,
+
+    CPU_OPCODE_COP_S               = 0x02,
+
+    CPU_OPCODE_CPX_ABS             = 0xec,
+    CPU_OPCODE_CPX_DIR             = 0xe4,
+    CPU_OPCODE_CPX_IMM             = 0xe0,
+
+    CPU_OPCODE_CPY_ABS             = 0xcc,
+    CPU_OPCODE_CPY_DIR             = 0xc4,
+    CPU_OPCODE_CPY_IMM             = 0xc0,
+
+    CPU_OPCODE_DEC_ABS             = 0xce,
+    CPU_OPCODE_DEC_ACC             = 0x3a,
+    CPU_OPCODE_DEC_ABS_X           = 0xde,
+    CPU_OPCODE_DEC_DIR             = 0xc6,
+    CPU_OPCODE_DEC_DIR_X           = 0xd6,
+
+    CPU_OPCODE_DEX_IMP             = 0xca,
+
+    CPU_OPCODE_DEY_IMP             = 0x88,
+
+    CPU_OPCODE_EOR_ABS             = 0x4d,
+    CPU_OPCODE_EOR_ABS_X           = 0x5d,
+    CPU_OPCODE_EOR_ABS_Y           = 0x59,
+    CPU_OPCODE_EOR_ABSL            = 0x4f,
+    CPU_OPCODE_EOR_ABSL_X          = 0x5f,
+    CPU_OPCODE_EOR_DIR             = 0x45,
+    CPU_OPCODE_EOR_S_REL           = 0x43,
+    CPU_OPCODE_EOR_DIR_X           = 0x55,
+    CPU_OPCODE_EOR_DIR_IND         = 0x52,
+    CPU_OPCODE_EOR_DIR_INDL        = 0x47,
+    CPU_OPCODE_EOR_S_REL_IND_Y     = 0x53,
+    CPU_OPCODE_EOR_DIR_X_IND       = 0x41,
+    CPU_OPCODE_EOR_DIR_IND_Y       = 0x51,
+    CPU_OPCODE_EOR_DIR_INDL_Y      = 0x57,
+    CPU_OPCODE_EOR_IMM             = 0x49,
+
+    CPU_OPCODE_INC_ABS             = 0xee,
+    CPU_OPCODE_INC_ACC             = 0x1a,
+    CPU_OPCODE_INC_ABS_X           = 0xfe,
+    CPU_OPCODE_INC_DIR             = 0xe6,
+    CPU_OPCODE_INC_DIR_X           = 0xf6,
+
+    CPU_OPCODE_INX_IMP             = 0xe8,
+
+    CPU_OPCODE_INY_IMP             = 0xc8,
 
-    JML_ABS_IND         = 0xdc,
+    CPU_OPCODE_JML_ABS_IND         = 0xdc,
 
-    JMP_ABS             = 0x4c,
-    JMP_ABSL            = 0x5c,
-    JMP_ABS_IND         = 0x6c,
-    JMP_ABS_X_IND       = 0x7c,
+    CPU_OPCODE_JMP_ABS             = 0x4c,
+    CPU_OPCODE_JMP_ABSL            = 0x5c,
+    CPU_OPCODE_JMP_ABS_IND         = 0x6c,
+    CPU_OPCODE_JMP_ABS_X_IND       = 0x7c,
 
-    JSL_ABSL            = 0x22,
+    CPU_OPCODE_JSL_ABSL            = 0x22,
 
-    JSR_ABS             = 0x20,
-    JSR_ABS_X_IND       = 0xfc,
+    CPU_OPCODE_JSR_ABS             = 0x20,
+    CPU_OPCODE_JSR_ABS_X_IND       = 0xfc,
 
-    LDA_ABS             = 0xad,
-    LDA_ABS_X           = 0xbd,
-    LDA_ABS_Y           = 0xb9,
-    LDA_ABSL            = 0xaf,
-    LDA_ABSL_X          = 0xbf,
-    LDA_DIR             = 0xa5,
-    LDA_S_REL           = 0xa3,
-    LDA_DIR_X           = 0xb5,
-    LDA_DIR_IND         = 0xb2,
-    LDA_DIR_INDL        = 0xa7,
-    LDA_S_REL_IND_Y     = 0xb3,
-    LDA_DIR_X_IND       = 0xa1,
-    LDA_DIR_IND_Y       = 0xb1,
-    LDA_DIR_INDL_Y      = 0xb7,
-    LDA_IMM             = 0xa9,
+    CPU_OPCODE_LDA_ABS             = 0xad,
+    CPU_OPCODE_LDA_ABS_X           = 0xbd,
+    CPU_OPCODE_LDA_ABS_Y           = 0xb9,
+    CPU_OPCODE_LDA_ABSL            = 0xaf,
+    CPU_OPCODE_LDA_ABSL_X          = 0xbf,
+    CPU_OPCODE_LDA_DIR             = 0xa5,
+    CPU_OPCODE_LDA_S_REL           = 0xa3,
+    CPU_OPCODE_LDA_DIR_X           = 0xb5,
+    CPU_OPCODE_LDA_DIR_IND         = 0xb2,
+    CPU_OPCODE_LDA_DIR_INDL        = 0xa7,
+    CPU_OPCODE_LDA_S_REL_IND_Y     = 0xb3,
+    CPU_OPCODE_LDA_DIR_X_IND       = 0xa1,
+    CPU_OPCODE_LDA_DIR_IND_Y       = 0xb1,
+    CPU_OPCODE_LDA_DIR_INDL_Y      = 0xb7,
+    CPU_OPCODE_LDA_IMM             = 0xa9,
 
-    LDX_ABS             = 0xae,
-    LDX_ABS_Y           = 0xbe,
-    LDX_DIR             = 0xa6,
-    LDX_DIR_Y           = 0xb6,
-    LDX_IMM             = 0xa2,
-
-    LDY_ABS             = 0xac,
-    LDY_ABS_X           = 0xbc,
-    LDY_DIR             = 0xa4,
-    LDY_DIR_X           = 0xb4,
-    LDY_IMM             = 0xa0,
-
-    LSR_ABS             = 0x4e,
-    LSR_ACC             = 0x4a,
-    LSR_ABS_X           = 0x5e,
-    LSR_DIR             = 0x46,
-    LSR_DIR_X           = 0x56,
+    CPU_OPCODE_LDX_ABS             = 0xae,
+    CPU_OPCODE_LDX_ABS_Y           = 0xbe,
+    CPU_OPCODE_LDX_DIR             = 0xa6,
+    CPU_OPCODE_LDX_DIR_Y           = 0xb6,
+    CPU_OPCODE_LDX_IMM             = 0xa2,
+
+    CPU_OPCODE_LDY_ABS             = 0xac,
+    CPU_OPCODE_LDY_ABS_X           = 0xbc,
+    CPU_OPCODE_LDY_DIR             = 0xa4,
+    CPU_OPCODE_LDY_DIR_X           = 0xb4,
+    CPU_OPCODE_LDY_IMM             = 0xa0,
+
+    CPU_OPCODE_LSR_ABS             = 0x4e,
+    CPU_OPCODE_LSR_ACC             = 0x4a,
+    CPU_OPCODE_LSR_ABS_X           = 0x5e,
+    CPU_OPCODE_LSR_DIR             = 0x46,
+    CPU_OPCODE_LSR_DIR_X           = 0x56,
 
-    MVN_BLK             = 0x54,
+    CPU_OPCODE_MVN_BLK             = 0x54,
 
-    MVP_BLK             = 0x44,
-
-    NOP_IMP             = 0xea,
-
-    ORA_ABS             = 0x0d,
-    ORA_ABS_X           = 0x1d,
-    ORA_ABS_Y           = 0x19,
-    ORA_ABSL            = 0x0f,
-    ORA_ABSL_X          = 0x1f,
-    ORA_DIR             = 0x05,
-    ORA_S_REL           = 0x03,
-    ORA_DIR_X           = 0x15,
-    ORA_DIR_IND         = 0x12,
-    ORA_DIR_INDL        = 0x07,
-    ORA_S_REL_IND_Y     = 0x13,
-    ORA_DIR_X_IND       = 0x01,
-    ORA_DIR_IND_Y       = 0x11,
-    ORA_DIR_INDL_Y      = 0x17,
-    ORA_IMM             = 0x09,
-
-    PEA_S               = 0xf4,
-
-    PEI_S               = 0xd4,
-
-    PER_S               = 0x62,
-
-    PHA_S               = 0x48,
-
-    PHB_S               = 0x8b,
-
-    PHD_S               = 0x0b,
-
-    PHK_S               = 0x4b,
-
-    PHP_S               = 0x08,
+    CPU_OPCODE_MVP_BLK             = 0x44,
+
+    CPU_OPCODE_NOP_IMP             = 0xea,
+
+    CPU_OPCODE_ORA_ABS             = 0x0d,
+    CPU_OPCODE_ORA_ABS_X           = 0x1d,
+    CPU_OPCODE_ORA_ABS_Y           = 0x19,
+    CPU_OPCODE_ORA_ABSL            = 0x0f,
+    CPU_OPCODE_ORA_ABSL_X          = 0x1f,
+    CPU_OPCODE_ORA_DIR             = 0x05,
+    CPU_OPCODE_ORA_S_REL           = 0x03,
+    CPU_OPCODE_ORA_DIR_X           = 0x15,
+    CPU_OPCODE_ORA_DIR_IND         = 0x12,
+    CPU_OPCODE_ORA_DIR_INDL        = 0x07,
+    CPU_OPCODE_ORA_S_REL_IND_Y     = 0x13,
+    CPU_OPCODE_ORA_DIR_X_IND       = 0x01,
+    CPU_OPCODE_ORA_DIR_IND_Y       = 0x11,
+    CPU_OPCODE_ORA_DIR_INDL_Y      = 0x17,
+    CPU_OPCODE_ORA_IMM             = 0x09,
+
+    CPU_OPCODE_PEA_S               = 0xf4,
+
+    CPU_OPCODE_PEI_S               = 0xd4,
+
+    CPU_OPCODE_PER_S               = 0x62,
+
+    CPU_OPCODE_PHA_S               = 0x48,
+
+    CPU_OPCODE_PHB_S               = 0x8b,
+
+    CPU_OPCODE_PHD_S               = 0x0b,
+
+    CPU_OPCODE_PHK_S               = 0x4b,
+
+    CPU_OPCODE_PHP_S               = 0x08,
 
-    PHX_S               = 0xda,
+    CPU_OPCODE_PHX_S               = 0xda,
 
-    PHY_S               = 0x5a,
+    CPU_OPCODE_PHY_S               = 0x5a,
 
-    PLA_S               = 0x68,
+    CPU_OPCODE_PLA_S               = 0x68,
 
-    PLB_S               = 0xab,
+    CPU_OPCODE_PLB_S               = 0xab,
 
-    PLD_S               = 0x2b,
+    CPU_OPCODE_PLD_S               = 0x2b,
 
-    PLP_S               = 0x28,
+    CPU_OPCODE_PLP_S               = 0x28,
 
-    PLX_S               = 0xfa,
+    CPU_OPCODE_PLX_S               = 0xfa,
 
-    PLY_S               = 0x7a,
+    CPU_OPCODE_PLY_S               = 0x7a,
 
-    REP_IMM             = 0xc2,
+    CPU_OPCODE_REP_IMM             = 0xc2,
 
-    ROL_ABS             = 0x2e,
-    ROL_ACC             = 0x2a,
-    ROL_ABS_X           = 0x3e,
-    ROL_DIR             = 0x26,
-    ROL_DIR_X           = 0x36,
+    CPU_OPCODE_ROL_ABS             = 0x2e,
+    CPU_OPCODE_ROL_ACC             = 0x2a,
+    CPU_OPCODE_ROL_ABS_X           = 0x3e,
+    CPU_OPCODE_ROL_DIR             = 0x26,
+    CPU_OPCODE_ROL_DIR_X           = 0x36,
 
-    ROR_ABS             = 0x6e,
-    ROR_ACC             = 0x6a,
-    ROR_ABS_X           = 0x7e,
-    ROR_DIR             = 0x66,
-    ROR_DIR_X           = 0x76,
+    CPU_OPCODE_ROR_ABS             = 0x6e,
+    CPU_OPCODE_ROR_ACC             = 0x6a,
+    CPU_OPCODE_ROR_ABS_X           = 0x7e,
+    CPU_OPCODE_ROR_DIR             = 0x66,
+    CPU_OPCODE_ROR_DIR_X           = 0x76,
 
-    RTI_S               = 0x40,
+    CPU_OPCODE_RTI_S               = 0x40,
 
-    RTL_S               = 0x6b,
+    CPU_OPCODE_RTL_S               = 0x6b,
 
-    RTS_S               = 0x60,
+    CPU_OPCODE_RTS_S               = 0x60,
 
-    SBC_ABS             = 0xed,
-    SBC_ABS_X           = 0xfd,
-    SBC_ABS_Y           = 0xf9,
-    SBC_ABSL            = 0xef,
-    SBC_ABSL_X          = 0xff,
-    SBC_DIR             = 0xe5,
-    SBC_S_REL           = 0xe3,
-    SBC_DIR_X           = 0xf5,
-    SBC_DIR_IND         = 0xf2,
-    SBC_DIR_INDL        = 0xe7,
-    SBC_S_REL_IND_Y     = 0xf3,
-    SBC_DIR_X_IND       = 0xe1,
-    SBC_DIR_IND_Y       = 0xf1,
-    SBC_DIR_INDL_Y      = 0xf7,
-    SBC_IMM             = 0xe9,
+    CPU_OPCODE_SBC_ABS             = 0xed,
+    CPU_OPCODE_SBC_ABS_X           = 0xfd,
+    CPU_OPCODE_SBC_ABS_Y           = 0xf9,
+    CPU_OPCODE_SBC_ABSL            = 0xef,
+    CPU_OPCODE_SBC_ABSL_X          = 0xff,
+    CPU_OPCODE_SBC_DIR             = 0xe5,
+    CPU_OPCODE_SBC_S_REL           = 0xe3,
+    CPU_OPCODE_SBC_DIR_X           = 0xf5,
+    CPU_OPCODE_SBC_DIR_IND         = 0xf2,
+    CPU_OPCODE_SBC_DIR_INDL        = 0xe7,
+    CPU_OPCODE_SBC_S_REL_IND_Y     = 0xf3,
+    CPU_OPCODE_SBC_DIR_X_IND       = 0xe1,
+    CPU_OPCODE_SBC_DIR_IND_Y       = 0xf1,
+    CPU_OPCODE_SBC_DIR_INDL_Y      = 0xf7,
+    CPU_OPCODE_SBC_IMM             = 0xe9,
 
-    SEC_IMP             = 0x38,
+    CPU_OPCODE_SEC_IMP             = 0x38,
 
-    SED_IMP             = 0xf8,
+    CPU_OPCODE_SED_IMP             = 0xf8,
 
-    SEI_IMP             = 0x78,
+    CPU_OPCODE_SEI_IMP             = 0x78,
 
-    SEP_IMM             = 0xe2,
+    CPU_OPCODE_SEP_IMM             = 0xe2,
 
-    STA_ABS             = 0x8d,
-    STA_ABS_X           = 0x9d,
-    STA_ABS_Y           = 0x99,
-    STA_ABSL            = 0x8f,
-    STA_ABSL_X          = 0x9f,
-    STA_DIR             = 0x85,
-    STA_S_REL           = 0x83,
-    STA_DIR_X           = 0x95,
-    STA_DIR_IND         = 0x92,
-    STA_DIR_INDL        = 0x87,
-    STA_S_REL_IND_Y     = 0x93,
-    STA_DIR_X_IND       = 0x81,
-    STA_DIR_IND_Y       = 0x91,
-    STA_DIR_INDL_Y      = 0x97,
+    CPU_OPCODE_STA_ABS             = 0x8d,
+    CPU_OPCODE_STA_ABS_X           = 0x9d,
+    CPU_OPCODE_STA_ABS_Y           = 0x99,
+    CPU_OPCODE_STA_ABSL            = 0x8f,
+    CPU_OPCODE_STA_ABSL_X          = 0x9f,
+    CPU_OPCODE_STA_DIR             = 0x85,
+    CPU_OPCODE_STA_S_REL           = 0x83,
+    CPU_OPCODE_STA_DIR_X           = 0x95,
+    CPU_OPCODE_STA_DIR_IND         = 0x92,
+    CPU_OPCODE_STA_DIR_INDL        = 0x87,
+    CPU_OPCODE_STA_S_REL_IND_Y     = 0x93,
+    CPU_OPCODE_STA_DIR_X_IND       = 0x81,
+    CPU_OPCODE_STA_DIR_IND_Y       = 0x91,
+    CPU_OPCODE_STA_DIR_INDL_Y      = 0x97,
 
-    STP_IMP             = 0xdb,
+    CPU_OPCODE_STP_IMP             = 0xdb,
 
-    STX_ABS             = 0x8e,
-    STX_DIR             = 0x86,
-    STX_DIR_Y           = 0x96,
+    CPU_OPCODE_STX_ABS             = 0x8e,
+    CPU_OPCODE_STX_DIR             = 0x86,
+    CPU_OPCODE_STX_DIR_Y           = 0x96,
 
-    STY_ABS             = 0x8c,
-    STY_DIR             = 0x84,
-    STY_DIR_X           = 0x94,
+    CPU_OPCODE_STY_ABS             = 0x8c,
+    CPU_OPCODE_STY_DIR             = 0x84,
+    CPU_OPCODE_STY_DIR_X           = 0x94,
 
-    STZ_ABS             = 0x9c,
-    STZ_ABS_X           = 0x9e,
-    STZ_DIR             = 0x64,
-    STZ_DIR_X           = 0x74,
+    CPU_OPCODE_STZ_ABS             = 0x9c,
+    CPU_OPCODE_STZ_ABS_X           = 0x9e,
+    CPU_OPCODE_STZ_DIR             = 0x64,
+    CPU_OPCODE_STZ_DIR_X           = 0x74,
 
-    TAX_IMP             = 0xaa,
+    CPU_OPCODE_TAX_IMP             = 0xaa,
 
-    TAY_IMP             = 0xa8,
+    CPU_OPCODE_TAY_IMP             = 0xa8,
 
-    TCD_IMP             = 0x5b,
+    CPU_OPCODE_TCD_IMP             = 0x5b,
 
-    TCS_IMP             = 0x1b,
+    CPU_OPCODE_TCS_IMP             = 0x1b,
 
-    TDC_IMP             = 0x7b,
+    CPU_OPCODE_TDC_IMP             = 0x7b,
 
-    TRB_ABS             = 0x1c,
-    TRB_DIR             = 0x14,
+    CPU_OPCODE_TRB_ABS             = 0x1c,
+    CPU_OPCODE_TRB_DIR             = 0x14,
 
-    TSB_ABS             = 0x0c,
-    TSB_DIR             = 0x04,
+    CPU_OPCODE_TSB_ABS             = 0x0c,
+    CPU_OPCODE_TSB_DIR             = 0x04,
 
-    TSC_ACC             = 0x3b,
+    CPU_OPCODE_TSC_ACC             = 0x3b,
 
-    TSX_ACC             = 0xba,
+    CPU_OPCODE_TSX_ACC             = 0xba,
 
-    TXA_ACC             = 0x8a,
+    CPU_OPCODE_TXA_ACC             = 0x8a,
 
-    TXS_ACC             = 0x9a,
+    CPU_OPCODE_TXS_ACC             = 0x9a,
 
-    TXY_ACC             = 0x9b,
+    CPU_OPCODE_TXY_ACC             = 0x9b,
 
-    TYA_ACC             = 0x98,
+    CPU_OPCODE_TYA_ACC             = 0x98,
 
-    TYX_ACC             = 0xbb,
+    CPU_OPCODE_TYX_ACC             = 0xbb,
 
-    WAI_ACC             = 0xcb,
+    CPU_OPCODE_WAI_ACC             = 0xcb,
 
-    WDM_ACC             = 0x42,
+    CPU_OPCODE_WDM_ACC             = 0x42,
 
-    XBA_ACC             = 0xeb,
+    CPU_OPCODE_XBA_ACC             = 0xeb,
 
-    XCE_ACC             = 0xfb,
+    CPU_OPCODE_XCE_ACC             = 0xfb,
 
-    FETCH               = 0x100,
+    CPU_OPCODE_FETCH               = 0x100,
 
-    INT_HW              = 0x101,
+    CPU_OPCODE_INT_HW              = 0x101,
 };
 
-enum CPU_REGS
+enum CPU_MEM_REGS
 {
-    CPU_REG_JOYWR                           = 0x4016,
-    CPU_REG_JOYA                            = 0x4016,
-    CPU_REG_JOYB                            = 0x4017,
-    CPU_REG_NMITIMEN                        = 0x4200,
-    CPU_REG_WRIO                            = 0x4201,
-    CPU_REG_WRMPYA                          = 0x4202,
-    CPU_REG_WRMPYB                          = 0x4203,
-    CPU_REG_WRDIVL                          = 0x4204,
-    CPU_REG_WRDIVH                          = 0x4205,
-    CPU_REG_WRDIVB                          = 0x4206,
-    CPU_REG_HTIMEL                          = 0x4207,
-    CPU_REG_HTIMEH                          = 0x4208,
-    CPU_REG_VTIMEL                          = 0x4209,
-    CPU_REG_VTIMEH                          = 0x420a,
-    CPU_REG_MDMAEN                          = 0x420b,
+    CPU_MEM_REG_JOYWR                           = 0x4016,
+    CPU_MEM_REG_JOYA                            = 0x4016,
+    CPU_MEM_REG_JOYB                            = 0x4017,
+    CPU_MEM_REG_NMITIMEN                        = 0x4200,
+    CPU_MEM_REG_WRIO                            = 0x4201,
+    CPU_MEM_REG_WRMPYA                          = 0x4202,
+    CPU_MEM_REG_WRMPYB                          = 0x4203,
+    CPU_MEM_REG_WRDIVL                          = 0x4204,
+    CPU_MEM_REG_WRDIVH                          = 0x4205,
+    CPU_MEM_REG_WRDIVB                          = 0x4206,
+    CPU_MEM_REG_HTIMEL                          = 0x4207,
+    CPU_MEM_REG_HTIMEH                          = 0x4208,
+    CPU_MEM_REG_VTIMEL                          = 0x4209,
+    CPU_MEM_REG_VTIMEH                          = 0x420a,
+    CPU_MEM_REG_MDMAEN                          = 0x420b,
 
     /* channels designated for HDMA. All enabled HDMA channels are initialized
     after the end of v-blank, on line 0, starting around dot 8. Before channels
@@ -644,37 +644,37 @@ enum CPU_REGS
     the channel to behave properly, then, it'll be necessary to initialze all the appropriate
     registers manually, similar to how it's done when enabling hdma mid-frame. */
 
-    CPU_REG_HDMAEN                          = 0x420c,
-    CPU_REG_MEMSEL                          = 0x420d,
-    CPU_REG_RDNMI                           = 0x4210,
-    CPU_REG_TIMEUP                          = 0x4211,
-    CPU_REG_HVBJOY                          = 0x4212,
-    CPU_REG_RDIO                            = 0x4213,
-    CPU_REG_RDDIVL                          = 0x4214,
-    CPU_REG_RDDIVH                          = 0x4215,
-    CPU_REG_RDMPYL                          = 0x4216,
-    CPU_REG_RDMPYH                          = 0x4217,
-    CPU_REG_STDCTRL1L                       = 0x4218,
-    CPU_REG_STDCTRL1H                       = 0x4219,
-    CPU_REG_STDCTRL2L                       = 0x421a,
-    CPU_REG_STDCTRL2H                       = 0x421b,
-    CPU_REG_STDCTRL3L                       = 0x421c,
-    CPU_REG_STDCTRL3H                       = 0x421d,
-    CPU_REG_STDCTRL4L                       = 0x421e,
-    CPU_REG_STDCTRL4H                       = 0x421f,
+    CPU_MEM_REG_HDMAEN                          = 0x420c,
+    CPU_MEM_REG_MEMSEL                          = 0x420d,
+    CPU_MEM_REG_RDNMI                           = 0x4210,
+    CPU_MEM_REG_TIMEUP                          = 0x4211,
+    CPU_MEM_REG_HVBJOY                          = 0x4212,
+    CPU_MEM_REG_RDIO                            = 0x4213,
+    CPU_MEM_REG_RDDIVL                          = 0x4214,
+    CPU_MEM_REG_RDDIVH                          = 0x4215,
+    CPU_MEM_REG_RDMPYL                          = 0x4216,
+    CPU_MEM_REG_RDMPYH                          = 0x4217,
+    CPU_MEM_REG_STDCTRL1L                       = 0x4218,
+    CPU_MEM_REG_STDCTRL1H                       = 0x4219,
+    CPU_MEM_REG_STDCTRL2L                       = 0x421a,
+    CPU_MEM_REG_STDCTRL2H                       = 0x421b,
+    CPU_MEM_REG_STDCTRL3L                       = 0x421c,
+    CPU_MEM_REG_STDCTRL3H                       = 0x421d,
+    CPU_MEM_REG_STDCTRL4L                       = 0x421e,
+    CPU_MEM_REG_STDCTRL4H                       = 0x421f,
 
-    CPU_REG_DMA0_PARAM                      = 0x4300,
-    CPU_REG_DMA0_BBUS_ADDR                  = 0x4301,
+    CPU_MEM_REG_DMA0_PARAM                      = 0x4300,
+    CPU_MEM_REG_DMA0_BBUS_ADDR                  = 0x4301,
 
-    CPU_REG_HDMA0_ATAB_DMA0_ADDRL           = 0x4302,
-    CPU_REG_HDMA0_ATAB_DMA0_ADDRH           = 0x4303,
-    CPU_REG_HDMA0_ATAB_DMA0_BANK            = 0x4304,
+    CPU_MEM_REG_HDMA0_ATAB_DMA0_ADDRL           = 0x4302,
+    CPU_MEM_REG_HDMA0_ATAB_DMA0_ADDRH           = 0x4303,
+    CPU_MEM_REG_HDMA0_ATAB_DMA0_BANK            = 0x4304,
 
     /* not really mentioned anywhere, but I guess those should be incremented (except the bank) after
     every byte written, just like happens with <43X8> and <43X9>...? */
-    CPU_REG_HDMA0_IND_ADDR_DMA0_COUNTL      = 0x4305,
-    CPU_REG_HDMA0_IND_ADDR_DMA0_COUNTH      = 0x4306,
-    CPU_REG_HDMA0_IND_ADDR_BANK             = 0x4307,
+    CPU_MEM_REG_HDMA0_IND_ADDR_DMA0_COUNTL      = 0x4305,
+    CPU_MEM_REG_HDMA0_IND_ADDR_DMA0_COUNTH      = 0x4306,
+    CPU_MEM_REG_HDMA0_IND_ADDR_BANK             = 0x4307,
 
     /*
         Those get loaded from <0x43X2> and <0x43X3>, and are incremented as the hdma goes forward.
@@ -697,11 +697,11 @@ enum CPU_REGS
         table entry, and the indirect address gets loaded into <0x43X5> and <0x43X6>.
     */
 
-    CPU_REG_HDMA0_DIR_ADDRL                 = 0x4308,
-    CPU_REG_HDMA0_DIR_ADDRH                 = 0x4309,
+    CPU_MEM_REG_HDMA0_DIR_ADDRL                 = 0x4308,
+    CPU_MEM_REG_HDMA0_DIR_ADDRH                 = 0x4309,
 
 
-    CPU_REG_HDMA0_CUR_LINE_COUNT            = 0x430a,
+    CPU_MEM_REG_HDMA0_CUR_LINE_COUNT            = 0x430a,
 };
 
 enum CPU_NMITIMEN_FLAGS
@@ -817,23 +817,23 @@ struct disasm_inst_t
 //     uint16_t     flag;
 // };
 
-enum REGS
+enum CPU_REGS
 {
-    REG_ACCUM,
-    REG_X,
-    REG_Y,
-    REG_D,
-    REG_S,
-    REG_PBR,
-    REG_DBR,
-    REG_INST,
-    REG_PC,
-    REG_P,
-    REG_TEMP,
-    REG_ADDR,
-    REG_BANK,
-    REG_ZERO,
-    REG_LAST,
+    CPU_REG_ACCUM,
+    CPU_REG_X,
+    CPU_REG_Y,
+    CPU_REG_D,
+    CPU_REG_S,
+    CPU_REG_PBR,
+    CPU_REG_DBR,
+    CPU_REG_INST,
+    CPU_REG_PC,
+    CPU_REG_P,
+    CPU_REG_TEMP,
+    CPU_REG_ADDR,
+    CPU_REG_BANK,
+    CPU_REG_ZERO,
+    CPU_REG_LAST,
 };
 
 struct reg_t
@@ -866,27 +866,27 @@ struct inst_t
 #define CPU_MUL_MACHINE_CYCLES  8
 #define CPU_DIV_MACHINE_CYCLES  16
 
-enum STATUS_FLAGS
+enum CPU_STATUS_FLAGS
 {
-    STATUS_FLAG_C,
-    STATUS_FLAG_Z,
-    STATUS_FLAG_I,
-    STATUS_FLAG_D,
-    STATUS_FLAG_X,
-    STATUS_FLAG_M,
-    STATUS_FLAG_V,
-    STATUS_FLAG_N,
-    STATUS_FLAG_E,
-    STATUS_FLAG_B,
+    CPU_STATUS_FLAG_C,
+    CPU_STATUS_FLAG_Z,
+    CPU_STATUS_FLAG_I,
+    CPU_STATUS_FLAG_D,
+    CPU_STATUS_FLAG_X,
+    CPU_STATUS_FLAG_M,
+    CPU_STATUS_FLAG_V,
+    CPU_STATUS_FLAG_N,
+    CPU_STATUS_FLAG_E,
+    CPU_STATUS_FLAG_B,
     /* extra flag set when address computations cross a bank */
-    STATUS_FLAG_BANK,
+    CPU_STATUS_FLAG_BANK,
     /* extra flag set when address computations cross a page */
-    STATUS_FLAG_PAGE,
+    CPU_STATUS_FLAG_PAGE,
     /* extra flag set when reg D LSB is not zero */
-    STATUS_FLAG_DL,
+    CPU_STATUS_FLAG_DL,
     /* extra flag set when the accumulator is 0xffff (used for MVN and MVP instructions) */
-    STATUS_FLAG_AM,
-    STATUS_FLAG_LAST,
+    CPU_STATUS_FLAG_AM,
+    CPU_STATUS_FLAG_LAST,
 };
 
 enum CPU_INTS
@@ -956,7 +956,7 @@ struct cpu_state_t
             uint8_t am;
         };
 
-        uint8_t     flags[STATUS_FLAG_LAST];
+        uint8_t     flags[CPU_STATUS_FLAG_LAST];
     }reg_p;
 
     struct uop_t *      uop;
@@ -975,7 +975,7 @@ struct cpu_state_t
     int32_t             div_cycles;
     uint16_t            latched_dividend;
 
-    struct reg_t        regs[REG_LAST];
+    struct reg_t        regs[CPU_REG_LAST];
 };
 
 #define CPU_MASTER_CYCLES 6
@@ -995,9 +995,9 @@ struct disasm_state_t
 // };
 
 
-char *instruction_str(uint32_t effective_address);
+// char *instruction_str(uint32_t effective_address);
 
-char *instruction_str2(uint32_t effective_address);
+// char *instruction_str2(uint32_t effective_address);
 
 int dump_cpu(int show_registers);
 

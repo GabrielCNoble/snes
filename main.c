@@ -252,22 +252,22 @@ int main(int argc, char *argv[])
 
                             igTableNextRow(0, 0);
                             igTableNextColumn();
-                            igText("%04x", cpu_state.regs[REG_ACCUM].word);
+                            igText("%04x", cpu_state.regs[CPU_REG_ACCUM].word);
                             igTableNextColumn();
-                            igText("%04x", cpu_state.regs[REG_X].word);
+                            igText("%04x", cpu_state.regs[CPU_REG_X].word);
                             igTableNextColumn();
-                            igText("%04x", cpu_state.regs[REG_Y].word);
+                            igText("%04x", cpu_state.regs[CPU_REG_Y].word);
                             igTableNextColumn();
-                            igText("%04x", cpu_state.regs[REG_S].word);
+                            igText("%04x", cpu_state.regs[CPU_REG_S].word);
                             igTableNextColumn();
-                            igText("%04x", cpu_state.regs[REG_D].word);
+                            igText("%04x", cpu_state.regs[CPU_REG_D].word);
                             igTableNextColumn();
                             igText("%04x", cpu_state.instruction_address & 0xffff);
-                            igText("(%04x)", cpu_state.regs[REG_PC].word);
+                            igText("(%04x)", cpu_state.regs[CPU_REG_PC].word);
                             igTableNextColumn();
-                            igText("%02x", cpu_state.regs[REG_PBR].byte[0]);
+                            igText("%02x", cpu_state.regs[CPU_REG_PBR].byte[0]);
                             igTableNextColumn();
-                            igText("%02x", cpu_state.regs[REG_DBR].byte[0]);
+                            igText("%02x", cpu_state.regs[CPU_REG_DBR].byte[0]);
 
                             igEndTable();
                         }

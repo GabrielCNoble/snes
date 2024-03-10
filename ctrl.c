@@ -26,7 +26,7 @@ void init_ctrl()
 
 void step_ctrl(int32_t cycle_count)
 {
-    if(!(ram1_regs[CPU_REG_HVBJOY] & CPU_HVBJOY_FLAG_VBLANK))
+    if(!(ram1_regs[CPU_MEM_REG_HVBJOY] & CPU_HVBJOY_FLAG_VBLANK))
     {
         controller_read = 0;
     }
@@ -130,11 +130,11 @@ void step_ctrl(int32_t cycle_count)
 //                 }
 //             }
 
-            if(ram1_regs[CPU_REG_NMITIMEN] & CPU_NMITIMEN_FLAG_STD_CTRL_EN)
+            if(ram1_regs[CPU_MEM_REG_NMITIMEN] & CPU_NMITIMEN_FLAG_STD_CTRL_EN)
             {
-                ram1_regs[CPU_REG_STDCTRL1L] = (controllers[0].a << 7) | (controllers[0].x << 6) | (controllers[0].l << 5) | (controllers[0].r << 4);
-                ram1_regs[CPU_REG_STDCTRL1H] = (controllers[0].b << 7) | (controllers[0].y << 6) | (controllers[0].select << 5) | (controllers[0].start << 4);
-                ram1_regs[CPU_REG_STDCTRL1H] |= (controllers[0].up << 3) | (controllers[0].down << 2) | (controllers[0].left << 1) | (controllers[0].right);
+                ram1_regs[CPU_MEM_REG_STDCTRL1L] = (controllers[0].a << 7) | (controllers[0].x << 6) | (controllers[0].l << 5) | (controllers[0].r << 4);
+                ram1_regs[CPU_MEM_REG_STDCTRL1H] = (controllers[0].b << 7) | (controllers[0].y << 6) | (controllers[0].select << 5) | (controllers[0].start << 4);
+                ram1_regs[CPU_MEM_REG_STDCTRL1H] |= (controllers[0].up << 3) | (controllers[0].down << 2) | (controllers[0].left << 1) | (controllers[0].right);
 
 //                ram1_regs[CPU_REG_STDCTRL2L] = ram1_regs[CPU_REG_STDCTRL1L];
 //                ram1_regs[CPU_REG_STDCTRL2H] = ram1_regs[CPU_REG_STDCTRL1H];

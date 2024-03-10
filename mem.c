@@ -11,7 +11,7 @@
 #include "apu.h"
 #include "thrd.h"
 
-// struct mem_write_t cpu_reg_writes[CPU_REGS_END - CPU_REGS_START] = {
+// struct mem_write_t cpu_reg_writes[CPU_MEM_REGS_END - CPU_MEM_REGS_START] = {
 
 // };
 
@@ -227,22 +227,22 @@ void init_mem()
     mem_reg_funcs[PPU_REG_STAT78].read = stat78_read;
 
 
-    mem_reg_funcs[CPU_REG_MDMAEN].write = mdmaen_write;
-    mem_reg_funcs[CPU_REG_HDMAEN].write = hdmaen_write;
-    mem_reg_funcs[CPU_REG_JOYA].write = ctrl_write;
-    mem_reg_funcs[CPU_REG_NMITIMEN].write = nmitimen_write;
-    mem_reg_funcs[CPU_REG_HTIMEL].write = vhtime_write;
-    mem_reg_funcs[CPU_REG_HTIMEH].write = vhtime_write;
-    mem_reg_funcs[CPU_REG_VTIMEL].write = vhtime_write;
-    mem_reg_funcs[CPU_REG_VTIMEH].write = vhtime_write;
-    mem_reg_funcs[CPU_REG_WRMPYB].write = wrmpyb_write;
-    mem_reg_funcs[CPU_REG_WRDIVB].write = wrdivb_write;
+    mem_reg_funcs[CPU_MEM_REG_MDMAEN].write = mdmaen_write;
+    mem_reg_funcs[CPU_MEM_REG_HDMAEN].write = hdmaen_write;
+    mem_reg_funcs[CPU_MEM_REG_JOYA].write = ctrl_write;
+    mem_reg_funcs[CPU_MEM_REG_NMITIMEN].write = nmitimen_write;
+    mem_reg_funcs[CPU_MEM_REG_HTIMEL].write = vhtime_write;
+    mem_reg_funcs[CPU_MEM_REG_HTIMEH].write = vhtime_write;
+    mem_reg_funcs[CPU_MEM_REG_VTIMEL].write = vhtime_write;
+    mem_reg_funcs[CPU_MEM_REG_VTIMEH].write = vhtime_write;
+    mem_reg_funcs[CPU_MEM_REG_WRMPYB].write = wrmpyb_write;
+    mem_reg_funcs[CPU_MEM_REG_WRDIVB].write = wrdivb_write;
 
-    mem_reg_funcs[CPU_REG_JOYA].read = ctrl_read;
-    mem_reg_funcs[CPU_REG_JOYB].read = ctrl_read;
-    mem_reg_funcs[CPU_REG_TIMEUP].read = timeup_read;
-    mem_reg_funcs[CPU_REG_RDNMI].read = rdnmi_read;
-    mem_reg_funcs[CPU_REG_HVBJOY].read = hvbjoy_read;
+    mem_reg_funcs[CPU_MEM_REG_JOYA].read = ctrl_read;
+    mem_reg_funcs[CPU_MEM_REG_JOYB].read = ctrl_read;
+    mem_reg_funcs[CPU_MEM_REG_TIMEUP].read = timeup_read;
+    mem_reg_funcs[CPU_MEM_REG_RDNMI].read = rdnmi_read;
+    mem_reg_funcs[CPU_MEM_REG_HVBJOY].read = hvbjoy_read;
 
     mem_reg_funcs[APU_REG_IO0].write = apuio_write;
     mem_reg_funcs[APU_REG_IO1].write = apuio_write;

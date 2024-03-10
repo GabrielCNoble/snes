@@ -1235,7 +1235,7 @@ uint32_t step_ppu(int32_t cycle_count)
         step_count--;
         uint32_t dot_length = ppu_dot_length[(hcounter == 323 || hcounter == 327) && (vcounter != 240 || !(ram1_regs[PPU_REG_STAT78] & PPU_STAT78_FLAG_FIELD))];
         
-        if(!(ram1_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK) && !(ram1_regs[CPU_REG_HVBJOY] & CPU_HVBJOY_FLAG_VBLANK))
+        if(!(ram1_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK) && !(ram1_regs[CPU_MEM_REG_HVBJOY] & CPU_HVBJOY_FLAG_VBLANK))
         {
             uint32_t next_sprite_step = PPU_SPRITE_STEP_NONE;
             if(hcounter <= 255)
@@ -1365,8 +1365,8 @@ uint32_t step_ppu(int32_t cycle_count)
             {
                 if(hcounter == 0)
                 {
-                    ram1_regs[CPU_REG_HVBJOY] &= ~CPU_HVBJOY_FLAG_VBLANK;
-                    ram1_regs[CPU_REG_RDNMI] &= ~CPU_RDNMI_BLANK_NMI;
+                    ram1_regs[CPU_MEM_REG_HVBJOY] &= ~CPU_HVBJOY_FLAG_VBLANK;
+                    ram1_regs[CPU_MEM_REG_RDNMI] &= ~CPU_RDNMI_BLANK_NMI;
                     ram1_regs[PPU_REG_STAT77] &= ~(PPU_STAT77_FLAG_33_RANGE_OVER | PPU_STAT77_FLAG_35_TIME_OVER);
                 }
             }
@@ -1376,15 +1376,15 @@ uint32_t step_ppu(int32_t cycle_count)
                 {
                     if(hcounter == 0)
                     {
-                        if(!(ram1_regs[CPU_REG_HVBJOY] & CPU_HVBJOY_FLAG_VBLANK))
+                        if(!(ram1_regs[CPU_MEM_REG_HVBJOY] & CPU_HVBJOY_FLAG_VBLANK))
                         {
                             entered_vblank = 1;
-                            ram1_regs[CPU_REG_RDNMI] |= CPU_RDNMI_BLANK_NMI;
+                            ram1_regs[CPU_MEM_REG_RDNMI] |= CPU_RDNMI_BLANK_NMI;
                         }
 
-                        ram1_regs[CPU_REG_HVBJOY] |= CPU_HVBJOY_FLAG_VBLANK;
+                        ram1_regs[CPU_MEM_REG_HVBJOY] |= CPU_HVBJOY_FLAG_VBLANK;
                         
-                        if(ram1_regs[CPU_REG_NMITIMEN] & CPU_NMITIMEN_FLAG_NMI_ENABLE)
+                        if(ram1_regs[CPU_MEM_REG_NMITIMEN] & CPU_NMITIMEN_FLAG_NMI_ENABLE)
                         {
                             assert_nmi(2);
                             deassert_nmi(2);
@@ -1399,7 +1399,7 @@ uint32_t step_ppu(int32_t cycle_count)
 
             if(hcounter == PPU_HBLANK_END_DOT)
             {
-                ram1_regs[CPU_REG_HVBJOY] &= ~CPU_HVBJOY_FLAG_HBLANK;
+                ram1_regs[CPU_MEM_REG_HVBJOY] &= ~CPU_HVBJOY_FLAG_HBLANK;
 
                 if(vcounter == 0)
                 {
@@ -1408,14 +1408,14 @@ uint32_t step_ppu(int32_t cycle_count)
             }
             else if(hcounter == PPU_HBLANK_START_DOT)
             {
-                ram1_regs[CPU_REG_HVBJOY] |= CPU_HVBJOY_FLAG_HBLANK;
+                ram1_regs[CPU_MEM_REG_HVBJOY] |= CPU_HVBJOY_FLAG_HBLANK;
             }
 
             if(!cur_irq_counter)
             {
-                if(ram1_regs[CPU_REG_NMITIMEN] & (CPU_NMITIMEN_FLAG_HTIMER_EN | CPU_NMITIMEN_FLAG_VTIMER_EN))
+                if(ram1_regs[CPU_MEM_REG_NMITIMEN] & (CPU_NMITIMEN_FLAG_HTIMER_EN | CPU_NMITIMEN_FLAG_VTIMER_EN))
                 {
-                    ram1_regs[CPU_REG_TIMEUP] |= 1 << 7;
+                    ram1_regs[CPU_MEM_REG_TIMEUP] |= 1 << 7;
                     irq_triggered = 1;
                     irq_hold_timer = 8;
                 }
@@ -1426,10 +1426,10 @@ uint32_t step_ppu(int32_t cycle_count)
             if(irq_hold_timer > 0)
             {
                 irq_hold_timer -= cycle_count;
-                ram1_regs[CPU_REG_TIMEUP] |= 1 << 7;
+                ram1_regs[CPU_MEM_REG_TIMEUP] |= 1 << 7;
             }
 
-            uint8_t hvbjoy = ram1_regs[CPU_REG_HVBJOY];
+            uint8_t hvbjoy = ram1_regs[CPU_MEM_REG_HVBJOY];
 
             if(vcounter >= PPU_DRAW_START_LINE && vcounter < last_draw_scanline && hcounter >= PPU_DRAW_START_DOT && hcounter <= PPU_DRAW_END_DOT)
             {
@@ -1566,7 +1566,7 @@ uint32_t step_ppu(int32_t cycle_count)
 // {
 //    printf("===================== PPU ========================\n");
 //    printf("current dot: (H: %d, V: %d)\n", hcounter, vcounter);
-//    printf("v-blank: %d -- h-blank: %d\n", (ram1_regs[CPU_REG_HVBJOY] & CPU_HVBJOY_FLAG_VBLANK) && 1, (ram1_regs[CPU_REG_HVBJOY] & CPU_HVBJOY_FLAG_HBLANK) && 1);
+//    printf("v-blank: %d -- h-blank: %d\n", (ram1_regs[CPU_MEM_REG_HVBJOY] & CPU_HVBJOY_FLAG_VBLANK) && 1, (ram1_regs[CPU_MEM_REG_HVBJOY] & CPU_HVBJOY_FLAG_HBLANK) && 1);
 //    printf("--------------------------------------------------\n");
 //    printf("BG Mode: Mode %d\n", ram1_regs[PPU_REG_BGMODE] & PPU_BGMODE_MODE_MASK);
 //    printf("\n");
@@ -1681,7 +1681,7 @@ void oamadd_write(uint32_t effective_address, uint8_t value)
     uint32_t reg = effective_address & 0xffff;
     ram1_regs[reg] = value;
 
-    if((ram1_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK) || (ram1_regs[CPU_REG_HVBJOY] & CPU_HVBJOY_FLAG_VBLANK))
+    if((ram1_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK) || (ram1_regs[CPU_MEM_REG_HVBJOY] & CPU_HVBJOY_FLAG_VBLANK))
     {
         ppu_ReloadOamAddrReg();
     }
@@ -1725,7 +1725,7 @@ uint8_t opct_read(uint32_t effective_address)
 
 void oamdataw_write(uint32_t effective_address, uint8_t value)
 {
-    // if(!(ram1_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK) && !(ram1_regs[CPU_REG_HVBJOY] & CPU_HVBJOY_FLAG_VBLANK))
+    // if(!(ram1_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK) && !(ram1_regs[CPU_MEM_REG_HVBJOY] & CPU_HVBJOY_FLAG_VBLANK))
     // {
     //     printf("write to oam ignored\n");
     //     return;
@@ -1751,7 +1751,7 @@ void oamdataw_write(uint32_t effective_address, uint8_t value)
     // printf("write %x to %d\n", value, ppu_reg_oam_addr >> 1);
 
     if(((ram1_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK) || 
-        (ram1_regs[CPU_REG_HVBJOY] & CPU_HVBJOY_FLAG_VBLANK)) &&
+        (ram1_regs[CPU_MEM_REG_HVBJOY] & CPU_HVBJOY_FLAG_VBLANK)) &&
          ppu_oam_lsb_toggle)
     {
         ppu_reg_oam_addr = (ppu_reg_oam_addr + 2) % PPU_OAM_SIZE;
@@ -1776,7 +1776,7 @@ uint8_t oamdatar_read(uint32_t effective_address)
     ppu1_last_bus_value = oam.bytes[ppu_reg_oam_addr + ppu_oam_lsb_toggle];
 
     if(((ram1_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK) || 
-        (ram1_regs[CPU_REG_HVBJOY] & (CPU_HVBJOY_FLAG_VBLANK | CPU_HVBJOY_FLAG_HBLANK))) &&
+        (ram1_regs[CPU_MEM_REG_HVBJOY] & (CPU_HVBJOY_FLAG_VBLANK | CPU_HVBJOY_FLAG_HBLANK))) &&
         ppu_oam_lsb_toggle)
     {
         ppu_reg_oam_addr = (ppu_reg_oam_addr + 2) % PPU_OAM_SIZE;
@@ -2147,7 +2147,7 @@ void vmdataw_write(uint32_t effective_address, uint8_t value)
     uint32_t write_addr = (vram_addr << 1) | reg == PPU_REG_VMDATAWH;
     uint32_t increment_shift = vmadd_increment_shifts[ram1_regs[PPU_REG_VMAINC] & 0x3];
 
-    if((ram1_regs[CPU_REG_HVBJOY] & CPU_HVBJOY_FLAG_VBLANK) || (ram1_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK))
+    if((ram1_regs[CPU_MEM_REG_HVBJOY] & CPU_HVBJOY_FLAG_VBLANK) || (ram1_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK))
     {
         if(emu_vram_breakpoint_bitmask[write_addr >> 2] & (EMU_BREAKPOINT_FLAG_WRITE << ((write_addr & 0x3) << 1)))
         {
@@ -2251,7 +2251,7 @@ uint8_t cgadd_read(uint32_t effective_address)
 
 void cgdataw_write(uint32_t effective_address, uint8_t value)
 {
-    if((ram1_regs[CPU_REG_HVBJOY] & (CPU_HVBJOY_FLAG_HBLANK | CPU_HVBJOY_FLAG_VBLANK)) || 
+    if((ram1_regs[CPU_MEM_REG_HVBJOY] & (CPU_HVBJOY_FLAG_HBLANK | CPU_HVBJOY_FLAG_VBLANK)) || 
        (ram1_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK))
     {
 
@@ -2514,7 +2514,7 @@ uint8_t cgdatar_read(uint32_t effective_address)
     value = ppu_cgram[ppu_reg_cgram_addr + ppu_cgram_lsb_toggle];
 
     if(((ram1_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK) || 
-        (ram1_regs[CPU_REG_HVBJOY] & (CPU_HVBJOY_FLAG_VBLANK | CPU_HVBJOY_FLAG_HBLANK))) &&
+        (ram1_regs[CPU_MEM_REG_HVBJOY] & (CPU_HVBJOY_FLAG_VBLANK | CPU_HVBJOY_FLAG_HBLANK))) &&
         ppu_cgram_lsb_toggle)
     {
         ppu_reg_cgram_addr = (ppu_reg_cgram_addr + 2) % PPU_CGRAM_SIZE;
@@ -2530,7 +2530,7 @@ uint8_t cgdatar_read(uint32_t effective_address)
 
     ppu_cgram_lsb_toggle = !ppu_cgram_lsb_toggle;
 
-    // if((ram1_regs[CPU_REG_HVBJOY] & (CPU_HVBJOY_FLAG_HBLANK | CPU_HVBJOY_FLAG_VBLANK)) || 
+    // if((ram1_regs[CPU_MEM_REG_HVBJOY] & (CPU_HVBJOY_FLAG_HBLANK | CPU_HVBJOY_FLAG_VBLANK)) || 
     //    (ram1_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK))
     // {
     //     // value = ppu_cgram[ppu_reg_cgram_addr];
@@ -2596,7 +2596,7 @@ uint8_t vmdatar_read(uint32_t effective_address)
     uint32_t read_addr = (vram_addr << 1) | reg == PPU_REG_VMDATARH;
     uint32_t increment_shift = vmadd_increment_shifts[ram1_regs[PPU_REG_VMAINC] & 0x3];
 
-    if((ram1_regs[CPU_REG_HVBJOY] & (CPU_HVBJOY_FLAG_VBLANK | CPU_HVBJOY_FLAG_HBLANK)) || 
+    if((ram1_regs[CPU_MEM_REG_HVBJOY] & (CPU_HVBJOY_FLAG_VBLANK | CPU_HVBJOY_FLAG_HBLANK)) || 
        (ram1_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK))
     {
         ppu1_last_bus_value = vram_prefetch[reg == PPU_REG_VMDATARH];
@@ -2628,10 +2628,10 @@ uint8_t vmdatar_read(uint32_t effective_address)
 
 void update_irq_counter()
 {
-    uint16_t vtimer = (uint16_t)ram1_regs[CPU_REG_VTIMEL] | ((uint16_t)ram1_regs[CPU_REG_VTIMEH] << 8);
-    uint16_t htimer = (uint16_t)ram1_regs[CPU_REG_HTIMEL] | ((uint16_t)ram1_regs[CPU_REG_HTIMEH] << 8);
+    uint16_t vtimer = (uint16_t)ram1_regs[CPU_MEM_REG_VTIMEL] | ((uint16_t)ram1_regs[CPU_MEM_REG_VTIMEH] << 8);
+    uint16_t htimer = (uint16_t)ram1_regs[CPU_MEM_REG_HTIMEL] | ((uint16_t)ram1_regs[CPU_MEM_REG_HTIMEH] << 8);
 
-    switch(ram1_regs[CPU_REG_NMITIMEN] & (CPU_NMITIMEN_FLAG_HTIMER_EN | CPU_NMITIMEN_FLAG_VTIMER_EN))
+    switch(ram1_regs[CPU_MEM_REG_NMITIMEN] & (CPU_NMITIMEN_FLAG_HTIMER_EN | CPU_NMITIMEN_FLAG_VTIMER_EN))
     {
         case CPU_NMITIMEN_FLAG_HTIMER_EN:
             irq_counter_reload = SCANLINE_DOT_LENGTH;

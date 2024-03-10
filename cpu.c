@@ -19,19 +19,19 @@ struct cpu_state_t cpu_state = {
 //    .in_abortb = 1,
 //    .in_nmib = 1,
     .regs = (struct reg_t []) {
-        [REG_ACCUM]         = { .flag = STATUS_FLAG_M },
-        [REG_X]             = { .flag = STATUS_FLAG_X },
-        [REG_Y]             = { .flag = STATUS_FLAG_X },
-        [REG_D]             = { },
-        [REG_S]             = { },
-        [REG_PBR]           = { },
-        [REG_DBR]           = { },
-        [REG_INST]          = { },
-        [REG_PC]            = { },
-        // [REG_P]             = { .flag = 0x0000},
-        [REG_ADDR]          = { },
-        [REG_BANK]          = { },
-        [REG_ZERO]          = { },
+        [CPU_REG_ACCUM]         = { .flag = CPU_STATUS_FLAG_M },
+        [CPU_REG_X]             = { .flag = CPU_STATUS_FLAG_X },
+        [CPU_REG_Y]             = { .flag = CPU_STATUS_FLAG_X },
+        [CPU_REG_D]             = { },
+        [CPU_REG_S]             = { },
+        [CPU_REG_PBR]           = { },
+        [CPU_REG_DBR]           = { },
+        [CPU_REG_INST]          = { },
+        [CPU_REG_PC]            = { },
+        // [CPU_REG_P]             = { .flag = 0x0000},
+        [CPU_REG_ADDR]          = { },
+        [CPU_REG_BANK]          = { },
+        [CPU_REG_ZERO]          = { },
     },
 };
 
@@ -273,7 +273,7 @@ uint32_t unimplemented(uint32_t arg);
 
 struct inst_t fetch_inst = {
     .uops = {
-        MOV_LPC         (MOV_LSB, REG_INST),
+        MOV_LPC         (MOV_LSB, CPU_REG_INST),
         DECODE
     }
 };
@@ -284,291 +284,291 @@ struct inst_t instructions[] = {
     /*                                      ADC                                           */
     /**************************************************************************************/
 
-    [ADC_ABS] = {
+    [CPU_OPCODE_ADC_ABS] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_ADD, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
-    [ADC_ABS_X] = {
+    [CPU_OPCODE_ADC_ABS_X] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
-            SKIPC       (2, STATUS_FLAG_PAGE),
-            SKIPS       (1, STATUS_FLAG_X),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_NEXT),
+            SKIPC       (2, CPU_STATUS_FLAG_PAGE),
+            SKIPS       (1, CPU_STATUS_FLAG_X),
             IO          /* X=0 or page boundary */,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_ADD, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
-    [ADC_ABS_Y] = {
+    [CPU_OPCODE_ADC_ABS_Y] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
-            SKIPC       (2, STATUS_FLAG_PAGE),
-            SKIPS       (1, STATUS_FLAG_X),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (CPU_REG_Y, ADDR_OFF_BANK_NEXT),
+            SKIPC       (2, CPU_STATUS_FLAG_PAGE),
+            SKIPS       (1, CPU_STATUS_FLAG_X),
             IO          /* X=0 or page boundary */,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_ADD, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
-    [ADC_ABSL] = {
+    [CPU_OPCODE_ADC_ABSL] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_LPC     (MOV_LSB, REG_BANK),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_LSB, CPU_REG_BANK),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_ADD, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
-    [ADC_ABSL_X] = {
+    [CPU_OPCODE_ADC_ABSL_X] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_LPC     (MOV_LSB, REG_BANK),
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_LSB, CPU_REG_BANK),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_ADD, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
-    [ADC_DIR] = {
+    [CPU_OPCODE_ADC_DIR] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_ADD, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
-    [ADC_S_REL] = {
+    [CPU_OPCODE_ADC_S_REL] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_S, ADDR_OFF_BANK_WRAP),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            ADDR_OFFR   (CPU_REG_S, ADDR_OFF_BANK_WRAP),
             IO,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_ADD, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         },
     },
-    [ADC_DIR_X] = {
+    [CPU_OPCODE_ADC_DIR_X] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_WRAP),
             IO,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_ADD, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
-    [ADC_DIR_IND] = {
+    [CPU_OPCODE_ADC_DIR_IND] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_ADD, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
-    [ADC_DIR_INDL] = {
+    [CPU_OPCODE_ADC_DIR_INDL] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_BANK),
-            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_BANK),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_ADDR, MOV_RRW_WORD),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_ADD, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
-    [ADC_S_REL_IND_Y] = {
+    [CPU_OPCODE_ADC_S_REL_IND_Y] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
             IO,
-            ADDR_OFFR   (REG_S, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFR   (CPU_REG_S, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
             IO,
-            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFR   (CPU_REG_Y, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_ADD, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
 
         }
     },
 
-    [ADC_DIR_X_IND] = {
+    [CPU_OPCODE_ADC_DIR_X_IND] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_WRAP),
             IO,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_ADD, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
-    [ADC_DIR_IND_Y] = {
+    [CPU_OPCODE_ADC_DIR_IND_Y] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
-            SKIPS       (2, STATUS_FLAG_X),
-            SKIPC       (1, STATUS_FLAG_PAGE),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (CPU_REG_Y, ADDR_OFF_BANK_NEXT),
+            SKIPS       (2, CPU_STATUS_FLAG_X),
+            SKIPC       (1, CPU_STATUS_FLAG_PAGE),
             IO          /* X = 0 or page crossed */,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_ADD, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
-    [ADC_DIR_INDL_Y] = {
+    [CPU_OPCODE_ADC_DIR_INDL_Y] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_D, 0),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            ADDR_OFFR   (CPU_REG_D, 0),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_BANK),
-            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_BANK),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_ADDR, MOV_RRW_WORD),
+            ADDR_OFFR   (CPU_REG_Y, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_ADD, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
-    [ADC_IMM] = {
+    [CPU_OPCODE_ADC_IMM] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_TEMP),
-            SKIPS       (1, STATUS_FLAG_M),
-            MOV_LPC     (MOV_MSB, REG_TEMP),
-            ALU_OP      (ALU_OP_ADD, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_LPC     (MOV_LSB, CPU_REG_TEMP),
+            SKIPS       (1, CPU_STATUS_FLAG_M),
+            MOV_LPC     (MOV_MSB, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_ADD, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
@@ -576,291 +576,291 @@ struct inst_t instructions[] = {
     /*                                      AND                                           */
     /**************************************************************************************/
 
-    [AND_ABS] = {
+    [CPU_OPCODE_AND_ABS] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_AND, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_AND, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
-    [AND_ABS_X] = {
+    [CPU_OPCODE_AND_ABS_X] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
-            SKIPC       (2, STATUS_FLAG_PAGE),
-            SKIPS       (1, STATUS_FLAG_X),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_NEXT),
+            SKIPC       (2, CPU_STATUS_FLAG_PAGE),
+            SKIPS       (1, CPU_STATUS_FLAG_X),
             IO          /* X=0 or page boundary */,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_AND, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_AND, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
-    [AND_ABS_Y] = {
+    [CPU_OPCODE_AND_ABS_Y] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
-            SKIPC       (2, STATUS_FLAG_PAGE),
-            SKIPS       (1, STATUS_FLAG_X),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (CPU_REG_Y, ADDR_OFF_BANK_NEXT),
+            SKIPC       (2, CPU_STATUS_FLAG_PAGE),
+            SKIPS       (1, CPU_STATUS_FLAG_X),
             IO          /* X=0 or page boundary */,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_AND, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_AND, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
-    [AND_ABSL] = {
+    [CPU_OPCODE_AND_ABSL] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_LPC     (MOV_LSB, REG_BANK),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_LSB, CPU_REG_BANK),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_AND, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_AND, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
-    [AND_ABSL_X] = {
+    [CPU_OPCODE_AND_ABSL_X] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_LPC     (MOV_LSB, REG_BANK),
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_LSB, CPU_REG_BANK),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_AND, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_AND, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
-    [AND_DIR] = {
+    [CPU_OPCODE_AND_DIR] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_AND, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_AND, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
-    [AND_S_REL] = {
+    [CPU_OPCODE_AND_S_REL] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_S, ADDR_OFF_BANK_WRAP),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            ADDR_OFFR   (CPU_REG_S, ADDR_OFF_BANK_WRAP),
             IO,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ALU_OP      (ALU_OP_AND, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_AND, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         },
     },
-    [AND_DIR_X] = {
+    [CPU_OPCODE_AND_DIR_X] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_WRAP),
             IO,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ALU_OP      (ALU_OP_AND, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_AND, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
-    [AND_DIR_IND] = {
+    [CPU_OPCODE_AND_DIR_IND] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_AND, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_AND, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
-    [AND_DIR_INDL] = {
+    [CPU_OPCODE_AND_DIR_INDL] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_BANK),
-            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_BANK),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_ADDR, MOV_RRW_WORD),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_AND, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_AND, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
-    [AND_S_REL_IND_Y] = {
+    [CPU_OPCODE_AND_S_REL_IND_Y] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
             IO,
-            ADDR_OFFR   (REG_S, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFR   (CPU_REG_S, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
             IO,
-            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFR   (CPU_REG_Y, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_AND, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_AND, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
 
         }
     },
 
-    [AND_DIR_X_IND] = {
+    [CPU_OPCODE_AND_DIR_X_IND] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_WRAP),
             IO,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_AND, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_AND, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
-    [AND_DIR_IND_Y] = {
+    [CPU_OPCODE_AND_DIR_IND_Y] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, 0),
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFR   (CPU_REG_D, 0),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
-            SKIPS       (2, STATUS_FLAG_X),
-            SKIPC       (1, STATUS_FLAG_PAGE),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (CPU_REG_Y, ADDR_OFF_BANK_NEXT),
+            SKIPS       (2, CPU_STATUS_FLAG_X),
+            SKIPC       (1, CPU_STATUS_FLAG_PAGE),
             IO          /* X = 0 or page crossed */,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_AND, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_AND, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
-    [AND_DIR_INDL_Y] = {
+    [CPU_OPCODE_AND_DIR_INDL_Y] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_D, 0),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            ADDR_OFFR   (CPU_REG_D, 0),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_BANK),
-            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_BANK),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_ADDR, MOV_RRW_WORD),
+            ADDR_OFFR   (CPU_REG_Y, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_AND, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_AND, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
-    [AND_IMM] = {
+    [CPU_OPCODE_AND_IMM] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_TEMP),
-            SKIPS       (1, STATUS_FLAG_M),
-            MOV_LPC     (MOV_MSB, REG_TEMP),
-            ALU_OP      (ALU_OP_AND, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_LPC     (MOV_LSB, CPU_REG_TEMP),
+            SKIPS       (1, CPU_STATUS_FLAG_M),
+            MOV_LPC     (MOV_MSB, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_AND, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
@@ -868,96 +868,96 @@ struct inst_t instructions[] = {
     /*                                      ASL                                           */
     /**************************************************************************************/
 
-    [ASL_ABS] = {
+    [CPU_OPCODE_ASL_ABS] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             IO,
-            ALU_OP      (ALU_OP_SHL, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
-            // CHK_ZNW     (REG_TEMP, 0),
-            SKIPS       (2, STATUS_FLAG_M),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_SHL, CPU_STATUS_FLAG_M, CPU_REG_TEMP, CPU_REG_ZERO),
+            // CHK_ZNW     (CPU_REG_TEMP, 0),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_NEXT, ADDR_OFF_SIGNED),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_S       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
         }
     },
 
-    [ASL_ACC] = {
+    [CPU_OPCODE_ASL_ACC] = {
         .uops = {
             IO,
-            ALU_OP      (ALU_OP_SHL, STATUS_FLAG_M, REG_ACCUM, REG_ZERO),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            ALU_OP      (ALU_OP_SHL, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_ZERO),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
-    [ASL_ABS_X] = {
+    [CPU_OPCODE_ASL_ABS_X] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
             IO,
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_SHL, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
-            // CHK_ZNW     (REG_TEMP, 0),
-            SKIPS       (2, STATUS_FLAG_M),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_SHL, CPU_STATUS_FLAG_M, CPU_REG_TEMP, CPU_REG_ZERO),
+            // CHK_ZNW     (CPU_REG_TEMP, 0),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_S       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
         }
     },
 
-    [ASL_DIR] = {
+    [CPU_OPCODE_ASL_DIR] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             IO,
-            ALU_OP      (ALU_OP_SHL, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
-            // CHK_ZNW     (REG_TEMP, 0),
-            SKIPS       (2, STATUS_FLAG_M),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ALU_OP      (ALU_OP_SHL, CPU_STATUS_FLAG_M, CPU_REG_TEMP, CPU_REG_ZERO),
+            // CHK_ZNW     (CPU_REG_TEMP, 0),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
             ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_S       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
         }
     },
 
-    [ASL_DIR_X] = {
+    [CPU_OPCODE_ASL_DIR_X] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
             IO,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
             IO,
-            ALU_OP      (ALU_OP_SHL, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
-            // CHK_ZNW     (REG_TEMP, 0),
-            SKIPS       (2, STATUS_FLAG_M),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ALU_OP      (ALU_OP_SHL, CPU_STATUS_FLAG_M, CPU_REG_TEMP, CPU_REG_ZERO),
+            // CHK_ZNW     (CPU_REG_TEMP, 0),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
             ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_S       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
         }
     },
 
@@ -965,14 +965,14 @@ struct inst_t instructions[] = {
     /*                                      BCC                                           */
     /**************************************************************************************/
 
-    [BCC_PC_REL] = {
+    [CPU_OPCODE_BCC_PC_REL] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            SEXT        (REG_ADDR),
-            ADDR_OFFRS  (REG_PC, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
-            SKIPS       (2, STATUS_FLAG_C),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            SEXT        (CPU_REG_ADDR),
+            ADDR_OFFRS  (CPU_REG_PC, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
+            SKIPS       (2, CPU_STATUS_FLAG_C),
             IO          /* branch taken */,
-            MOV_RRW     (REG_ADDR, REG_PC, MOV_RRW_WORD),
+            MOV_RRW     (CPU_REG_ADDR, CPU_REG_PC, MOV_RRW_WORD),
         }
     },
 
@@ -980,14 +980,14 @@ struct inst_t instructions[] = {
     /*                                      BCS                                           */
     /**************************************************************************************/
 
-    [BCS_PC_REL] = {
+    [CPU_OPCODE_BCS_PC_REL] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            SEXT        (REG_ADDR),
-            ADDR_OFFRS  (REG_PC, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
-            SKIPC       (2, STATUS_FLAG_C),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            SEXT        (CPU_REG_ADDR),
+            ADDR_OFFRS  (CPU_REG_PC, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
+            SKIPC       (2, CPU_STATUS_FLAG_C),
             IO          /* branch taken */,
-            MOV_RRW     (REG_ADDR, REG_PC, MOV_RRW_WORD),
+            MOV_RRW     (CPU_REG_ADDR, CPU_REG_PC, MOV_RRW_WORD),
         }
     },
 
@@ -995,14 +995,14 @@ struct inst_t instructions[] = {
     /*                                      BEQ                                           */
     /**************************************************************************************/
 
-    [BEQ_PC_REL] = {
+    [CPU_OPCODE_BEQ_PC_REL] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            SEXT        (REG_ADDR),
-            ADDR_OFFRS  (REG_PC, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
-            SKIPC       (2, STATUS_FLAG_Z),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            SEXT        (CPU_REG_ADDR),
+            ADDR_OFFRS  (CPU_REG_PC, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
+            SKIPC       (2, CPU_STATUS_FLAG_Z),
             IO          /* branch taken */,
-            MOV_RRW     (REG_ADDR, REG_PC, 0),
+            MOV_RRW     (CPU_REG_ADDR, CPU_REG_PC, 0),
         }
     },
 
@@ -1010,75 +1010,75 @@ struct inst_t instructions[] = {
     /*                                      BIT                                           */
     /**************************************************************************************/
 
-    [BIT_ABS] = {
+    [CPU_OPCODE_BIT_ABS] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_BIT, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_BIT, CPU_STATUS_FLAG_M, CPU_REG_TEMP, CPU_REG_ZERO),
         }
     },
 
-    [BIT_ABS_X] = {
+    [CPU_OPCODE_BIT_ABS_X] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
-            SKIPC       (2, STATUS_FLAG_PAGE),
-            SKIPS       (1, STATUS_FLAG_X),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_NEXT),
+            SKIPC       (2, CPU_STATUS_FLAG_PAGE),
+            SKIPS       (1, CPU_STATUS_FLAG_X),
             IO          /* X=0 or page boundary */,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_BIT, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_BIT, CPU_STATUS_FLAG_M, CPU_REG_TEMP, CPU_REG_ZERO),
         }
     },
 
-    [BIT_DIR] = {
+    [CPU_OPCODE_BIT_DIR] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_BIT, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_BIT, CPU_STATUS_FLAG_M, CPU_REG_TEMP, CPU_REG_ZERO),
         }
     },
 
-    [BIT_DIR_X] = {
+    [CPU_OPCODE_BIT_DIR_X] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_WRAP),
             IO,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ALU_OP      (ALU_OP_BIT, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_BIT, CPU_STATUS_FLAG_M, CPU_REG_TEMP, CPU_REG_ZERO),
         }
     },
 
-    [BIT_IMM] = {
+    [CPU_OPCODE_BIT_IMM] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_TEMP),
-            SKIPS       (1, STATUS_FLAG_M),
-            MOV_LPC     (MOV_MSB, REG_TEMP),
-            ALU_OP      (ALU_OP_BIT_IMM, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
+            MOV_LPC     (MOV_LSB, CPU_REG_TEMP),
+            SKIPS       (1, CPU_STATUS_FLAG_M),
+            MOV_LPC     (MOV_MSB, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_BIT_IMM, CPU_STATUS_FLAG_M, CPU_REG_TEMP, CPU_REG_ZERO),
         }
     },
 
@@ -1086,14 +1086,14 @@ struct inst_t instructions[] = {
     /*                                      BMI                                           */
     /**************************************************************************************/
 
-    [BMI_PC_REL] = {
+    [CPU_OPCODE_BMI_PC_REL] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            SEXT        (REG_ADDR),
-            ADDR_OFFRS  (REG_PC, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
-            SKIPC       (2, STATUS_FLAG_N),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            SEXT        (CPU_REG_ADDR),
+            ADDR_OFFRS  (CPU_REG_PC, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
+            SKIPC       (2, CPU_STATUS_FLAG_N),
             IO          /* branch taken */,
-            MOV_RRW     (REG_ADDR, REG_PC, MOV_RRW_WORD),
+            MOV_RRW     (CPU_REG_ADDR, CPU_REG_PC, MOV_RRW_WORD),
         }
     },
 
@@ -1101,14 +1101,14 @@ struct inst_t instructions[] = {
     /*                                      BNE                                           */
     /**************************************************************************************/
 
-    [BNE_PC_REL] = {
+    [CPU_OPCODE_BNE_PC_REL] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            SEXT        (REG_ADDR),
-            ADDR_OFFRS  (REG_PC, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
-            SKIPS       (2, STATUS_FLAG_Z),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            SEXT        (CPU_REG_ADDR),
+            ADDR_OFFRS  (CPU_REG_PC, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
+            SKIPS       (2, CPU_STATUS_FLAG_Z),
             IO          /* branch taken */,
-            MOV_RRW     (REG_ADDR, REG_PC, MOV_RRW_WORD),
+            MOV_RRW     (CPU_REG_ADDR, CPU_REG_PC, MOV_RRW_WORD),
         }
     },
 
@@ -1116,14 +1116,14 @@ struct inst_t instructions[] = {
     /*                                      BPL                                           */
     /**************************************************************************************/
 
-    [BPL_PC_REL] = {
+    [CPU_OPCODE_BPL_PC_REL] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            SEXT        (REG_ADDR),
-            ADDR_OFFRS  (REG_PC, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
-            SKIPS       (2, STATUS_FLAG_N),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            SEXT        (CPU_REG_ADDR),
+            ADDR_OFFRS  (CPU_REG_PC, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
+            SKIPS       (2, CPU_STATUS_FLAG_N),
             IO          /* branch taken */,
-            MOV_RRW     (REG_ADDR, REG_PC, MOV_RRW_WORD),
+            MOV_RRW     (CPU_REG_ADDR, CPU_REG_PC, MOV_RRW_WORD),
         }
     },
 
@@ -1131,13 +1131,13 @@ struct inst_t instructions[] = {
     /*                                      BRA                                           */
     /**************************************************************************************/
 
-    [BRA_PC_REL] = {
+    [CPU_OPCODE_BRA_PC_REL] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            SEXT        (REG_ADDR),
-            ADDR_OFFRS  (REG_PC, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            SEXT        (CPU_REG_ADDR),
+            ADDR_OFFRS  (CPU_REG_PC, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
             IO          /* branch taken */,
-            MOV_RRW     (REG_ADDR, REG_PC, MOV_RRW_WORD),
+            MOV_RRW     (CPU_REG_ADDR, CPU_REG_PC, MOV_RRW_WORD),
         }
     },
 
@@ -1145,40 +1145,40 @@ struct inst_t instructions[] = {
     /*                                      BRK                                           */
     /**************************************************************************************/
 
-    [BRK_S] = {
+    [CPU_OPCODE_BRK_S] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_TEMP),
+            MOV_LPC     (MOV_LSB, CPU_REG_TEMP),
             /* this sets the B flag in the status register (when in emulation
-            mode) and also loads the appropriate interrupt vector into REG_ADDR */
+            mode) and also loads the appropriate interrupt vector into CPU_REG_ADDR */
             BRK,
 
             /* when in native mode... */
-            SKIPS       (2, STATUS_FLAG_E),
+            SKIPS       (2, CPU_STATUS_FLAG_E),
             /* the program bank register gets pushed onto the stack */
-            MOV_S       (MOV_LSB, REG_S, REG_ZERO, REG_PBR),
+            MOV_S       (MOV_LSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_PBR),
             DECS,
 
-            MOV_S       (MOV_MSB, REG_S, REG_ZERO, REG_PC),
+            MOV_S       (MOV_MSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_PC),
             DECS,
-            MOV_S       (MOV_LSB, REG_S, REG_ZERO, REG_PC),
+            MOV_S       (MOV_LSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_PC),
             DECS,
-            MOV_P       (REG_P, REG_TEMP),
-            MOV_S       (MOV_LSB, REG_S, REG_ZERO, REG_TEMP),
+            MOV_P       (CPU_REG_P, CPU_REG_TEMP),
+            MOV_S       (MOV_LSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_TEMP),
             DECS,
 
-            SET_P       (STATUS_FLAG_I),
+            SET_P       (CPU_STATUS_FLAG_I),
 
             /* when in native mode... */
-            SKIPS       (1, STATUS_FLAG_E),
+            SKIPS       (1, CPU_STATUS_FLAG_E),
             /* the D flag gets cleared */
-            CLR_P       (STATUS_FLAG_D),
+            CLR_P       (CPU_STATUS_FLAG_D),
 
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            MOV_RRW     (REG_TEMP, REG_PC, MOV_RRW_WORD),
-            MOV_RRW     (REG_ZERO, REG_PBR, MOV_RRW_BYTE),
-            // MOV_LPC     (MOV_LSB, REG_INST),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_PC, MOV_RRW_WORD),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_PBR, MOV_RRW_BYTE),
+            // MOV_LPC     (MOV_LSB, CPU_REG_INST),
             // DECODE
         }
     },
@@ -1187,13 +1187,13 @@ struct inst_t instructions[] = {
     /*                                      BRL                                           */
     /**************************************************************************************/
 
-    [BRL_PC_RELL] = {
+    [CPU_OPCODE_BRL_PC_RELL] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            ADDR_OFFR   (REG_PC, ADDR_OFF_BANK_WRAP),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            ADDR_OFFR   (CPU_REG_PC, ADDR_OFF_BANK_WRAP),
             IO          /* branch taken */,
-            MOV_RRW     (REG_ADDR, REG_PC, MOV_RRW_WORD),
+            MOV_RRW     (CPU_REG_ADDR, CPU_REG_PC, MOV_RRW_WORD),
         }
     },
 
@@ -1201,14 +1201,14 @@ struct inst_t instructions[] = {
     /*                                      BVC                                           */
     /**************************************************************************************/
 
-    [BVC_PC_REL] = {
+    [CPU_OPCODE_BVC_PC_REL] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            SEXT        (REG_ADDR),
-            ADDR_OFFRS  (REG_PC, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
-            SKIPS       (2, STATUS_FLAG_V),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            SEXT        (CPU_REG_ADDR),
+            ADDR_OFFRS  (CPU_REG_PC, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
+            SKIPS       (2, CPU_STATUS_FLAG_V),
             IO          /* branch taken */,
-            MOV_RRW     (REG_ADDR, REG_PC, MOV_RRW_WORD),
+            MOV_RRW     (CPU_REG_ADDR, CPU_REG_PC, MOV_RRW_WORD),
         }
     },
 
@@ -1216,14 +1216,14 @@ struct inst_t instructions[] = {
     /*                                      BVS                                           */
     /**************************************************************************************/
 
-    [BVS_PC_REL] = {
+    [CPU_OPCODE_BVS_PC_REL] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            SEXT        (REG_ADDR),
-            ADDR_OFFRS  (REG_PC, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
-            SKIPC       (2, STATUS_FLAG_V),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            SEXT        (CPU_REG_ADDR),
+            ADDR_OFFRS  (CPU_REG_PC, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
+            SKIPC       (2, CPU_STATUS_FLAG_V),
             IO          /* branch taken */,
-            MOV_RRW     (REG_ADDR, REG_PC, MOV_RRW_WORD),
+            MOV_RRW     (CPU_REG_ADDR, CPU_REG_PC, MOV_RRW_WORD),
         }
     },
 
@@ -1231,10 +1231,10 @@ struct inst_t instructions[] = {
     /*                                      CLC                                           */
     /**************************************************************************************/
 
-    [CLC_IMP] = {
+    [CPU_OPCODE_CLC_IMP] = {
         .uops = {
             IO,
-            CLR_P       (STATUS_FLAG_C)
+            CLR_P       (CPU_STATUS_FLAG_C)
         }
     },
 
@@ -1242,10 +1242,10 @@ struct inst_t instructions[] = {
     /*                                      CLD                                           */
     /**************************************************************************************/
 
-    [CLD_IMP] = {
+    [CPU_OPCODE_CLD_IMP] = {
         .uops = {
             IO,
-            CLR_P       (STATUS_FLAG_D)
+            CLR_P       (CPU_STATUS_FLAG_D)
         }
     },
 
@@ -1253,10 +1253,10 @@ struct inst_t instructions[] = {
     /*                                      CLI                                           */
     /**************************************************************************************/
 
-    [CLI_IMP] = {
+    [CPU_OPCODE_CLI_IMP] = {
         .uops = {
             IO,
-            CLR_P       (STATUS_FLAG_I)
+            CLR_P       (CPU_STATUS_FLAG_I)
         }
     },
 
@@ -1264,10 +1264,10 @@ struct inst_t instructions[] = {
     /*                                      CLV                                           */
     /**************************************************************************************/
 
-    [CLV_IMP] = {
+    [CPU_OPCODE_CLV_IMP] = {
         .uops = {
             IO,
-            CLR_P       (STATUS_FLAG_V)
+            CLR_P       (CPU_STATUS_FLAG_V)
         }
     },
 
@@ -1275,276 +1275,276 @@ struct inst_t instructions[] = {
     /*                                      CMP                                           */
     /**************************************************************************************/
 
-    [CMP_ABS] = {
+    [CPU_OPCODE_CMP_ABS] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_CMP, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            // CHK_ZNW     (REG_TEMP, 0),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_CMP, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            // CHK_ZNW     (CPU_REG_TEMP, 0),
         }
     },
-    [CMP_ABS_X] = {
+    [CPU_OPCODE_CMP_ABS_X] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
-            SKIPC       (2, STATUS_FLAG_PAGE),
-            SKIPS       (1, STATUS_FLAG_X),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_NEXT),
+            SKIPC       (2, CPU_STATUS_FLAG_PAGE),
+            SKIPS       (1, CPU_STATUS_FLAG_X),
             IO          /* X=0 or page boundary */,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_CMP, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            // CHK_ZNW     (REG_TEMP, 0),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_CMP, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            // CHK_ZNW     (CPU_REG_TEMP, 0),
         }
     },
-    [CMP_ABS_Y] = {
+    [CPU_OPCODE_CMP_ABS_Y] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
-            SKIPC       (2, STATUS_FLAG_PAGE),
-            SKIPS       (1, STATUS_FLAG_X),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (CPU_REG_Y, ADDR_OFF_BANK_NEXT),
+            SKIPC       (2, CPU_STATUS_FLAG_PAGE),
+            SKIPS       (1, CPU_STATUS_FLAG_X),
             IO          /* X=0 or page boundary */,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_CMP, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            // CHK_ZNW     (REG_TEMP, 0),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_CMP, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            // CHK_ZNW     (CPU_REG_TEMP, 0),
         }
     },
-    [CMP_ABSL] = {
+    [CPU_OPCODE_CMP_ABSL] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_LPC     (MOV_LSB, REG_BANK),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_LSB, CPU_REG_BANK),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_CMP, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            // CHK_ZNW     (REG_TEMP, 0),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_CMP, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            // CHK_ZNW     (CPU_REG_TEMP, 0),
         }
     },
-    [CMP_ABSL_X] = {
+    [CPU_OPCODE_CMP_ABSL_X] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_LPC     (MOV_LSB, REG_BANK),
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_LSB, CPU_REG_BANK),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_CMP, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            // CHK_ZNW     (REG_TEMP, 0),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_CMP, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            // CHK_ZNW     (CPU_REG_TEMP, 0),
         }
     },
-    [CMP_DIR] = {
+    [CPU_OPCODE_CMP_DIR] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_CMP, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            // CHK_ZNW     (REG_TEMP, 0),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_CMP, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            // CHK_ZNW     (CPU_REG_TEMP, 0),
         }
     },
-    [CMP_S_REL] = {
+    [CPU_OPCODE_CMP_S_REL] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_S, ADDR_OFF_BANK_WRAP),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            ADDR_OFFR   (CPU_REG_S, ADDR_OFF_BANK_WRAP),
             IO,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ALU_OP      (ALU_OP_CMP, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            // CHK_ZNW     (REG_TEMP, 0),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_CMP, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            // CHK_ZNW     (CPU_REG_TEMP, 0),
         },
     },
-    [CMP_DIR_X] = {
+    [CPU_OPCODE_CMP_DIR_X] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_WRAP),
             IO,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ALU_OP      (ALU_OP_CMP, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            // CHK_ZNW     (REG_TEMP, 0),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_CMP, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            // CHK_ZNW     (CPU_REG_TEMP, 0),
         }
     },
 
-    [CMP_DIR_IND] = {
+    [CPU_OPCODE_CMP_DIR_IND] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_CMP, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            // CHK_ZNW     (REG_TEMP, 0),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_CMP, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            // CHK_ZNW     (CPU_REG_TEMP, 0),
         }
     },
 
-    [CMP_DIR_INDL] = {
+    [CPU_OPCODE_CMP_DIR_INDL] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_BANK),
-            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_BANK),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_ADDR, MOV_RRW_WORD),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_CMP, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            // CHK_ZNW     (REG_TEMP, 0),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_CMP, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            // CHK_ZNW     (CPU_REG_TEMP, 0),
         }
     },
 
-    [CMP_S_REL_IND_Y] = {
+    [CPU_OPCODE_CMP_S_REL_IND_Y] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
             IO,
-            ADDR_OFFR   (REG_S, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFR   (CPU_REG_S, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
             IO,
-            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFR   (CPU_REG_Y, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_CMP, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            // CHK_ZNW     (REG_TEMP, 0),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_CMP, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            // CHK_ZNW     (CPU_REG_TEMP, 0),
         }
     },
 
-    [CMP_DIR_X_IND] = {
+    [CPU_OPCODE_CMP_DIR_X_IND] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_WRAP),
             IO,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_CMP, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            // CHK_ZNW     (REG_TEMP, 0),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_CMP, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            // CHK_ZNW     (CPU_REG_TEMP, 0),
         }
     },
 
-    [CMP_DIR_IND_Y] = {
+    [CPU_OPCODE_CMP_DIR_IND_Y] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
-            SKIPS       (2, STATUS_FLAG_X),
-            SKIPC       (1, STATUS_FLAG_PAGE),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (CPU_REG_Y, ADDR_OFF_BANK_NEXT),
+            SKIPS       (2, CPU_STATUS_FLAG_X),
+            SKIPC       (1, CPU_STATUS_FLAG_PAGE),
             IO          /* X = 0 or page crossed */,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_CMP, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            // CHK_ZNW     (REG_TEMP, 0),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_CMP, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            // CHK_ZNW     (CPU_REG_TEMP, 0),
         }
     },
 
-    [CMP_DIR_INDL_Y] = {
+    [CPU_OPCODE_CMP_DIR_INDL_Y] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_D, 0),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            ADDR_OFFR   (CPU_REG_D, 0),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_BANK),
-            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            // MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_BANK),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_ADDR, MOV_RRW_WORD),
+            // MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (CPU_REG_Y, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_CMP, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            // CHK_ZNW     (REG_TEMP, 0),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_CMP, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            // CHK_ZNW     (CPU_REG_TEMP, 0),
         }
     },
 
-    [CMP_IMM] = {
+    [CPU_OPCODE_CMP_IMM] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_TEMP),
-            SKIPS       (1, STATUS_FLAG_M),
-            MOV_LPC     (MOV_MSB, REG_TEMP),
-            ALU_OP      (ALU_OP_CMP, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            // CHK_ZNW     (REG_TEMP, 0),
+            MOV_LPC     (MOV_LSB, CPU_REG_TEMP),
+            SKIPS       (1, CPU_STATUS_FLAG_M),
+            MOV_LPC     (MOV_MSB, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_CMP, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            // CHK_ZNW     (CPU_REG_TEMP, 0),
         }
     },
 
@@ -1552,7 +1552,7 @@ struct inst_t instructions[] = {
     /*                                      COP                                           */
     /**************************************************************************************/
 
-    [COP_S] = {
+    [CPU_OPCODE_COP_S] = {
         .uops = {
             COP,
         }
@@ -1562,44 +1562,44 @@ struct inst_t instructions[] = {
     /*                                      CPX                                           */
     /**************************************************************************************/
 
-    [CPX_ABS] = {
+    [CPU_OPCODE_CPX_ABS] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_X),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_X),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_CMP, STATUS_FLAG_X, REG_X, REG_TEMP),
-            // CHK_ZNW     (REG_TEMP, 0),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_CMP, CPU_STATUS_FLAG_X, CPU_REG_X, CPU_REG_TEMP),
+            // CHK_ZNW     (CPU_REG_TEMP, 0),
         }
     },
 
-    [CPX_DIR] = {
+    [CPU_OPCODE_CPX_DIR] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_X),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_X),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_CMP, STATUS_FLAG_X, REG_X, REG_TEMP),
-            // CHK_ZN      (REG_TEMP),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_CMP, CPU_STATUS_FLAG_X, CPU_REG_X, CPU_REG_TEMP),
+            // CHK_ZN      (CPU_REG_TEMP),
         }
     },
 
-    [CPX_IMM] = {
+    [CPU_OPCODE_CPX_IMM] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_TEMP),
-            SKIPS       (1, STATUS_FLAG_X),
-            MOV_LPC     (MOV_MSB, REG_TEMP),
-            ALU_OP      (ALU_OP_CMP, STATUS_FLAG_X, REG_X, REG_TEMP),
-            // CHK_ZNW     (REG_TEMP, 0),
+            MOV_LPC     (MOV_LSB, CPU_REG_TEMP),
+            SKIPS       (1, CPU_STATUS_FLAG_X),
+            MOV_LPC     (MOV_MSB, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_CMP, CPU_STATUS_FLAG_X, CPU_REG_X, CPU_REG_TEMP),
+            // CHK_ZNW     (CPU_REG_TEMP, 0),
         }
     },
 
@@ -1607,44 +1607,44 @@ struct inst_t instructions[] = {
     /*                                      CPY                                           */
     /**************************************************************************************/
 
-    [CPY_ABS] = {
+    [CPU_OPCODE_CPY_ABS] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_X),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_X),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_CMP, STATUS_FLAG_X, REG_Y, REG_TEMP),
-            // CHK_ZNW     (REG_TEMP, 0),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_CMP, CPU_STATUS_FLAG_X, CPU_REG_Y, CPU_REG_TEMP),
+            // CHK_ZNW     (CPU_REG_TEMP, 0),
         }
     },
 
-    [CPY_DIR] = {
+    [CPU_OPCODE_CPY_DIR] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_X),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_X),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_CMP, STATUS_FLAG_X, REG_Y, REG_TEMP),
-            // CHK_ZN      (REG_TEMP),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_CMP, CPU_STATUS_FLAG_X, CPU_REG_Y, CPU_REG_TEMP),
+            // CHK_ZN      (CPU_REG_TEMP),
         }
     },
 
-    [CPY_IMM] = {
+    [CPU_OPCODE_CPY_IMM] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_TEMP),
-            SKIPS       (1, STATUS_FLAG_X),
-            MOV_LPC     (MOV_MSB, REG_TEMP),
-            ALU_OP      (ALU_OP_CMP, STATUS_FLAG_X, REG_Y, REG_TEMP),
-            // CHK_ZNW     (REG_TEMP, 0),
+            MOV_LPC     (MOV_LSB, CPU_REG_TEMP),
+            SKIPS       (1, CPU_STATUS_FLAG_X),
+            MOV_LPC     (MOV_MSB, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_CMP, CPU_STATUS_FLAG_X, CPU_REG_Y, CPU_REG_TEMP),
+            // CHK_ZNW     (CPU_REG_TEMP, 0),
         }
     },
 
@@ -1652,96 +1652,96 @@ struct inst_t instructions[] = {
     /*                                      DEC                                           */
     /**************************************************************************************/
 
-    [DEC_ABS] = {
+    [CPU_OPCODE_DEC_ABS] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             IO,
-            ALU_OP      (ALU_OP_DEC, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
-            // CHK_ZNW     (REG_TEMP, 0),
-            SKIPS       (2, STATUS_FLAG_M),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_DEC, CPU_STATUS_FLAG_M, CPU_REG_TEMP, CPU_REG_ZERO),
+            // CHK_ZNW     (CPU_REG_TEMP, 0),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_NEXT, ADDR_OFF_SIGNED),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_S       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
         }
     },
 
-    [DEC_ACC] = {
+    [CPU_OPCODE_DEC_ACC] = {
         .uops = {
             IO,
-            ALU_OP      (ALU_OP_DEC, STATUS_FLAG_M, REG_ACCUM, REG_ZERO),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            ALU_OP      (ALU_OP_DEC, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_ZERO),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
-    [DEC_ABS_X] = {
+    [CPU_OPCODE_DEC_ABS_X] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
             IO,
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_DEC, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
-            // CHK_ZNW     (REG_TEMP, 0),
-            SKIPS       (2, STATUS_FLAG_M),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_DEC, CPU_STATUS_FLAG_M, CPU_REG_TEMP, CPU_REG_ZERO),
+            // CHK_ZNW     (CPU_REG_TEMP, 0),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_S       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
         }
     },
 
-    [DEC_DIR] = {
+    [CPU_OPCODE_DEC_DIR] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             IO,
-            ALU_OP      (ALU_OP_DEC, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
-            // CHK_ZNW     (REG_TEMP, 0),
-            SKIPS       (2, STATUS_FLAG_M),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_DEC, CPU_STATUS_FLAG_M, CPU_REG_TEMP, CPU_REG_ZERO),
+            // CHK_ZNW     (CPU_REG_TEMP, 0),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_NEXT, ADDR_OFF_SIGNED),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_S       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
         }
     },
 
-    [DEC_DIR_X] = {
+    [CPU_OPCODE_DEC_DIR_X] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
             IO,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
             IO,
-            ALU_OP      (ALU_OP_DEC, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
-            // CHK_ZNW     (REG_TEMP, 0),
-            SKIPS       (2, STATUS_FLAG_M),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ALU_OP      (ALU_OP_DEC, CPU_STATUS_FLAG_M, CPU_REG_TEMP, CPU_REG_ZERO),
+            // CHK_ZNW     (CPU_REG_TEMP, 0),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
             ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_S       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
         }
     },
 
@@ -1749,12 +1749,12 @@ struct inst_t instructions[] = {
     /*                                      DEX                                           */
     /**************************************************************************************/
 
-    [DEX_IMP] = {
+    [CPU_OPCODE_DEX_IMP] = {
         .uops = {
             IO,
-            ALU_OP      (ALU_OP_DEC, STATUS_FLAG_X, REG_X, REG_ZERO),
-            MOV_RR      (REG_TEMP, REG_X),
-            // CHK_ZN      (REG_X),
+            ALU_OP      (ALU_OP_DEC, CPU_STATUS_FLAG_X, CPU_REG_X, CPU_REG_ZERO),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_X),
+            // CHK_ZN      (CPU_REG_X),
         }
     },
 
@@ -1762,12 +1762,12 @@ struct inst_t instructions[] = {
     /*                                      DEY                                           */
     /**************************************************************************************/
 
-    [DEY_IMP] = {
+    [CPU_OPCODE_DEY_IMP] = {
         .uops = {
             IO,
-            ALU_OP      (ALU_OP_DEC, STATUS_FLAG_X, REG_Y, REG_ZERO),
-            MOV_RR      (REG_TEMP, REG_Y),
-            // CHK_ZN      (REG_Y),
+            ALU_OP      (ALU_OP_DEC, CPU_STATUS_FLAG_X, CPU_REG_Y, CPU_REG_ZERO),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_Y),
+            // CHK_ZN      (CPU_REG_Y),
         }
     },
 
@@ -1775,293 +1775,293 @@ struct inst_t instructions[] = {
     /*                                      EOR                                           */
     /**************************************************************************************/
 
-    [EOR_ABS] = {
+    [CPU_OPCODE_EOR_ABS] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_XOR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_XOR, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
-    [EOR_ABS_X] = {
+    [CPU_OPCODE_EOR_ABS_X] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
-            SKIPC       (2, STATUS_FLAG_PAGE),
-            SKIPS       (1, STATUS_FLAG_X),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_NEXT),
+            SKIPC       (2, CPU_STATUS_FLAG_PAGE),
+            SKIPS       (1, CPU_STATUS_FLAG_X),
             IO          /* X=0 or page boundary */,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_XOR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_XOR, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
-    [EOR_ABS_Y] = {
+    [CPU_OPCODE_EOR_ABS_Y] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
-            SKIPC       (2, STATUS_FLAG_PAGE),
-            SKIPS       (1, STATUS_FLAG_X),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (CPU_REG_Y, ADDR_OFF_BANK_NEXT),
+            SKIPC       (2, CPU_STATUS_FLAG_PAGE),
+            SKIPS       (1, CPU_STATUS_FLAG_X),
             IO          /* X=0 or page boundary */,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_XOR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_XOR, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
-    [EOR_ABSL] = {
+    [CPU_OPCODE_EOR_ABSL] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_LPC     (MOV_LSB, REG_BANK),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_LSB, CPU_REG_BANK),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_XOR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_XOR, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
-    [EOR_ABSL_X] = {
+    [CPU_OPCODE_EOR_ABSL_X] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_LPC     (MOV_LSB, REG_BANK),
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_LSB, CPU_REG_BANK),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_XOR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_XOR, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
-    [EOR_DIR] = {
+    [CPU_OPCODE_EOR_DIR] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_XOR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_XOR, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
-    [EOR_S_REL] = {
+    [CPU_OPCODE_EOR_S_REL] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_S, ADDR_OFF_BANK_WRAP),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            ADDR_OFFR   (CPU_REG_S, ADDR_OFF_BANK_WRAP),
             IO,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ALU_OP      (ALU_OP_XOR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_XOR, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         },
     },
-    [EOR_DIR_X] = {
+    [CPU_OPCODE_EOR_DIR_X] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_WRAP),
             IO,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ALU_OP      (ALU_OP_XOR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_XOR, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
-    [EOR_DIR_IND] = {
+    [CPU_OPCODE_EOR_DIR_IND] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_XOR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_XOR, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
-    [EOR_DIR_INDL] = {
+    [CPU_OPCODE_EOR_DIR_INDL] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_BANK),
-            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_BANK),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_ADDR, MOV_RRW_WORD),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_XOR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_XOR, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
-    [EOR_S_REL_IND_Y] = {
+    [CPU_OPCODE_EOR_S_REL_IND_Y] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
             IO,
-            ADDR_OFFR   (REG_S, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFR   (CPU_REG_S, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
             IO,
-            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFR   (CPU_REG_Y, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_XOR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_XOR, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
 
         }
     },
 
-    [EOR_DIR_X_IND] = {
+    [CPU_OPCODE_EOR_DIR_X_IND] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_WRAP),
             IO,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_XOR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_XOR, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
-    [EOR_DIR_IND_Y] = {
+    [CPU_OPCODE_EOR_DIR_IND_Y] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
-            SKIPS       (2, STATUS_FLAG_X),
-            SKIPC       (1, STATUS_FLAG_PAGE),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (CPU_REG_Y, ADDR_OFF_BANK_NEXT),
+            SKIPS       (2, CPU_STATUS_FLAG_X),
+            SKIPC       (1, CPU_STATUS_FLAG_PAGE),
             IO          /* X = 0 or page crossed */,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_XOR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_XOR, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
-    [EOR_DIR_INDL_Y] = {
+    [CPU_OPCODE_EOR_DIR_INDL_Y] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_BANK),
-            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            // MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_BANK),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_ADDR, MOV_RRW_WORD),
+            // MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (CPU_REG_Y, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_XOR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_XOR, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
-    [EOR_IMM] = {
+    [CPU_OPCODE_EOR_IMM] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_TEMP),
-            SKIPS       (1, STATUS_FLAG_M),
-            MOV_LPC     (MOV_MSB, REG_TEMP),
-            ALU_OP      (ALU_OP_XOR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_LPC     (MOV_LSB, CPU_REG_TEMP),
+            SKIPS       (1, CPU_STATUS_FLAG_M),
+            MOV_LPC     (MOV_MSB, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_XOR, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
@@ -2069,96 +2069,96 @@ struct inst_t instructions[] = {
     /*                                      INC                                           */
     /**************************************************************************************/
 
-    [INC_ABS] = {
+    [CPU_OPCODE_INC_ABS] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             IO,
-            ALU_OP      (ALU_OP_INC, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
-            // CHK_ZNW     (REG_TEMP, 0),
-            SKIPS       (2, STATUS_FLAG_M),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_INC, CPU_STATUS_FLAG_M, CPU_REG_TEMP, CPU_REG_ZERO),
+            // CHK_ZNW     (CPU_REG_TEMP, 0),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_NEXT, ADDR_OFF_SIGNED),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_S       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
         }
     },
 
-    [INC_ACC] = {
+    [CPU_OPCODE_INC_ACC] = {
         .uops = {
             IO,
-            ALU_OP      (ALU_OP_INC, STATUS_FLAG_M, REG_ACCUM, REG_ZERO),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            ALU_OP      (ALU_OP_INC, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_ZERO),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
-    [INC_ABS_X] = {
+    [CPU_OPCODE_INC_ABS_X] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
             IO,
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_INC, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
-            // CHK_ZNW     (REG_TEMP, 0),
-            SKIPS       (2, STATUS_FLAG_M),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_INC, CPU_STATUS_FLAG_M, CPU_REG_TEMP, CPU_REG_ZERO),
+            // CHK_ZNW     (CPU_REG_TEMP, 0),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_S       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
         }
     },
 
-    [INC_DIR] = {
+    [CPU_OPCODE_INC_DIR] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             IO,
-            ALU_OP      (ALU_OP_INC, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
-            // CHK_ZNW     (REG_TEMP, 0),
-            SKIPS       (2, STATUS_FLAG_M),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_INC, CPU_STATUS_FLAG_M, CPU_REG_TEMP, CPU_REG_ZERO),
+            // CHK_ZNW     (CPU_REG_TEMP, 0),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_NEXT, ADDR_OFF_SIGNED),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_S       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
         }
     },
 
-    [INC_DIR_X] = {
+    [CPU_OPCODE_INC_DIR_X] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
             IO,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
             IO,
-            ALU_OP      (ALU_OP_INC, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
-            // CHK_ZNW     (REG_TEMP, 0),
-            SKIPS       (2, STATUS_FLAG_M),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ALU_OP      (ALU_OP_INC, CPU_STATUS_FLAG_M, CPU_REG_TEMP, CPU_REG_ZERO),
+            // CHK_ZNW     (CPU_REG_TEMP, 0),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
             ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_S       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
         }
     },
 
@@ -2166,12 +2166,12 @@ struct inst_t instructions[] = {
     /*                                      INX                                           */
     /**************************************************************************************/
 
-    [INX_IMP] = {
+    [CPU_OPCODE_INX_IMP] = {
         .uops = {
             IO,
-            ALU_OP      (ALU_OP_INC, STATUS_FLAG_X, REG_X, REG_ZERO),
-            MOV_RR      (REG_TEMP, REG_X),
-            // CHK_ZN      (REG_X),
+            ALU_OP      (ALU_OP_INC, CPU_STATUS_FLAG_X, CPU_REG_X, CPU_REG_ZERO),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_X),
+            // CHK_ZN      (CPU_REG_X),
         }
     },
 
@@ -2179,12 +2179,12 @@ struct inst_t instructions[] = {
     /*                                      INY                                           */
     /**************************************************************************************/
 
-    [INY_IMP] = {
+    [CPU_OPCODE_INY_IMP] = {
         .uops = {
             IO,
-            ALU_OP      (ALU_OP_INC, STATUS_FLAG_X, REG_Y, REG_ZERO),
-            MOV_RR      (REG_TEMP, REG_Y),
-            // CHK_ZN      (REG_Y),
+            ALU_OP      (ALU_OP_INC, CPU_STATUS_FLAG_X, CPU_REG_Y, CPU_REG_ZERO),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_Y),
+            // CHK_ZN      (CPU_REG_Y),
         }
     },
 
@@ -2192,16 +2192,16 @@ struct inst_t instructions[] = {
     /*                                      JML                                           */
     /**************************************************************************************/
 
-    [JML_ABS_IND] = {
+    [CPU_OPCODE_JML_ABS_IND] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_PBR),
-            MOV_RRW     (REG_TEMP, REG_PC, MOV_RRW_WORD),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_PBR),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_PC, MOV_RRW_WORD),
         }
     },
 
@@ -2209,45 +2209,45 @@ struct inst_t instructions[] = {
     /*                                      JMP                                           */
     /**************************************************************************************/
 
-    [JMP_ABS] = {
+    [CPU_OPCODE_JMP_ABS] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_ADDR, REG_PC, MOV_RRW_WORD),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_ADDR, CPU_REG_PC, MOV_RRW_WORD),
         }
     },
 
-    [JMP_ABSL] = {
+    [CPU_OPCODE_JMP_ABSL] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_LPC     (MOV_LSB, REG_BANK),
-            MOV_RRW     (REG_ADDR, REG_PC, MOV_RRW_WORD),
-            MOV_RRW     (REG_BANK, REG_PBR, MOV_RRW_BYTE),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_LSB, CPU_REG_BANK),
+            MOV_RRW     (CPU_REG_ADDR, CPU_REG_PC, MOV_RRW_WORD),
+            MOV_RRW     (CPU_REG_BANK, CPU_REG_PBR, MOV_RRW_BYTE),
         }
     },
 
-    [JMP_ABS_IND] = {
+    [CPU_OPCODE_JMP_ABS_IND] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            MOV_RRW      (REG_TEMP, REG_PC, MOV_RRW_WORD),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            MOV_RRW      (CPU_REG_TEMP, CPU_REG_PC, MOV_RRW_WORD),
         }
     },
 
-    [JMP_ABS_X_IND] = {
+    [CPU_OPCODE_JMP_ABS_X_IND] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
             IO,
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_PBR, REG_TEMP),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_PBR, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_PBR, REG_TEMP),
-            MOV_RRW     (REG_TEMP, REG_PC, MOV_RRW_WORD),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_PBR, CPU_REG_TEMP),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_PC, MOV_RRW_WORD),
         }
     },
 
@@ -2255,20 +2255,20 @@ struct inst_t instructions[] = {
     /*                                      JSL                                           */
     /**************************************************************************************/
 
-    [JSL_ABSL] = {
+    [CPU_OPCODE_JSL_ABSL] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_S       (MOV_LSB, REG_S, REG_ZERO, REG_PBR),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_S       (MOV_LSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_PBR),
             DECS,
             IO,
-            MOV_L       (MOV_LSB, REG_PC, REG_PBR, REG_BANK),
-            MOV_S       (MOV_MSB, REG_S, REG_ZERO, REG_PC),
+            MOV_L       (MOV_LSB, CPU_REG_PC, CPU_REG_PBR, CPU_REG_BANK),
+            MOV_S       (MOV_MSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_PC),
             DECS,
-            MOV_S       (MOV_LSB, REG_S, REG_ZERO, REG_PC),
+            MOV_S       (MOV_LSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_PC),
             DECS,
-            MOV_RRW     (REG_ADDR, REG_PC, MOV_RRW_WORD),
-            MOV_RRW     (REG_BANK, REG_PBR, MOV_RRW_BYTE),
+            MOV_RRW     (CPU_REG_ADDR, CPU_REG_PC, MOV_RRW_WORD),
+            MOV_RRW     (CPU_REG_BANK, CPU_REG_PBR, MOV_RRW_BYTE),
         }
     },
 
@@ -2276,33 +2276,33 @@ struct inst_t instructions[] = {
     /*                                      JSR                                           */
     /**************************************************************************************/
 
-    [JSR_ABS] = {
+    [CPU_OPCODE_JSR_ABS] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_L       (MOV_MSB, REG_PC, REG_PBR, REG_ADDR),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_L       (MOV_MSB, CPU_REG_PC, CPU_REG_PBR, CPU_REG_ADDR),
             IO,
-            MOV_S       (MOV_MSB, REG_S, REG_ZERO, REG_PC),
+            MOV_S       (MOV_MSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_PC),
             DECS,
-            MOV_S       (MOV_LSB, REG_S, REG_ZERO, REG_PC),
+            MOV_S       (MOV_LSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_PC),
             DECS,
-            MOV_RRW     (REG_ADDR, REG_PC, MOV_RRW_WORD),
+            MOV_RRW     (CPU_REG_ADDR, CPU_REG_PC, MOV_RRW_WORD),
         }
     },
 
-    [JSR_ABS_X_IND] = {
+    [CPU_OPCODE_JSR_ABS_X_IND] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_S       (MOV_MSB, REG_S, REG_ZERO, REG_PC),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_S       (MOV_MSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_PC),
             DECS,
-            MOV_S       (MOV_LSB, REG_S, REG_ZERO, REG_PC),
+            MOV_S       (MOV_LSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_PC),
             DECS,
-            MOV_L       (MOV_MSB, REG_PC, REG_PBR, REG_ADDR),
+            MOV_L       (MOV_MSB, CPU_REG_PC, CPU_REG_PBR, CPU_REG_ADDR),
             IO,
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_PBR, REG_TEMP),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_PBR, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_PBR, REG_TEMP),
-            MOV_RRW     (REG_TEMP, REG_PC, MOV_RRW_WORD),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_PBR, CPU_REG_TEMP),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_PC, MOV_RRW_WORD),
         }
     },
 
@@ -2311,283 +2311,283 @@ struct inst_t instructions[] = {
     /**************************************************************************************/
 
 
-    [LDA_ABS] = {
+    [CPU_OPCODE_LDA_ABS] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
-    [LDA_ABS_X] = {
+    [CPU_OPCODE_LDA_ABS_X] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
-            SKIPC       (2, STATUS_FLAG_PAGE),
-            SKIPS       (1, STATUS_FLAG_X),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_NEXT),
+            SKIPC       (2, CPU_STATUS_FLAG_PAGE),
+            SKIPS       (1, CPU_STATUS_FLAG_X),
             IO          /* X=0 or page boundary */,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            CHK_ZN      (CPU_REG_ACCUM),
         }
     },
-    [LDA_ABS_Y] = {
+    [CPU_OPCODE_LDA_ABS_Y] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
-            SKIPC       (2, STATUS_FLAG_PAGE),
-            SKIPS       (1, STATUS_FLAG_X),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (CPU_REG_Y, ADDR_OFF_BANK_NEXT),
+            SKIPC       (2, CPU_STATUS_FLAG_PAGE),
+            SKIPS       (1, CPU_STATUS_FLAG_X),
             IO          /* X=0 or page boundary */,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
-    [LDA_ABSL] = {
+    [CPU_OPCODE_LDA_ABSL] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_LPC     (MOV_LSB, REG_BANK),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_LSB, CPU_REG_BANK),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
-    [LDA_ABSL_X] = {
+    [CPU_OPCODE_LDA_ABSL_X] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_LPC     (MOV_LSB, REG_BANK),
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_LSB, CPU_REG_BANK),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
-    [LDA_DIR] = {
+    [CPU_OPCODE_LDA_DIR] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
-    [LDA_S_REL] = {
+    [CPU_OPCODE_LDA_S_REL] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_S, ADDR_OFF_BANK_WRAP),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            ADDR_OFFR   (CPU_REG_S, ADDR_OFF_BANK_WRAP),
             IO,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            CHK_ZN      (CPU_REG_ACCUM),
         },
     },
 
-    [LDA_DIR_X] = {
+    [CPU_OPCODE_LDA_DIR_X] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_WRAP),
             IO,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
-    [LDA_DIR_IND] = {
+    [CPU_OPCODE_LDA_DIR_IND] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
-    [LDA_DIR_INDL] = {
+    [CPU_OPCODE_LDA_DIR_INDL] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_BANK),
-            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_BANK),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_ADDR, MOV_RRW_WORD),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
-    [LDA_S_REL_IND_Y] = {
+    [CPU_OPCODE_LDA_S_REL_IND_Y] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
             IO,
-            ADDR_OFFR   (REG_S, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFR   (CPU_REG_S, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
             IO,
-            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFR   (CPU_REG_Y, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            CHK_ZN      (CPU_REG_ACCUM),
 
         }
     },
 
-    [LDA_DIR_X_IND] = {
+    [CPU_OPCODE_LDA_DIR_X_IND] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_WRAP),
             IO,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
-    [LDA_DIR_IND_Y] = {
+    [CPU_OPCODE_LDA_DIR_IND_Y] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, 0),
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFR   (CPU_REG_D, 0),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
-            SKIPS       (2, STATUS_FLAG_X),
-            SKIPC       (1, STATUS_FLAG_PAGE),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (CPU_REG_Y, ADDR_OFF_BANK_NEXT),
+            SKIPS       (2, CPU_STATUS_FLAG_X),
+            SKIPC       (1, CPU_STATUS_FLAG_PAGE),
             IO          /* X = 0 or page crossed */,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
-    [LDA_DIR_INDL_Y] = {
+    [CPU_OPCODE_LDA_DIR_INDL_Y] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_D, 0),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            ADDR_OFFR   (CPU_REG_D, 0),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_BANK),
-            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            // MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_BANK),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_ADDR, MOV_RRW_WORD),
+            // MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (CPU_REG_Y, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
-    [LDA_IMM] = {
+    [CPU_OPCODE_LDA_IMM] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_TEMP),
-            SKIPS       (1, STATUS_FLAG_M),
-            MOV_LPC     (MOV_MSB, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM)
+            MOV_LPC     (MOV_LSB, CPU_REG_TEMP),
+            SKIPS       (1, CPU_STATUS_FLAG_M),
+            MOV_LPC     (MOV_MSB, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            CHK_ZN      (CPU_REG_ACCUM)
         }
     },
 
@@ -2595,80 +2595,80 @@ struct inst_t instructions[] = {
     /*                                      LDX                                           */
     /**************************************************************************************/
 
-    [LDX_ABS] = {
+    [CPU_OPCODE_LDX_ABS] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_X),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_X),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_X),
-            CHK_ZN      (REG_X),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_X),
+            CHK_ZN      (CPU_REG_X),
         }
     },
 
-    [LDX_ABS_Y] = {
+    [CPU_OPCODE_LDX_ABS_Y] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
-            SKIPC       (2, STATUS_FLAG_PAGE),
-            SKIPS       (1, STATUS_FLAG_X),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (CPU_REG_Y, ADDR_OFF_BANK_NEXT),
+            SKIPC       (2, CPU_STATUS_FLAG_PAGE),
+            SKIPS       (1, CPU_STATUS_FLAG_X),
             IO          /* X=0 or page boundary */,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_X),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_X),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_X),
-            CHK_ZN      (REG_X),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_X),
+            CHK_ZN      (CPU_REG_X),
         }
     },
 
-    [LDX_DIR] = {
+    [CPU_OPCODE_LDX_DIR] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_X),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_X),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_X),
-            CHK_ZN      (REG_X),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_X),
+            CHK_ZN      (CPU_REG_X),
         }
     },
 
-    [LDX_DIR_Y] = {
+    [CPU_OPCODE_LDX_DIR_Y] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (CPU_REG_Y, ADDR_OFF_BANK_WRAP),
             IO,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_X),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_X),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_X),
-            CHK_ZN      (REG_X),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_X),
+            CHK_ZN      (CPU_REG_X),
         }
     },
 
-    [LDX_IMM] = {
+    [CPU_OPCODE_LDX_IMM] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_TEMP),
-            SKIPS       (1, STATUS_FLAG_X),
-            MOV_LPC     (MOV_MSB, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_X),
-            CHK_ZN      (REG_X)
+            MOV_LPC     (MOV_LSB, CPU_REG_TEMP),
+            SKIPS       (1, CPU_STATUS_FLAG_X),
+            MOV_LPC     (MOV_MSB, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_X),
+            CHK_ZN      (CPU_REG_X)
         }
     },
 
@@ -2676,80 +2676,80 @@ struct inst_t instructions[] = {
     /*                                      LDY                                           */
     /**************************************************************************************/
 
-    [LDY_ABS] = {
+    [CPU_OPCODE_LDY_ABS] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_X),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_X),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_Y),
-            CHK_ZN      (REG_Y),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_Y),
+            CHK_ZN      (CPU_REG_Y),
         }
     },
 
-    [LDY_ABS_X] = {
+    [CPU_OPCODE_LDY_ABS_X] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
-            SKIPC       (2, STATUS_FLAG_PAGE),
-            SKIPS       (1, STATUS_FLAG_X),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_NEXT),
+            SKIPC       (2, CPU_STATUS_FLAG_PAGE),
+            SKIPS       (1, CPU_STATUS_FLAG_X),
             IO          /* X=0 or page boundary */,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_X),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_X),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_Y),
-            CHK_ZN      (REG_Y),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_Y),
+            CHK_ZN      (CPU_REG_Y),
         }
     },
 
-    [LDY_DIR] = {
+    [CPU_OPCODE_LDY_DIR] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_X),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_X),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_Y),
-            CHK_ZN      (REG_Y),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_Y),
+            CHK_ZN      (CPU_REG_Y),
         }
     },
 
-    [LDY_DIR_X] = {
+    [CPU_OPCODE_LDY_DIR_X] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_WRAP),
             IO,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_X),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_X),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_Y),
-            CHK_ZN      (REG_Y),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_Y),
+            CHK_ZN      (CPU_REG_Y),
         }
     },
 
-    [LDY_IMM] = {
+    [CPU_OPCODE_LDY_IMM] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_TEMP),
-            SKIPS       (1, STATUS_FLAG_X),
-            MOV_LPC     (MOV_MSB, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_Y),
-            CHK_ZN      (REG_Y)
+            MOV_LPC     (MOV_LSB, CPU_REG_TEMP),
+            SKIPS       (1, CPU_STATUS_FLAG_X),
+            MOV_LPC     (MOV_MSB, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_Y),
+            CHK_ZN      (CPU_REG_Y)
         }
     },
 
@@ -2757,96 +2757,96 @@ struct inst_t instructions[] = {
     /*                                      LSR                                           */
     /**************************************************************************************/
 
-    [LSR_ABS] = {
+    [CPU_OPCODE_LSR_ABS] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             IO,
-            ALU_OP      (ALU_OP_SHR, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
-            // CHK_ZNW     (REG_TEMP, 0),
-            SKIPS       (2, STATUS_FLAG_M),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_SHR, CPU_STATUS_FLAG_M, CPU_REG_TEMP, CPU_REG_ZERO),
+            // CHK_ZNW     (CPU_REG_TEMP, 0),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_NEXT, ADDR_OFF_SIGNED),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_S       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
         }
     },
 
-    [LSR_ACC] = {
+    [CPU_OPCODE_LSR_ACC] = {
         .uops = {
             IO,
-            ALU_OP      (ALU_OP_SHR, STATUS_FLAG_M, REG_ACCUM, REG_ZERO),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            ALU_OP      (ALU_OP_SHR, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_ZERO),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
-    [LSR_ABS_X] = {
+    [CPU_OPCODE_LSR_ABS_X] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
             IO,
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_SHR, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
-            // CHK_ZNW     (REG_TEMP, 0),
-            SKIPS       (2, STATUS_FLAG_M),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_SHR, CPU_STATUS_FLAG_M, CPU_REG_TEMP, CPU_REG_ZERO),
+            // CHK_ZNW     (CPU_REG_TEMP, 0),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_S       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
         }
     },
 
-    [LSR_DIR] = {
+    [CPU_OPCODE_LSR_DIR] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             IO,
-            ALU_OP      (ALU_OP_SHR, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
-            // CHK_ZNW     (REG_TEMP, 0),
-            SKIPS       (2, STATUS_FLAG_M),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_SHR, CPU_STATUS_FLAG_M, CPU_REG_TEMP, CPU_REG_ZERO),
+            // CHK_ZNW     (CPU_REG_TEMP, 0),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_NEXT, ADDR_OFF_SIGNED),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_S       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
         }
     },
 
-    [LSR_DIR_X] = {
+    [CPU_OPCODE_LSR_DIR_X] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
             IO,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
             IO,
-            ALU_OP      (ALU_OP_SHR, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
-            // CHK_ZNW     (REG_TEMP, 0),
-            SKIPS       (2, STATUS_FLAG_M),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ALU_OP      (ALU_OP_SHR, CPU_STATUS_FLAG_M, CPU_REG_TEMP, CPU_REG_ZERO),
+            // CHK_ZNW     (CPU_REG_TEMP, 0),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
             ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_S       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
         }
     },
 
@@ -2854,55 +2854,55 @@ struct inst_t instructions[] = {
     /*                                      MVN                                           */
     /**************************************************************************************/
 
-    [MVN_BLK] = {
+    [CPU_OPCODE_MVN_BLK] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_BANK),
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_L       (MOV_LSB, REG_X, REG_ADDR, REG_TEMP),
-            MOV_S       (MOV_LSB, REG_Y, REG_BANK, REG_TEMP),
+            MOV_LPC     (MOV_LSB, CPU_REG_BANK),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_L       (MOV_LSB, CPU_REG_X, CPU_REG_ADDR, CPU_REG_TEMP),
+            MOV_S       (MOV_LSB, CPU_REG_Y, CPU_REG_BANK, CPU_REG_TEMP),
             IO,
-            INC_RW      (REG_X),
+            INC_RW      (CPU_REG_X),
             IO,
-            INC_RW      (REG_Y),
-            DEC_RW      (REG_ACCUM),
-            SKIPS       (1, STATUS_FLAG_AM),
+            INC_RW      (CPU_REG_Y),
+            DEC_RW      (CPU_REG_ACCUM),
+            SKIPS       (1, CPU_STATUS_FLAG_AM),
             /* we're not done copying stuff yet, so reset PC
             to the start of the instruction */
             INC_PC      (0xfffd)
-//            DEC_RW      (REG_PC),
-//            DEC_RW      (REG_PC),
-//            DEC_RW      (REG_PC),
+//            DEC_RW      (CPU_REG_PC),
+//            DEC_RW      (CPU_REG_PC),
+//            DEC_RW      (CPU_REG_PC),
         }
     },
 
     /**************************************************************************************/
     /*                                      MVP                                           */
     /**************************************************************************************/
-    [MVP_BLK] = {
+    [CPU_OPCODE_MVP_BLK] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_BANK),
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_L       (MOV_LSB, REG_X, REG_ADDR, REG_TEMP),
-            MOV_S       (MOV_LSB, REG_Y, REG_BANK, REG_TEMP),
+            MOV_LPC     (MOV_LSB, CPU_REG_BANK),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_L       (MOV_LSB, CPU_REG_X, CPU_REG_ADDR, CPU_REG_TEMP),
+            MOV_S       (MOV_LSB, CPU_REG_Y, CPU_REG_BANK, CPU_REG_TEMP),
             IO,
-            DEC_RW      (REG_X),
+            DEC_RW      (CPU_REG_X),
             IO,
-            DEC_RW      (REG_Y),
-            DEC_RW      (REG_ACCUM),
-            SKIPS       (1, STATUS_FLAG_AM),
+            DEC_RW      (CPU_REG_Y),
+            DEC_RW      (CPU_REG_ACCUM),
+            SKIPS       (1, CPU_STATUS_FLAG_AM),
             /* we're not done copying stuff yet, so reset PC
             to the start of the instruction */
             INC_PC      (0xfffd)
-//            DEC_RW      (REG_PC),
-//            DEC_RW      (REG_PC),
-//            DEC_RW      (REG_PC),
+//            DEC_RW      (CPU_REG_PC),
+//            DEC_RW      (CPU_REG_PC),
+//            DEC_RW      (CPU_REG_PC),
         }
     },
     /**************************************************************************************/
     /*                                      NOP                                           */
     /**************************************************************************************/
 
-    [NOP_IMP] = {
+    [CPU_OPCODE_NOP_IMP] = {
         .uops = {
             IO
         }
@@ -2912,293 +2912,293 @@ struct inst_t instructions[] = {
     /*                                      ORA                                           */
     /**************************************************************************************/
 
-    [ORA_ABS] = {
+    [CPU_OPCODE_ORA_ABS] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_OR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_OR, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
-    [ORA_ABS_X] = {
+    [CPU_OPCODE_ORA_ABS_X] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
-            SKIPC       (2, STATUS_FLAG_PAGE),
-            SKIPS       (1, STATUS_FLAG_X),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_NEXT),
+            SKIPC       (2, CPU_STATUS_FLAG_PAGE),
+            SKIPS       (1, CPU_STATUS_FLAG_X),
             IO          /* X=0 or page boundary */,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_OR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_OR, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
-    [ORA_ABS_Y] = {
+    [CPU_OPCODE_ORA_ABS_Y] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
-            SKIPC       (2, STATUS_FLAG_PAGE),
-            SKIPS       (1, STATUS_FLAG_X),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (CPU_REG_Y, ADDR_OFF_BANK_NEXT),
+            SKIPC       (2, CPU_STATUS_FLAG_PAGE),
+            SKIPS       (1, CPU_STATUS_FLAG_X),
             IO          /* X=0 or page boundary */,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_OR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_OR, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
-    [ORA_ABSL] = {
+    [CPU_OPCODE_ORA_ABSL] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_LPC     (MOV_LSB, REG_BANK),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_LSB, CPU_REG_BANK),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_OR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_OR, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
-    [ORA_ABSL_X] = {
+    [CPU_OPCODE_ORA_ABSL_X] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_LPC     (MOV_LSB, REG_BANK),
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_LSB, CPU_REG_BANK),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_OR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_OR, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
-    [ORA_DIR] = {
+    [CPU_OPCODE_ORA_DIR] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_OR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_OR, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
-    [ORA_S_REL] = {
+    [CPU_OPCODE_ORA_S_REL] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_S, ADDR_OFF_BANK_WRAP),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            ADDR_OFFR   (CPU_REG_S, ADDR_OFF_BANK_WRAP),
             IO,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ALU_OP      (ALU_OP_OR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_OR, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         },
     },
-    [ORA_DIR_X] = {
+    [CPU_OPCODE_ORA_DIR_X] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_WRAP),
             IO,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ALU_OP      (ALU_OP_OR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_OR, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
-    [ORA_DIR_IND] = {
+    [CPU_OPCODE_ORA_DIR_IND] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_OR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_OR, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
-    [ORA_DIR_INDL] = {
+    [CPU_OPCODE_ORA_DIR_INDL] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_BANK),
-            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_BANK),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_ADDR, MOV_RRW_WORD),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_OR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_OR, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
-    [ORA_S_REL_IND_Y] = {
+    [CPU_OPCODE_ORA_S_REL_IND_Y] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
             IO,
-            ADDR_OFFR   (REG_S, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFR   (CPU_REG_S, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
             IO,
-            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFR   (CPU_REG_Y, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_OR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_OR, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
 
         }
     },
 
-    [ORA_DIR_X_IND] = {
+    [CPU_OPCODE_ORA_DIR_X_IND] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_WRAP),
             IO,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_OR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_OR, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
-    [ORA_DIR_IND_Y] = {
+    [CPU_OPCODE_ORA_DIR_IND_Y] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
-            SKIPS       (2, STATUS_FLAG_X),
-            SKIPC       (1, STATUS_FLAG_PAGE),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (CPU_REG_Y, ADDR_OFF_BANK_NEXT),
+            SKIPS       (2, CPU_STATUS_FLAG_X),
+            SKIPC       (1, CPU_STATUS_FLAG_PAGE),
             IO          /* X = 0 or page crossed */,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_OR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_OR, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
-    [ORA_DIR_INDL_Y] = {
+    [CPU_OPCODE_ORA_DIR_INDL_Y] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_BANK),
-            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            // MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_BANK),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_ADDR, MOV_RRW_WORD),
+            // MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (CPU_REG_Y, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_OR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_OR, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
-    [ORA_IMM] = {
+    [CPU_OPCODE_ORA_IMM] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_TEMP),
-            SKIPS       (1, STATUS_FLAG_M),
-            MOV_LPC     (MOV_MSB, REG_TEMP),
-            ALU_OP      (ALU_OP_OR, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_LPC     (MOV_LSB, CPU_REG_TEMP),
+            SKIPS       (1, CPU_STATUS_FLAG_M),
+            MOV_LPC     (MOV_MSB, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_OR, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
@@ -3206,13 +3206,13 @@ struct inst_t instructions[] = {
     /*                                      PEA                                           */
     /**************************************************************************************/
 
-    [PEA_S] = {
+    [CPU_OPCODE_PEA_S] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_TEMP),
-            MOV_LPC     (MOV_MSB, REG_TEMP),
-            MOV_S       (MOV_MSB, REG_S, REG_ZERO, REG_TEMP),
+            MOV_LPC     (MOV_LSB, CPU_REG_TEMP),
+            MOV_LPC     (MOV_MSB, CPU_REG_TEMP),
+            MOV_S       (MOV_MSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_TEMP),
             DECS,
-            MOV_S       (MOV_LSB, REG_S, REG_ZERO, REG_TEMP),
+            MOV_S       (MOV_LSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_TEMP),
             DECS,
         }
     },
@@ -3221,19 +3221,19 @@ struct inst_t instructions[] = {
     /*                                      PEI                                           */
     /**************************************************************************************/
 
-    [PEI_S] = {
+    [CPU_OPCODE_PEI_S] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            MOV_S       (MOV_MSB, REG_S, REG_ZERO, REG_TEMP),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            MOV_S       (MOV_MSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_TEMP),
             DECS,
-            MOV_S       (MOV_LSB, REG_S, REG_ZERO, REG_TEMP),
+            MOV_S       (MOV_LSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_TEMP),
             DECS,
         }
     },
@@ -3242,14 +3242,14 @@ struct inst_t instructions[] = {
     /*                                      PER                                           */
     /**************************************************************************************/
 
-    [PER_S] = {
+    [CPU_OPCODE_PER_S] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            ADDR_OFFRS  (REG_PC, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
-            MOV_S       (MOV_MSB, REG_S, REG_ZERO, REG_ADDR),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            ADDR_OFFRS  (CPU_REG_PC, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
+            MOV_S       (MOV_MSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_ADDR),
             DECS,
-            MOV_S       (MOV_LSB, REG_S, REG_ZERO, REG_ADDR),
+            MOV_S       (MOV_LSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_ADDR),
             DECS,
         }
     },
@@ -3258,13 +3258,13 @@ struct inst_t instructions[] = {
     /*                                      PHA                                           */
     /**************************************************************************************/
 
-    [PHA_S] = {
+    [CPU_OPCODE_PHA_S] = {
         .uops = {
-            SKIPS       (3, STATUS_FLAG_M),
+            SKIPS       (3, CPU_STATUS_FLAG_M),
             IO          /* M = 0 */,
-            MOV_S       (MOV_MSB, REG_S, REG_ZERO, REG_ACCUM),
+            MOV_S       (MOV_MSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_ACCUM),
             DECS,
-            MOV_S       (MOV_LSB, REG_S, REG_ZERO, REG_ACCUM),
+            MOV_S       (MOV_LSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_ACCUM),
             DECS,
         }
     },
@@ -3273,10 +3273,10 @@ struct inst_t instructions[] = {
     /*                                      PHB                                           */
     /**************************************************************************************/
 
-    [PHB_S] = {
+    [CPU_OPCODE_PHB_S] = {
         .uops = {
             IO,
-            MOV_S       (MOV_LSB, REG_S, REG_ZERO, REG_DBR),
+            MOV_S       (MOV_LSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_DBR),
             DECS,
         }
     },
@@ -3285,12 +3285,12 @@ struct inst_t instructions[] = {
     /*                                      PHD                                           */
     /**************************************************************************************/
 
-    [PHD_S] = {
+    [CPU_OPCODE_PHD_S] = {
         .uops = {
             IO,
-            MOV_S       (MOV_MSB, REG_S, REG_ZERO, REG_D),
+            MOV_S       (MOV_MSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_D),
             DECS,
-            MOV_S       (MOV_LSB, REG_S, REG_ZERO, REG_D),
+            MOV_S       (MOV_LSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_D),
             DECS,
         }
     },
@@ -3299,10 +3299,10 @@ struct inst_t instructions[] = {
     /*                                      PHK                                           */
     /**************************************************************************************/
 
-    [PHK_S] = {
+    [CPU_OPCODE_PHK_S] = {
         .uops = {
             IO,
-            MOV_S       (MOV_LSB, REG_S, REG_ZERO, REG_PBR),
+            MOV_S       (MOV_LSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_PBR),
             DECS,
         }
     },
@@ -3311,11 +3311,11 @@ struct inst_t instructions[] = {
     /*                                      PHP                                           */
     /**************************************************************************************/
 
-    [PHP_S] = {
+    [CPU_OPCODE_PHP_S] = {
         .uops = {
             IO,
-            MOV_P       (REG_P, REG_TEMP),
-            MOV_S       (MOV_LSB, REG_S, REG_ZERO, REG_TEMP),
+            MOV_P       (CPU_REG_P, CPU_REG_TEMP),
+            MOV_S       (MOV_LSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_TEMP),
             DECS,
         }
     },
@@ -3324,13 +3324,13 @@ struct inst_t instructions[] = {
     /*                                      PHX                                           */
     /**************************************************************************************/
 
-    [PHX_S] = {
+    [CPU_OPCODE_PHX_S] = {
         .uops = {
-            SKIPS       (3, STATUS_FLAG_X),
+            SKIPS       (3, CPU_STATUS_FLAG_X),
             IO          /* X = 0 */,
-            MOV_S       (MOV_MSB, REG_S, REG_ZERO, REG_X),
+            MOV_S       (MOV_MSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_X),
             DECS,
-            MOV_S       (MOV_LSB, REG_S, REG_ZERO, REG_X),
+            MOV_S       (MOV_LSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_X),
             DECS,
         }
     },
@@ -3339,13 +3339,13 @@ struct inst_t instructions[] = {
     /*                                      PHY                                           */
     /**************************************************************************************/
 
-    [PHY_S] = {
+    [CPU_OPCODE_PHY_S] = {
         .uops = {
-            SKIPS       (3, STATUS_FLAG_X),
+            SKIPS       (3, CPU_STATUS_FLAG_X),
             IO          /* X = 0 */,
-            MOV_S       (MOV_MSB, REG_S, REG_ZERO, REG_Y),
+            MOV_S       (MOV_MSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_Y),
             DECS,
-            MOV_S       (MOV_LSB, REG_S, REG_ZERO, REG_Y),
+            MOV_S       (MOV_LSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_Y),
             DECS,
         }
     },
@@ -3354,16 +3354,16 @@ struct inst_t instructions[] = {
     /*                                      PLA                                           */
     /**************************************************************************************/
 
-    [PLA_S] = {
+    [CPU_OPCODE_PLA_S] = {
         .uops = {
             IO,
             IO,
             INCS,
-            MOV_L       (MOV_LSB, REG_S, REG_ZERO, REG_ACCUM),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_ACCUM),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             INCS,
-            MOV_L       (MOV_MSB, REG_S, REG_ZERO, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_ACCUM),
+            CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
@@ -3371,13 +3371,13 @@ struct inst_t instructions[] = {
     /*                                      PLB                                           */
     /**************************************************************************************/
 
-    [PLB_S] = {
+    [CPU_OPCODE_PLB_S] = {
         .uops = {
             IO,
             IO,
             INCS,
-            MOV_L       (MOV_LSB, REG_S, REG_ZERO, REG_DBR),
-            CHK_ZN      (REG_DBR)
+            MOV_L       (MOV_LSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_DBR),
+            CHK_ZN      (CPU_REG_DBR)
         }
     },
 
@@ -3385,15 +3385,15 @@ struct inst_t instructions[] = {
     /*                                      PLD                                           */
     /**************************************************************************************/
 
-    [PLD_S] = {
+    [CPU_OPCODE_PLD_S] = {
         .uops = {
             IO,
             IO,
             INCS,
-            MOV_L       (MOV_LSB, REG_S, REG_ZERO, REG_D),
+            MOV_L       (MOV_LSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_D),
             INCS,
-            MOV_L       (MOV_MSB, REG_S, REG_ZERO, REG_D),
-            CHK_ZN      (REG_D)
+            MOV_L       (MOV_MSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_D),
+            CHK_ZN      (CPU_REG_D)
         }
     },
 
@@ -3401,29 +3401,29 @@ struct inst_t instructions[] = {
     /*                                      PLP                                           */
     /**************************************************************************************/
 
-    [PLP_S] = {
+    [CPU_OPCODE_PLP_S] = {
         .uops = {
             IO,
             IO,
             INCS,
-            MOV_L       (MOV_LSB, REG_S, REG_ZERO, REG_TEMP),
-            MOV_P       (REG_TEMP, REG_P),
+            MOV_L       (MOV_LSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_TEMP),
+            MOV_P       (CPU_REG_TEMP, CPU_REG_P),
         }
     },
 
     /**************************************************************************************/
     /*                                      PLX                                           */
     /**************************************************************************************/
-    [PLX_S] = {
+    [CPU_OPCODE_PLX_S] = {
         .uops = {
             IO,
             IO,
             INCS,
-            MOV_L       (MOV_LSB, REG_S, REG_ZERO, REG_X),
-            SKIPS       (2, STATUS_FLAG_X),
+            MOV_L       (MOV_LSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_X),
+            SKIPS       (2, CPU_STATUS_FLAG_X),
             INCS,
-            MOV_L       (MOV_MSB, REG_S, REG_ZERO, REG_X),
-            CHK_ZN      (REG_X)
+            MOV_L       (MOV_MSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_X),
+            CHK_ZN      (CPU_REG_X)
         }
     },
 
@@ -3431,16 +3431,16 @@ struct inst_t instructions[] = {
     /*                                      PLY                                           */
     /**************************************************************************************/
 
-    [PLY_S] = {
+    [CPU_OPCODE_PLY_S] = {
         .uops = {
             IO,
             IO,
             INCS,
-            MOV_L       (MOV_LSB, REG_S, REG_ZERO, REG_Y),
-            SKIPS       (2, STATUS_FLAG_X),
+            MOV_L       (MOV_LSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_Y),
+            SKIPS       (2, CPU_STATUS_FLAG_X),
             INCS,
-            MOV_L       (MOV_MSB, REG_S, REG_ZERO, REG_Y),
-            CHK_ZN      (REG_Y)
+            MOV_L       (MOV_MSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_Y),
+            CHK_ZN      (CPU_REG_Y)
         }
     },
 
@@ -3448,11 +3448,11 @@ struct inst_t instructions[] = {
     /*                                      REP                                           */
     /**************************************************************************************/
 
-    [REP_IMM] = {
+    [CPU_OPCODE_REP_IMM] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_TEMP),
+            MOV_LPC     (MOV_LSB, CPU_REG_TEMP),
             IO,
-            CLR_P       (STATUS_FLAG_LAST)
+            CLR_P       (CPU_STATUS_FLAG_LAST)
         }
     },
 
@@ -3460,96 +3460,96 @@ struct inst_t instructions[] = {
     /*                                      ROL                                           */
     /**************************************************************************************/
 
-    [ROL_ABS] = {
+    [CPU_OPCODE_ROL_ABS] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             IO,
-            ALU_OP      (ALU_OP_ROL, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
-            // CHK_ZNW     (REG_TEMP, 0),
-            SKIPS       (2, STATUS_FLAG_M),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_ROL, CPU_STATUS_FLAG_M, CPU_REG_TEMP, CPU_REG_ZERO),
+            // CHK_ZNW     (CPU_REG_TEMP, 0),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_NEXT, ADDR_OFF_SIGNED),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_S       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
         }
     },
 
-    [ROL_ACC] = {
+    [CPU_OPCODE_ROL_ACC] = {
         .uops = {
             IO,
-            ALU_OP      (ALU_OP_ROL, STATUS_FLAG_M, REG_ACCUM, REG_ZERO),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            ALU_OP      (ALU_OP_ROL, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_ZERO),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
-    [ROL_ABS_X] = {
+    [CPU_OPCODE_ROL_ABS_X] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
             IO,
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_ROL, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
-            // CHK_ZNW     (REG_TEMP, 0),
-            SKIPS       (2, STATUS_FLAG_M),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_ROL, CPU_STATUS_FLAG_M, CPU_REG_TEMP, CPU_REG_ZERO),
+            // CHK_ZNW     (CPU_REG_TEMP, 0),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_S       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
         }
     },
 
-    [ROL_DIR] = {
+    [CPU_OPCODE_ROL_DIR] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             IO,
-            ALU_OP      (ALU_OP_ROL, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
-            // CHK_ZNW     (REG_TEMP, 0),
-            SKIPS       (2, STATUS_FLAG_M),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_ROL, CPU_STATUS_FLAG_M, CPU_REG_TEMP, CPU_REG_ZERO),
+            // CHK_ZNW     (CPU_REG_TEMP, 0),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_NEXT, ADDR_OFF_SIGNED),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_S       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
         }
     },
 
-    [ROL_DIR_X] = {
+    [CPU_OPCODE_ROL_DIR_X] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
             IO,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
             IO,
-            ALU_OP      (ALU_OP_ROL, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
-            // CHK_ZNW     (REG_TEMP, 0),
-            SKIPS       (2, STATUS_FLAG_M),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ALU_OP      (ALU_OP_ROL, CPU_STATUS_FLAG_M, CPU_REG_TEMP, CPU_REG_ZERO),
+            // CHK_ZNW     (CPU_REG_TEMP, 0),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
             ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_S       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
         }
     },
 
@@ -3557,96 +3557,96 @@ struct inst_t instructions[] = {
     /*                                      ROR                                           */
     /**************************************************************************************/
 
-    [ROR_ABS] = {
+    [CPU_OPCODE_ROR_ABS] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             IO,
-            ALU_OP      (ALU_OP_ROR, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
-            // CHK_ZNW     (REG_TEMP, 0),
-            SKIPS       (2, STATUS_FLAG_M),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_ROR, CPU_STATUS_FLAG_M, CPU_REG_TEMP, CPU_REG_ZERO),
+            // CHK_ZNW     (CPU_REG_TEMP, 0),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_NEXT, ADDR_OFF_SIGNED),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_S       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
         }
     },
 
-    [ROR_ACC] = {
+    [CPU_OPCODE_ROR_ACC] = {
         .uops = {
             IO,
-            ALU_OP      (ALU_OP_ROR, STATUS_FLAG_M, REG_ACCUM, REG_ZERO),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            ALU_OP      (ALU_OP_ROR, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_ZERO),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
-    [ROR_ABS_X] = {
+    [CPU_OPCODE_ROR_ABS_X] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
             IO,
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_ROR, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
-            // CHK_ZNW     (REG_TEMP, 0),
-            SKIPS       (2, STATUS_FLAG_M),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_ROR, CPU_STATUS_FLAG_M, CPU_REG_TEMP, CPU_REG_ZERO),
+            // CHK_ZNW     (CPU_REG_TEMP, 0),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_S       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
         }
     },
 
-    [ROR_DIR] = {
+    [CPU_OPCODE_ROR_DIR] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             IO,
-            ALU_OP      (ALU_OP_ROR, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
-            // CHK_ZNW     (REG_TEMP, 0),
-            SKIPS       (2, STATUS_FLAG_M),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ALU_OP      (ALU_OP_ROR, CPU_STATUS_FLAG_M, CPU_REG_TEMP, CPU_REG_ZERO),
+            // CHK_ZNW     (CPU_REG_TEMP, 0),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_NEXT, ADDR_OFF_SIGNED),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_S       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
         }
     },
 
-    [ROR_DIR_X] = {
+    [CPU_OPCODE_ROR_DIR_X] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
             IO,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
             IO,
-            ALU_OP      (ALU_OP_ROR, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
-            // CHK_ZNW     (REG_TEMP, 0),
-            SKIPS       (2, STATUS_FLAG_M),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ALU_OP      (ALU_OP_ROR, CPU_STATUS_FLAG_M, CPU_REG_TEMP, CPU_REG_ZERO),
+            // CHK_ZNW     (CPU_REG_TEMP, 0),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
             ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_WRAP, ADDR_OFF_SIGNED),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_S       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
         }
     },
 
@@ -3654,21 +3654,21 @@ struct inst_t instructions[] = {
     /*                                      RTI                                           */
     /**************************************************************************************/
 
-    [RTI_S] = {
+    [CPU_OPCODE_RTI_S] = {
         .uops = {
             IO,
             IO,
             INCS,
-            MOV_L       (MOV_LSB, REG_S, REG_ZERO, REG_TEMP),
-            MOV_P       (REG_TEMP, REG_P),
+            MOV_L       (MOV_LSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_TEMP),
+            MOV_P       (CPU_REG_TEMP, CPU_REG_P),
             INCS,
-            MOV_L       (MOV_LSB, REG_S, REG_ZERO, REG_TEMP),
+            MOV_L       (MOV_LSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_TEMP),
             INCS,
-            MOV_L       (MOV_MSB, REG_S, REG_ZERO, REG_TEMP),
-            MOV_RRW     (REG_TEMP, REG_PC, MOV_RRW_WORD),
-            SKIPS       (2, STATUS_FLAG_E),
+            MOV_L       (MOV_MSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_TEMP),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_PC, MOV_RRW_WORD),
+            SKIPS       (2, CPU_STATUS_FLAG_E),
             INCS,
-            MOV_L       (MOV_LSB, REG_S, REG_ZERO, REG_PBR),
+            MOV_L       (MOV_LSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_PBR),
         }
     },
 
@@ -3676,20 +3676,20 @@ struct inst_t instructions[] = {
     /*                                      RTL                                           */
     /**************************************************************************************/
 
-    [RTL_S] = {
+    [CPU_OPCODE_RTL_S] = {
         .uops = {
             IO,
             IO,
             INCS,
-            MOV_L       (MOV_LSB, REG_S, REG_ZERO, REG_ADDR),
+            MOV_L       (MOV_LSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_ADDR),
             INCS,
-            MOV_L       (MOV_MSB, REG_S, REG_ZERO, REG_ADDR),
+            MOV_L       (MOV_MSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_ADDR),
             INCS,
-            MOV_L       (MOV_LSB, REG_S, REG_ZERO, REG_BANK),
+            MOV_L       (MOV_LSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_BANK),
             IO,
-            INC_RW      (REG_ADDR),
-            MOV_RRW     (REG_ADDR, REG_PC, MOV_RRW_WORD),
-            MOV_RRW     (REG_BANK, REG_PBR, MOV_RRW_BYTE),
+            INC_RW      (CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_ADDR, CPU_REG_PC, MOV_RRW_WORD),
+            MOV_RRW     (CPU_REG_BANK, CPU_REG_PBR, MOV_RRW_BYTE),
         }
     },
 
@@ -3697,17 +3697,17 @@ struct inst_t instructions[] = {
     /*                                      RTS                                           */
     /**************************************************************************************/
 
-    [RTS_S] = {
+    [CPU_OPCODE_RTS_S] = {
         .uops = {
             IO,
             IO,
             INCS,
-            MOV_L       (MOV_LSB, REG_S, REG_ZERO, REG_ADDR),
+            MOV_L       (MOV_LSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_ADDR),
             INCS,
-            MOV_L       (MOV_MSB, REG_S, REG_ZERO, REG_ADDR),
+            MOV_L       (MOV_MSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_ADDR),
             IO,
-            INC_RW      (REG_ADDR),
-            MOV_RRW     (REG_ADDR, REG_PC, MOV_RRW_WORD),
+            INC_RW      (CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_ADDR, CPU_REG_PC, MOV_RRW_WORD),
         }
     },
 
@@ -3715,293 +3715,293 @@ struct inst_t instructions[] = {
     /*                                      SBC                                           */
     /**************************************************************************************/
 
-    [SBC_ABS] = {
+    [CPU_OPCODE_SBC_ABS] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_SUB, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_SUB, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
-    [SBC_ABS_X] = {
+    [CPU_OPCODE_SBC_ABS_X] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
-            SKIPC       (2, STATUS_FLAG_PAGE),
-            SKIPS       (1, STATUS_FLAG_X),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_NEXT),
+            SKIPC       (2, CPU_STATUS_FLAG_PAGE),
+            SKIPS       (1, CPU_STATUS_FLAG_X),
             IO          /* X=0 or page boundary */,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_SUB, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_SUB, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
-    [SBC_ABS_Y] = {
+    [CPU_OPCODE_SBC_ABS_Y] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
-            SKIPC       (2, STATUS_FLAG_PAGE),
-            SKIPS       (1, STATUS_FLAG_X),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (CPU_REG_Y, ADDR_OFF_BANK_NEXT),
+            SKIPC       (2, CPU_STATUS_FLAG_PAGE),
+            SKIPS       (1, CPU_STATUS_FLAG_X),
             IO          /* X=0 or page boundary */,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_SUB, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_SUB, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
-    [SBC_ABSL] = {
+    [CPU_OPCODE_SBC_ABSL] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_LPC     (MOV_LSB, REG_BANK),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_LSB, CPU_REG_BANK),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_SUB, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_SUB, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
         }
     },
 
-    [SBC_ABSL_X] = {
+    [CPU_OPCODE_SBC_ABSL_X] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_LPC     (MOV_LSB, REG_BANK),
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_LSB, CPU_REG_BANK),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_SUB, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_SUB, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
-    [SBC_DIR] = {
+    [CPU_OPCODE_SBC_DIR] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_SUB, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_SUB, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
-    [SBC_S_REL] = {
+    [CPU_OPCODE_SBC_S_REL] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_S, ADDR_OFF_BANK_WRAP),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            ADDR_OFFR   (CPU_REG_S, ADDR_OFF_BANK_WRAP),
             IO,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ALU_OP      (ALU_OP_SUB, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_SUB, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         },
     },
-    [SBC_DIR_X] = {
+    [CPU_OPCODE_SBC_DIR_X] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_WRAP),
             IO,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            ALU_OP      (ALU_OP_SUB, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_SUB, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
-    [SBC_DIR_IND] = {
+    [CPU_OPCODE_SBC_DIR_IND] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, 0),
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFR   (CPU_REG_D, 0),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_SUB, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_SUB, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
-    [SBC_DIR_INDL] = {
+    [CPU_OPCODE_SBC_DIR_INDL] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_BANK),
-            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_BANK),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_ADDR, MOV_RRW_WORD),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_SUB, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_SUB, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
-    [SBC_S_REL_IND_Y] = {
+    [CPU_OPCODE_SBC_S_REL_IND_Y] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
             IO,
-            ADDR_OFFR   (REG_S, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFR   (CPU_REG_S, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
             IO,
-            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFR   (CPU_REG_Y, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_SUB, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_SUB, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
 
         }
     },
 
-    [SBC_DIR_X_IND] = {
+    [CPU_OPCODE_SBC_DIR_X_IND] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_WRAP),
             IO,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_SUB, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_SUB, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
-    [SBC_DIR_IND_Y] = {
+    [CPU_OPCODE_SBC_DIR_IND_Y] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, 0),
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFR   (CPU_REG_D, 0),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
-            SKIPS       (2, STATUS_FLAG_X),
-            SKIPC       (1, STATUS_FLAG_PAGE),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (CPU_REG_Y, ADDR_OFF_BANK_NEXT),
+            SKIPS       (2, CPU_STATUS_FLAG_X),
+            SKIPC       (1, CPU_STATUS_FLAG_PAGE),
             IO          /* X = 0 or page crossed */,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_SUB, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_SUB, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
-    [SBC_DIR_INDL_Y] = {
+    [CPU_OPCODE_SBC_DIR_INDL_Y] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_D, 0),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            ADDR_OFFR   (CPU_REG_D, 0),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_BANK),
-            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            // MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_BANK),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_ADDR, MOV_RRW_WORD),
+            // MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (CPU_REG_Y, ADDR_OFF_BANK_NEXT),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_SUB, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_SUB, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
-    [SBC_IMM] = {
+    [CPU_OPCODE_SBC_IMM] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_TEMP),
-            SKIPS       (1, STATUS_FLAG_M),
-            MOV_LPC     (MOV_MSB, REG_TEMP),
-            ALU_OP      (ALU_OP_SUB, STATUS_FLAG_M, REG_ACCUM, REG_TEMP),
-            MOV_RR      (REG_TEMP, REG_ACCUM),
-            // CHK_ZN      (REG_ACCUM),
+            MOV_LPC     (MOV_LSB, CPU_REG_TEMP),
+            SKIPS       (1, CPU_STATUS_FLAG_M),
+            MOV_LPC     (MOV_MSB, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_SUB, CPU_STATUS_FLAG_M, CPU_REG_ACCUM, CPU_REG_TEMP),
+            MOV_RR      (CPU_REG_TEMP, CPU_REG_ACCUM),
+            // CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
@@ -4009,10 +4009,10 @@ struct inst_t instructions[] = {
     /*                                      SEC                                           */
     /**************************************************************************************/
 
-    [SEC_IMP] = {
+    [CPU_OPCODE_SEC_IMP] = {
         .uops = {
             IO,
-            SET_P       (STATUS_FLAG_C)
+            SET_P       (CPU_STATUS_FLAG_C)
         },
     },
 
@@ -4020,10 +4020,10 @@ struct inst_t instructions[] = {
     /*                                      SED                                           */
     /**************************************************************************************/
 
-    [SED_IMP] = {
+    [CPU_OPCODE_SED_IMP] = {
         .uops = {
             IO,
-            SET_P       (STATUS_FLAG_D)
+            SET_P       (CPU_STATUS_FLAG_D)
         },
     },
 
@@ -4031,10 +4031,10 @@ struct inst_t instructions[] = {
     /*                                      SEI                                           */
     /**************************************************************************************/
 
-    [SEI_IMP] = {
+    [CPU_OPCODE_SEI_IMP] = {
         .uops = {
             IO,
-            SET_P       (STATUS_FLAG_I)
+            SET_P       (CPU_STATUS_FLAG_I)
         },
     },
 
@@ -4042,11 +4042,11 @@ struct inst_t instructions[] = {
     /*                                      SEP                                           */
     /**************************************************************************************/
 
-    [SEP_IMM] = {
+    [CPU_OPCODE_SEP_IMM] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_TEMP),
+            MOV_LPC     (MOV_LSB, CPU_REG_TEMP),
             IO,
-            SET_P       (STATUS_FLAG_LAST)
+            SET_P       (CPU_STATUS_FLAG_LAST)
         }
     },
 
@@ -4054,235 +4054,235 @@ struct inst_t instructions[] = {
     /*                                      STA                                           */
     /**************************************************************************************/
 
-    [STA_ABS] = {
+    [CPU_OPCODE_STA_ABS] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_ACCUM),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_S       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_ACCUM),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_ACCUM),
+            MOV_S       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_ACCUM),
         }
     },
-    [STA_ABS_X] = {
+    [CPU_OPCODE_STA_ABS_X] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_NEXT),
             IO          /* extra cycle due to write */,
-            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_ACCUM),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_S       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_ACCUM),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_ACCUM),
+            MOV_S       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_ACCUM),
         }
     },
-    [STA_ABS_Y] = {
+    [CPU_OPCODE_STA_ABS_Y] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (CPU_REG_Y, ADDR_OFF_BANK_NEXT),
             IO          /* extra cycle due to write */,
-            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_ACCUM),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_S       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_ACCUM),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_ACCUM),
+            MOV_S       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_ACCUM),
         }
     },
-    [STA_ABSL] = {
+    [CPU_OPCODE_STA_ABSL] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_LPC     (MOV_LSB, REG_BANK),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_ACCUM),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_LSB, CPU_REG_BANK),
+            MOV_S       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_ACCUM),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_ACCUM),
+            MOV_S       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_ACCUM),
         }
     },
-    [STA_ABSL_X] = {
+    [CPU_OPCODE_STA_ABSL_X] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_LPC     (MOV_LSB, REG_BANK),
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_ACCUM),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_LSB, CPU_REG_BANK),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_NEXT),
+            MOV_S       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_ACCUM),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_ACCUM),
+            MOV_S       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_ACCUM),
         }
     },
-    [STA_DIR] = {
+    [CPU_OPCODE_STA_DIR] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_ACCUM),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_S       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_ACCUM),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_ACCUM),
+            MOV_S       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_ACCUM),
         }
     },
-    [STA_S_REL] = {
+    [CPU_OPCODE_STA_S_REL] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_S, ADDR_OFF_BANK_WRAP),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            ADDR_OFFR   (CPU_REG_S, ADDR_OFF_BANK_WRAP),
             IO,
-            MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_ACCUM),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_S       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_ACCUM),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_ACCUM),
+            MOV_S       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_ACCUM),
         },
     },
 
-    [STA_DIR_X] = {
+    [CPU_OPCODE_STA_DIR_X] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_WRAP),
             IO,
-            MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_ACCUM),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_S       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_ACCUM),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_ACCUM),
+            MOV_S       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_ACCUM),
         }
     },
 
-    [STA_DIR_IND] = {
+    [CPU_OPCODE_STA_DIR_IND] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_ACCUM),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_S       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_ACCUM),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_ACCUM),
+            MOV_S       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_ACCUM),
         }
     },
 
-    [STA_DIR_INDL] = {
+    [CPU_OPCODE_STA_DIR_INDL] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_BANK),
-            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_ACCUM),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_BANK),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_ADDR, MOV_RRW_WORD),
+            MOV_S       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_ACCUM),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_ACCUM),
+            MOV_S       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_ACCUM),
         }
     },
 
-    [STA_S_REL_IND_Y] = {
+    [CPU_OPCODE_STA_S_REL_IND_Y] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
             IO,
-            ADDR_OFFR   (REG_S, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            ADDR_OFFR   (CPU_REG_S, ADDR_OFF_BANK_WRAP),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
             IO,
-            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_ACCUM),
-            SKIPS       (2, STATUS_FLAG_M),
+            ADDR_OFFR   (CPU_REG_Y, ADDR_OFF_BANK_NEXT),
+            MOV_S       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_ACCUM),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_ACCUM),
+            MOV_S       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_ACCUM),
         }
     },
 
-    [STA_DIR_X_IND] = {
+    [CPU_OPCODE_STA_DIR_X_IND] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_WRAP),
             IO,
-            MOV_L       (MOV_LSB, REG_ADDR, REG_ZERO, REG_TEMP),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_ZERO, REG_TEMP),
-            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_ACCUM),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_TEMP),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_S       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_ACCUM),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_ACCUM),
+            MOV_S       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_ACCUM),
         }
     },
 
-    [STA_DIR_IND_Y] = {
+    [CPU_OPCODE_STA_DIR_IND_Y] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
-            SKIPS       (2, STATUS_FLAG_X),
-            SKIPC       (1, STATUS_FLAG_PAGE),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_ADDR, MOV_RRW_WORD),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (CPU_REG_Y, ADDR_OFF_BANK_NEXT),
+            SKIPS       (2, CPU_STATUS_FLAG_X),
+            SKIPC       (1, CPU_STATUS_FLAG_PAGE),
             IO          /* X = 0 or page crossed */,
-            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_ACCUM),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_S       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_ACCUM),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_ACCUM),
+            MOV_S       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_ACCUM),
         }
     },
 
-    [STA_DIR_INDL_Y] = {
+    [CPU_OPCODE_STA_DIR_INDL_Y] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_D, 0),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            ADDR_OFFR   (CPU_REG_D, 0),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_BANK),
-            MOV_RRW     (REG_TEMP, REG_ADDR, MOV_RRW_WORD),
-            // MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_NEXT),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_ACCUM),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_BANK),
+            MOV_RRW     (CPU_REG_TEMP, CPU_REG_ADDR, MOV_RRW_WORD),
+            // MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (CPU_REG_Y, ADDR_OFF_BANK_NEXT),
+            MOV_S       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_ACCUM),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_ACCUM),
+            MOV_S       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_ACCUM),
         }
     },
 
@@ -4290,7 +4290,7 @@ struct inst_t instructions[] = {
     /*                                      STX                                           */
     /**************************************************************************************/
 
-    [STP_IMP] = {
+    [CPU_OPCODE_STP_IMP] = {
         .uops = {
             IO,
             IO,
@@ -4302,44 +4302,44 @@ struct inst_t instructions[] = {
     /*                                      STX                                           */
     /**************************************************************************************/
 
-    [STX_ABS] = {
+    [CPU_OPCODE_STX_ABS] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_X),
-            SKIPS       (2, STATUS_FLAG_X),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_S       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_X),
+            SKIPS       (2, CPU_STATUS_FLAG_X),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_X),
+            MOV_S       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_X),
         }
     },
-    [STX_DIR] = {
+    [CPU_OPCODE_STX_DIR] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0  */,
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_X),
-            SKIPS       (2, STATUS_FLAG_X),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_S       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_X),
+            SKIPS       (2, CPU_STATUS_FLAG_X),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_X),
+            MOV_S       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_X),
         }
     },
-    [STX_DIR_Y] = {
+    [CPU_OPCODE_STX_DIR_Y] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            ADDR_OFFR   (REG_Y, ADDR_OFF_BANK_WRAP),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (CPU_REG_Y, ADDR_OFF_BANK_WRAP),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
             IO,
-            MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_X),
-            SKIPS       (2, STATUS_FLAG_X),
+            MOV_S       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_X),
+            SKIPS       (2, CPU_STATUS_FLAG_X),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_X),
+            MOV_S       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_X),
         }
     },
 
@@ -4347,44 +4347,44 @@ struct inst_t instructions[] = {
     /*                                      STY                                           */
     /**************************************************************************************/
 
-    [STY_ABS] = {
+    [CPU_OPCODE_STY_ABS] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_Y),
-            SKIPS       (2, STATUS_FLAG_X),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_S       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_Y),
+            SKIPS       (2, CPU_STATUS_FLAG_X),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_Y),
+            MOV_S       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_Y),
         }
     },
-    [STY_DIR] = {
+    [CPU_OPCODE_STY_DIR] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL !=0  */,
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_Y),
-            SKIPS       (2, STATUS_FLAG_X),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_S       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_Y),
+            SKIPS       (2, CPU_STATUS_FLAG_X),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_Y),
+            MOV_S       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_Y),
         }
     },
-    [STY_DIR_X] = {
+    [CPU_OPCODE_STY_DIR_X] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_WRAP),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
             IO,
-            MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_Y),
-            SKIPS       (2, STATUS_FLAG_X),
+            MOV_S       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_Y),
+            SKIPS       (2, CPU_STATUS_FLAG_X),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_Y),
+            MOV_S       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_Y),
         }
     },
 
@@ -4392,60 +4392,60 @@ struct inst_t instructions[] = {
     /*                                      STZ                                           */
     /**************************************************************************************/
 
-    [STZ_ABS] = {
+    [CPU_OPCODE_STZ_ABS] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_ZERO),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_S       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_ZERO),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_ZERO),
+            MOV_S       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_ZERO),
         }
     },
 
-    [STZ_ABS_X] = {
+    [CPU_OPCODE_STZ_ABS_X] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_NEXT),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_NEXT),
             IO          /* extra cycle due to write */,
-            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_ZERO),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_S       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_ZERO),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_ZERO),
+            MOV_S       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_ZERO),
         }
     },
 
-    [STZ_DIR] = {
+    [CPU_OPCODE_STZ_DIR] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL !=0  */,
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_ZERO),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_S       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_ZERO),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_ZERO),
+            MOV_S       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_ZERO),
         }
     },
 
-    [STZ_DIR_X] = {
+    [CPU_OPCODE_STZ_DIR_X] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            ADDR_OFFR   (REG_X, ADDR_OFF_BANK_WRAP),
-            SKIPC       (1, STATUS_FLAG_DL),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            ADDR_OFFR   (CPU_REG_X, ADDR_OFF_BANK_WRAP),
+            SKIPC       (1, CPU_STATUS_FLAG_DL),
             IO          /* DL != 0 */,
             IO,
-            MOV_S       (MOV_LSB, REG_ADDR, REG_ZERO, REG_ZERO),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_S       (MOV_LSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_ZERO),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_ZERO, REG_ZERO),
+            MOV_S       (MOV_MSB, CPU_REG_ADDR, CPU_REG_ZERO, CPU_REG_ZERO),
         }
     },
 
@@ -4454,11 +4454,11 @@ struct inst_t instructions[] = {
     /**************************************************************************************/
 
 
-    [TAX_IMP] = {
+    [CPU_OPCODE_TAX_IMP] = {
         .uops = {
             IO,
-            MOV_RR      (REG_ACCUM, REG_X),
-            CHK_ZN      (REG_X),
+            MOV_RR      (CPU_REG_ACCUM, CPU_REG_X),
+            CHK_ZN      (CPU_REG_X),
         }
     },
 
@@ -4466,11 +4466,11 @@ struct inst_t instructions[] = {
     /*                                      TAY                                           */
     /**************************************************************************************/
 
-    [TAY_IMP] = {
+    [CPU_OPCODE_TAY_IMP] = {
         .uops = {
             IO,
-            MOV_RR      (REG_ACCUM, REG_Y),
-            CHK_ZN      (REG_Y),
+            MOV_RR      (CPU_REG_ACCUM, CPU_REG_Y),
+            CHK_ZN      (CPU_REG_Y),
         }
     },
 
@@ -4478,11 +4478,11 @@ struct inst_t instructions[] = {
     /*                                      TCD                                           */
     /**************************************************************************************/
 
-    [TCD_IMP] = {
+    [CPU_OPCODE_TCD_IMP] = {
         .uops = {
             IO,
-            MOV_RRW     (REG_ACCUM, REG_D, MOV_RRW_WORD),
-            CHK_ZNW     (REG_D, CHK_ZW_WORD),
+            MOV_RRW     (CPU_REG_ACCUM, CPU_REG_D, MOV_RRW_WORD),
+            CHK_ZNW     (CPU_REG_D, CHK_ZW_WORD),
         }
     },
 
@@ -4490,40 +4490,40 @@ struct inst_t instructions[] = {
     /*                                      TRB                                           */
     /**************************************************************************************/
 
-    [TRB_ABS] = {
+    [CPU_OPCODE_TRB_ABS] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_TRB, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_TRB, CPU_STATUS_FLAG_M, CPU_REG_TEMP, CPU_REG_ZERO),
             IO,
-            SKIPS       (2, STATUS_FLAG_M),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_NEXT, ADDR_OFF_SIGNED),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP)
+            MOV_S       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP)
         }
     },
 
-    [TRB_DIR] = {
+    [CPU_OPCODE_TRB_DIR] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_TRB, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_TRB, CPU_STATUS_FLAG_M, CPU_REG_TEMP, CPU_REG_ZERO),
             IO,
-            SKIPS       (2, STATUS_FLAG_M),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_NEXT, ADDR_OFF_SIGNED),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP)
+            MOV_S       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP)
         }
     },
 
@@ -4531,40 +4531,40 @@ struct inst_t instructions[] = {
     /*                                      TSB                                           */
     /**************************************************************************************/
 
-    [TSB_ABS] = {
+    [CPU_OPCODE_TSB_ABS] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_DBR, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_DBR, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_TSB, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_TSB, CPU_STATUS_FLAG_M, CPU_REG_TEMP, CPU_REG_ZERO),
             IO,
-            SKIPS       (2, STATUS_FLAG_M),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_NEXT, ADDR_OFF_SIGNED),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP)
+            MOV_S       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP)
         }
     },
 
-    [TSB_DIR] = {
+    [CPU_OPCODE_TSB_DIR] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            ZEXT        (REG_ADDR),
-            ADDR_OFFR   (REG_D, ADDR_OFF_BANK_WRAP),
-            MOV_RRW     (REG_ZERO, REG_BANK, MOV_RRW_BYTE),
-            MOV_L       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP),
-            SKIPS       (2, STATUS_FLAG_M),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            ZEXT        (CPU_REG_ADDR),
+            ADDR_OFFR   (CPU_REG_D, ADDR_OFF_BANK_WRAP),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_BANK, MOV_RRW_BYTE),
+            MOV_L       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
             ADDR_OFFI   (1, ADDR_OFF_BANK_NEXT),
-            MOV_L       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
-            ALU_OP      (ALU_OP_TSB, STATUS_FLAG_M, REG_TEMP, REG_ZERO),
+            MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
+            ALU_OP      (ALU_OP_TSB, CPU_STATUS_FLAG_M, CPU_REG_TEMP, CPU_REG_ZERO),
             IO,
-            SKIPS       (2, STATUS_FLAG_M),
-            MOV_S       (MOV_MSB, REG_ADDR, REG_BANK, REG_TEMP),
+            SKIPS       (2, CPU_STATUS_FLAG_M),
+            MOV_S       (MOV_MSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP),
             ADDR_OFFIS  (0xffff, ADDR_OFF_BANK_NEXT, ADDR_OFF_SIGNED),
-            MOV_S       (MOV_LSB, REG_ADDR, REG_BANK, REG_TEMP)
+            MOV_S       (MOV_LSB, CPU_REG_ADDR, CPU_REG_BANK, CPU_REG_TEMP)
         }
     },
 
@@ -4572,10 +4572,10 @@ struct inst_t instructions[] = {
     /*                                      TCS                                           */
     /**************************************************************************************/
 
-    [TCS_IMP] = {
+    [CPU_OPCODE_TCS_IMP] = {
         .uops = {
             IO,
-            MOV_RRW     (REG_ACCUM, REG_S, MOV_RRW_WORD),
+            MOV_RRW     (CPU_REG_ACCUM, CPU_REG_S, MOV_RRW_WORD),
         }
     },
 
@@ -4583,11 +4583,11 @@ struct inst_t instructions[] = {
     /*                                      TDC                                           */
     /**************************************************************************************/
 
-    [TDC_IMP] = {
+    [CPU_OPCODE_TDC_IMP] = {
         .uops = {
             IO,
-            MOV_RRW     (REG_D, REG_ACCUM, MOV_RRW_WORD),
-            CHK_ZN      (REG_ACCUM),
+            MOV_RRW     (CPU_REG_D, CPU_REG_ACCUM, MOV_RRW_WORD),
+            CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
@@ -4595,11 +4595,11 @@ struct inst_t instructions[] = {
     /*                                      TSC                                           */
     /**************************************************************************************/
 
-    [TSC_ACC] = {
+    [CPU_OPCODE_TSC_ACC] = {
         .uops = {
             IO,
-            MOV_RRW     (REG_S, REG_ACCUM, MOV_RRW_WORD),
-            CHK_ZN      (REG_ACCUM),
+            MOV_RRW     (CPU_REG_S, CPU_REG_ACCUM, MOV_RRW_WORD),
+            CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
@@ -4607,11 +4607,11 @@ struct inst_t instructions[] = {
     /*                                      TSX                                           */
     /**************************************************************************************/
 
-    [TSX_ACC] = {
+    [CPU_OPCODE_TSX_ACC] = {
         .uops = {
             IO,
-            MOV_RR      (REG_S, REG_X),
-            CHK_ZN      (REG_X),
+            MOV_RR      (CPU_REG_S, CPU_REG_X),
+            CHK_ZN      (CPU_REG_X),
         }
     },
 
@@ -4619,11 +4619,11 @@ struct inst_t instructions[] = {
     /*                                      TXA                                           */
     /**************************************************************************************/
 
-    [TXA_ACC] = {
+    [CPU_OPCODE_TXA_ACC] = {
         .uops = {
             IO,
-            MOV_RR      (REG_X, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            MOV_RR      (CPU_REG_X, CPU_REG_ACCUM),
+            CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
@@ -4631,10 +4631,10 @@ struct inst_t instructions[] = {
     /*                                      TXS                                           */
     /**************************************************************************************/
 
-    [TXS_ACC] = {
+    [CPU_OPCODE_TXS_ACC] = {
         .uops = {
             IO,
-            MOV_RRW     (REG_X, REG_S, MOV_RRW_WORD),
+            MOV_RRW     (CPU_REG_X, CPU_REG_S, MOV_RRW_WORD),
         }
     },
 
@@ -4642,11 +4642,11 @@ struct inst_t instructions[] = {
     /*                                      TXY                                           */
     /**************************************************************************************/
 
-    [TXY_ACC] = {
+    [CPU_OPCODE_TXY_ACC] = {
         .uops = {
             IO,
-            MOV_RR      (REG_X, REG_Y),
-            CHK_ZN      (REG_Y),
+            MOV_RR      (CPU_REG_X, CPU_REG_Y),
+            CHK_ZN      (CPU_REG_Y),
         }
     },
 
@@ -4654,11 +4654,11 @@ struct inst_t instructions[] = {
     /*                                      TYA                                           */
     /**************************************************************************************/
 
-    [TYA_ACC] = {
+    [CPU_OPCODE_TYA_ACC] = {
         .uops = {
             IO,
-            MOV_RR      (REG_Y, REG_ACCUM),
-            CHK_ZN      (REG_ACCUM),
+            MOV_RR      (CPU_REG_Y, CPU_REG_ACCUM),
+            CHK_ZN      (CPU_REG_ACCUM),
         }
     },
 
@@ -4666,11 +4666,11 @@ struct inst_t instructions[] = {
     /*                                      TYX                                           */
     /**************************************************************************************/
 
-    [TYX_ACC] = {
+    [CPU_OPCODE_TYX_ACC] = {
         .uops = {
             IO,
-            MOV_RR      (REG_Y, REG_X),
-            CHK_ZN      (REG_X),
+            MOV_RR      (CPU_REG_Y, CPU_REG_X),
+            CHK_ZN      (CPU_REG_X),
         }
     },
 
@@ -4678,7 +4678,7 @@ struct inst_t instructions[] = {
     /*                                      WAI                                           */
     /**************************************************************************************/
 
-    [WAI_ACC] = {
+    [CPU_OPCODE_WAI_ACC] = {
         .uops = {
             IO,
             IO,
@@ -4690,11 +4690,11 @@ struct inst_t instructions[] = {
     /*                                      WDM                                           */
     /**************************************************************************************/
 
-    [WDM_ACC] = {
+    [CPU_OPCODE_WDM_ACC] = {
         .uops = {
             // SKIPC(0, 0)
             // INC_PC(0)
-            MOV_LPC(MOV_LSB, REG_ADDR),
+            MOV_LPC(MOV_LSB, CPU_REG_ADDR),
         }
     },
 
@@ -4702,12 +4702,12 @@ struct inst_t instructions[] = {
     /*                                      XBA                                           */
     /**************************************************************************************/
 
-    [XBA_ACC] = {
+    [CPU_OPCODE_XBA_ACC] = {
         .uops = {
             IO,
             IO,
             XBA,
-            CHK_ZNW     (REG_ACCUM, CHK_ZW_BYTE)
+            CHK_ZNW     (CPU_REG_ACCUM, CHK_ZW_BYTE)
         }
     },
 
@@ -4715,7 +4715,7 @@ struct inst_t instructions[] = {
     /*                                      XCE                                           */
     /**************************************************************************************/
 
-    [XCE_ACC] = {
+    [CPU_OPCODE_XCE_ACC] = {
         .uops = {
             IO,
             XCE
@@ -4723,735 +4723,735 @@ struct inst_t instructions[] = {
     },
 
 
-    [FETCH] = {
+    [CPU_OPCODE_FETCH] = {
         .uops = {
-            MOV_LPC     (MOV_LSB, REG_INST),
+            MOV_LPC     (MOV_LSB, CPU_REG_INST),
             DECODE
         }
     },
 
-    [INT_HW] = {
+    [CPU_OPCODE_INT_HW] = {
         .uops = {
             IO,
-            SKIPS       (1, STATUS_FLAG_E),
+            SKIPS       (1, CPU_STATUS_FLAG_E),
             IO,
-            MOV_S       (MOV_LSB, REG_S, REG_ZERO, REG_PBR),
+            MOV_S       (MOV_LSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_PBR),
             DECS,
-            MOV_S       (MOV_MSB, REG_S, REG_ZERO, REG_PC),
+            MOV_S       (MOV_MSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_PC),
             DECS,
-            MOV_S       (MOV_LSB, REG_S, REG_ZERO, REG_PC),
+            MOV_S       (MOV_LSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_PC),
             DECS,
-            MOV_P       (REG_P, REG_TEMP),
-            MOV_S       (MOV_LSB, REG_S, REG_ZERO, REG_TEMP),
+            MOV_P       (CPU_REG_P, CPU_REG_TEMP),
+            MOV_S       (MOV_LSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_TEMP),
             DECS,
-            SET_P       (STATUS_FLAG_I),
+            SET_P       (CPU_STATUS_FLAG_I),
             BRK,
-            MOV_RRW     (REG_ADDR, REG_PC, MOV_RRW_WORD),
-            MOV_RRW     (REG_ZERO, REG_PBR, MOV_RRW_BYTE),
-            MOV_LPC     (MOV_LSB, REG_ADDR),
-            MOV_LPC     (MOV_MSB, REG_ADDR),
-            MOV_RRW     (REG_ADDR, REG_PC, MOV_RRW_WORD),
+            MOV_RRW     (CPU_REG_ADDR, CPU_REG_PC, MOV_RRW_WORD),
+            MOV_RRW     (CPU_REG_ZERO, CPU_REG_PBR, MOV_RRW_BYTE),
+            MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            MOV_LPC     (MOV_MSB, CPU_REG_ADDR),
+            MOV_RRW     (CPU_REG_ADDR, CPU_REG_PC, MOV_RRW_WORD),
         }
     },
 };
 
-struct opcode_t opcode_matrix[256] =
-{
-    [0x61] = OPCODE(OPCODE_ADC, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDEXED_INDIRECT),
-    [0x63] = OPCODE(OPCODE_ADC, OPCODE_CLASS_ALU, ADDRESS_MODE_STACK_RELATIVE),
-    [0x65] = OPCODE(OPCODE_ADC, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT),
-    [0x67] = OPCODE(OPCODE_ADC, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDIRECT_LONG),
-    [0x69] = OPCODE(OPCODE_ADC, OPCODE_CLASS_ALU, ADDRESS_MODE_IMMEDIATE),
-    [0x6d] = OPCODE(OPCODE_ADC, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE),
-    [0x6f] = OPCODE(OPCODE_ADC, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_LONG),
-    [0x71] = OPCODE(OPCODE_ADC, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDIRECT_INDEXED),
-    [0x72] = OPCODE(OPCODE_ADC, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDIRECT),
-    [0x73] = OPCODE(OPCODE_ADC, OPCODE_CLASS_ALU, ADDRESS_MODE_STACK_RELATIVE_INDIRECT_INDEXED),
-    [0x75] = OPCODE(OPCODE_ADC, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDEXED_X),
-    [0x77] = OPCODE(OPCODE_ADC, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDIRECT_LONG_INDEXED),
-    [0x79] = OPCODE(OPCODE_ADC, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_INDEXED_Y),
-    [0x7d] = OPCODE(OPCODE_ADC, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_INDEXED_X),
-    [0x7f] = OPCODE(OPCODE_ADC, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_LONG_INDEXED_X),
+// struct opcode_t opcode_matrix[256] =
+// {
+//     [0x61] = OPCODE(CPU_OPCODE_ADC, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDEXED_INDIRECT),
+//     [0x63] = OPCODE(CPU_OPCODE_ADC, OPCODE_CLASS_ALU, ADDRESS_MODE_STACK_RELATIVE),
+//     [0x65] = OPCODE(CPU_OPCODE_ADC, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT),
+//     [0x67] = OPCODE(CPU_OPCODE_ADC, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDIRECT_LONG),
+//     [0x69] = OPCODE(CPU_OPCODE_ADC, OPCODE_CLASS_ALU, ADDRESS_MODE_IMMEDIATE),
+//     [0x6d] = OPCODE(CPU_OPCODE_ADC, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE),
+//     [0x6f] = OPCODE(CPU_OPCODE_ADC, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_LONG),
+//     [0x71] = OPCODE(CPU_OPCODE_ADC, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDIRECT_INDEXED),
+//     [0x72] = OPCODE(CPU_OPCODE_ADC, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDIRECT),
+//     [0x73] = OPCODE(CPU_OPCODE_ADC, OPCODE_CLASS_ALU, ADDRESS_MODE_STACK_RELATIVE_INDIRECT_INDEXED),
+//     [0x75] = OPCODE(CPU_OPCODE_ADC, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDEXED_X),
+//     [0x77] = OPCODE(CPU_OPCODE_ADC, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDIRECT_LONG_INDEXED),
+//     [0x79] = OPCODE(CPU_OPCODE_ADC, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_INDEXED_Y),
+//     [0x7d] = OPCODE(CPU_OPCODE_ADC, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_INDEXED_X),
+//     [0x7f] = OPCODE(CPU_OPCODE_ADC, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_LONG_INDEXED_X),
 
-    [0x21] = OPCODE(OPCODE_AND, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDEXED_INDIRECT),
-    [0x23] = OPCODE(OPCODE_AND, OPCODE_CLASS_ALU, ADDRESS_MODE_STACK_RELATIVE),
-    [0x25] = OPCODE(OPCODE_AND, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT),
-    [0x27] = OPCODE(OPCODE_AND, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDIRECT_LONG),
-    [0x29] = OPCODE(OPCODE_AND, OPCODE_CLASS_ALU, ADDRESS_MODE_IMMEDIATE),
-    [0x2d] = OPCODE(OPCODE_AND, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE),
-    [0x2f] = OPCODE(OPCODE_AND, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_LONG),
-    [0x31] = OPCODE(OPCODE_AND, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDIRECT_INDEXED),
-    [0x32] = OPCODE(OPCODE_AND, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDIRECT),
-    [0x33] = OPCODE(OPCODE_AND, OPCODE_CLASS_ALU, ADDRESS_MODE_STACK_RELATIVE_INDIRECT_INDEXED),
-    [0x35] = OPCODE(OPCODE_AND, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDEXED_X),
-    [0x37] = OPCODE(OPCODE_AND, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDIRECT_LONG_INDEXED),
-    [0x39] = OPCODE(OPCODE_AND, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_INDEXED_Y),
-    [0x3d] = OPCODE(OPCODE_AND, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_INDEXED_X),
-    [0x3f] = OPCODE(OPCODE_AND, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_LONG_INDEXED_X),
+//     [0x21] = OPCODE(CPU_OPCODE_AND, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDEXED_INDIRECT),
+//     [0x23] = OPCODE(CPU_OPCODE_AND, OPCODE_CLASS_ALU, ADDRESS_MODE_STACK_RELATIVE),
+//     [0x25] = OPCODE(CPU_OPCODE_AND, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT),
+//     [0x27] = OPCODE(CPU_OPCODE_AND, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDIRECT_LONG),
+//     [0x29] = OPCODE(CPU_OPCODE_AND, OPCODE_CLASS_ALU, ADDRESS_MODE_IMMEDIATE),
+//     [0x2d] = OPCODE(CPU_OPCODE_AND, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE),
+//     [0x2f] = OPCODE(CPU_OPCODE_AND, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_LONG),
+//     [0x31] = OPCODE(CPU_OPCODE_AND, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDIRECT_INDEXED),
+//     [0x32] = OPCODE(CPU_OPCODE_AND, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDIRECT),
+//     [0x33] = OPCODE(CPU_OPCODE_AND, OPCODE_CLASS_ALU, ADDRESS_MODE_STACK_RELATIVE_INDIRECT_INDEXED),
+//     [0x35] = OPCODE(CPU_OPCODE_AND, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDEXED_X),
+//     [0x37] = OPCODE(CPU_OPCODE_AND, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDIRECT_LONG_INDEXED),
+//     [0x39] = OPCODE(CPU_OPCODE_AND, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_INDEXED_Y),
+//     [0x3d] = OPCODE(CPU_OPCODE_AND, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_INDEXED_X),
+//     [0x3f] = OPCODE(CPU_OPCODE_AND, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_LONG_INDEXED_X),
 
-    [0x06] = OPCODE(OPCODE_ASL, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT),
-    [0x0a] = OPCODE(OPCODE_ASL, OPCODE_CLASS_ALU, ADDRESS_MODE_ACCUMULATOR),
-    [0x0e] = OPCODE(OPCODE_ASL, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE),
-    [0x16] = OPCODE(OPCODE_ASL, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDEXED_X),
-    [0x1e] = OPCODE(OPCODE_ASL, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_INDEXED_X),
+//     [0x06] = OPCODE(CPU_OPCODE_ASL, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT),
+//     [0x0a] = OPCODE(CPU_OPCODE_ASL, OPCODE_CLASS_ALU, ADDRESS_MODE_ACCUMULATOR),
+//     [0x0e] = OPCODE(CPU_OPCODE_ASL, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE),
+//     [0x16] = OPCODE(CPU_OPCODE_ASL, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDEXED_X),
+//     [0x1e] = OPCODE(CPU_OPCODE_ASL, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_INDEXED_X),
 
-    [0x10] = OPCODE(OPCODE_BPL, OPCODE_CLASS_BRANCH, ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE),
-    [0x30] = OPCODE(OPCODE_BMI, OPCODE_CLASS_BRANCH, ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE),
-    [0x50] = OPCODE(OPCODE_BVC, OPCODE_CLASS_BRANCH, ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE),
-    [0x70] = OPCODE(OPCODE_BVS, OPCODE_CLASS_BRANCH, ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE),
-    [0x80] = OPCODE(OPCODE_BRA, OPCODE_CLASS_BRANCH, ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE),
-    [0x82] = OPCODE(OPCODE_BRL, OPCODE_CLASS_BRANCH, ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE_LONG),
-    [0x90] = OPCODE(OPCODE_BCC, OPCODE_CLASS_BRANCH, ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE),
-    [0xb0] = OPCODE(OPCODE_BCS, OPCODE_CLASS_BRANCH, ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE),
-    [0xd0] = OPCODE(OPCODE_BNE, OPCODE_CLASS_BRANCH, ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE),
-    [0xf0] = OPCODE(OPCODE_BEQ, OPCODE_CLASS_BRANCH, ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE),
+//     [0x10] = OPCODE(CPU_OPCODE_BPL, OPCODE_CLASS_BRANCH, ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE),
+//     [0x30] = OPCODE(CPU_OPCODE_BMI, OPCODE_CLASS_BRANCH, ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE),
+//     [0x50] = OPCODE(CPU_OPCODE_BVC, OPCODE_CLASS_BRANCH, ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE),
+//     [0x70] = OPCODE(CPU_OPCODE_BVS, OPCODE_CLASS_BRANCH, ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE),
+//     [0x80] = OPCODE(CPU_OPCODE_BRA, OPCODE_CLASS_BRANCH, ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE),
+//     [0x82] = OPCODE(CPU_OPCODE_BRL, OPCODE_CLASS_BRANCH, ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE_LONG),
+//     [0x90] = OPCODE(CPU_OPCODE_BCC, OPCODE_CLASS_BRANCH, ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE),
+//     [0xb0] = OPCODE(CPU_OPCODE_BCS, OPCODE_CLASS_BRANCH, ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE),
+//     [0xd0] = OPCODE(CPU_OPCODE_BNE, OPCODE_CLASS_BRANCH, ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE),
+//     [0xf0] = OPCODE(CPU_OPCODE_BEQ, OPCODE_CLASS_BRANCH, ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE),
 
-    [0x24] = OPCODE(OPCODE_BIT, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT),
-    [0x2c] = OPCODE(OPCODE_BIT, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE),
-    [0x34] = OPCODE(OPCODE_BIT, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDEXED_X),
-    [0x3c] = OPCODE(OPCODE_BIT, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_INDEXED_X),
-    [0x89] = OPCODE(OPCODE_BIT, OPCODE_CLASS_ALU, ADDRESS_MODE_IMMEDIATE),
+//     [0x24] = OPCODE(CPU_OPCODE_BIT, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT),
+//     [0x2c] = OPCODE(CPU_OPCODE_BIT, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE),
+//     [0x34] = OPCODE(CPU_OPCODE_BIT, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDEXED_X),
+//     [0x3c] = OPCODE(CPU_OPCODE_BIT, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_INDEXED_X),
+//     [0x89] = OPCODE(CPU_OPCODE_BIT, OPCODE_CLASS_ALU, ADDRESS_MODE_IMMEDIATE),
 
-    [0x00] = OPCODE(OPCODE_BRK, OPCODE_CLASS_STANDALONE, ADDRESS_MODE_STACK),
+//     [0x00] = OPCODE(CPU_OPCODE_BRK, OPCODE_CLASS_STANDALONE, ADDRESS_MODE_STACK),
 
-    [0x18] = OPCODE(OPCODE_CLC, OPCODE_CLASS_STANDALONE, ADDRESS_MODE_IMPLIED),
-    [0x38] = OPCODE(OPCODE_SEC, OPCODE_CLASS_STANDALONE, ADDRESS_MODE_IMPLIED),
-    [0x58] = OPCODE(OPCODE_CLI, OPCODE_CLASS_STANDALONE, ADDRESS_MODE_IMPLIED),
-    [0x78] = OPCODE(OPCODE_SEI, OPCODE_CLASS_STANDALONE, ADDRESS_MODE_IMPLIED),
-    [0xb8] = OPCODE(OPCODE_CLV, OPCODE_CLASS_STANDALONE, ADDRESS_MODE_IMPLIED),
-    [0xd8] = OPCODE(OPCODE_CLD, OPCODE_CLASS_STANDALONE, ADDRESS_MODE_IMPLIED),
-    [0xf8] = OPCODE(OPCODE_SED, OPCODE_CLASS_STANDALONE, ADDRESS_MODE_IMPLIED),
+//     [0x18] = OPCODE(CPU_OPCODE_CLC, OPCODE_CLASS_STANDALONE, ADDRESS_MODE_IMPLIED),
+//     [0x38] = OPCODE(CPU_OPCODE_SEC, OPCODE_CLASS_STANDALONE, ADDRESS_MODE_IMPLIED),
+//     [0x58] = OPCODE(CPU_OPCODE_CLI, OPCODE_CLASS_STANDALONE, ADDRESS_MODE_IMPLIED),
+//     [0x78] = OPCODE(CPU_OPCODE_SEI, OPCODE_CLASS_STANDALONE, ADDRESS_MODE_IMPLIED),
+//     [0xb8] = OPCODE(CPU_OPCODE_CLV, OPCODE_CLASS_STANDALONE, ADDRESS_MODE_IMPLIED),
+//     [0xd8] = OPCODE(CPU_OPCODE_CLD, OPCODE_CLASS_STANDALONE, ADDRESS_MODE_IMPLIED),
+//     [0xf8] = OPCODE(CPU_OPCODE_SED, OPCODE_CLASS_STANDALONE, ADDRESS_MODE_IMPLIED),
 
-    [0xc2] = OPCODE(OPCODE_REP, OPCODE_CLASS_STANDALONE, ADDRESS_MODE_IMMEDIATE),
-    [0xe2] = OPCODE(OPCODE_SEP, OPCODE_CLASS_STANDALONE, ADDRESS_MODE_IMMEDIATE),
+//     [0xc2] = OPCODE(CPU_OPCODE_REP, OPCODE_CLASS_STANDALONE, ADDRESS_MODE_IMMEDIATE),
+//     [0xe2] = OPCODE(CPU_OPCODE_SEP, OPCODE_CLASS_STANDALONE, ADDRESS_MODE_IMMEDIATE),
 
-    [0xc1] = OPCODE(OPCODE_CMP, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDEXED_INDIRECT),
-    [0xc3] = OPCODE(OPCODE_CMP, OPCODE_CLASS_ALU, ADDRESS_MODE_STACK_RELATIVE),
-    [0xc5] = OPCODE(OPCODE_CMP, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT),
-    [0xc7] = OPCODE(OPCODE_CMP, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDIRECT_LONG),
-    [0xc9] = OPCODE(OPCODE_CMP, OPCODE_CLASS_ALU, ADDRESS_MODE_IMMEDIATE),
-    [0xcd] = OPCODE(OPCODE_CMP, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE),
-    [0xcf] = OPCODE(OPCODE_CMP, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_LONG),
-    [0xd1] = OPCODE(OPCODE_CMP, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDIRECT_INDEXED),
-    [0xd2] = OPCODE(OPCODE_CMP, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDIRECT),
-    [0xd3] = OPCODE(OPCODE_CMP, OPCODE_CLASS_ALU, ADDRESS_MODE_STACK_RELATIVE_INDIRECT_INDEXED),
-    [0xd5] = OPCODE(OPCODE_CMP, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDEXED_X),
-    [0xd7] = OPCODE(OPCODE_CMP, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDIRECT_LONG_INDEXED),
-    [0xd9] = OPCODE(OPCODE_CMP, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_INDEXED_Y),
-    [0xdd] = OPCODE(OPCODE_CMP, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_INDEXED_X),
-    [0xdf] = OPCODE(OPCODE_CMP, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_LONG_INDEXED_X),
+//     [0xc1] = OPCODE(CPU_OPCODE_CMP, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDEXED_INDIRECT),
+//     [0xc3] = OPCODE(CPU_OPCODE_CMP, OPCODE_CLASS_ALU, ADDRESS_MODE_STACK_RELATIVE),
+//     [0xc5] = OPCODE(CPU_OPCODE_CMP, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT),
+//     [0xc7] = OPCODE(CPU_OPCODE_CMP, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDIRECT_LONG),
+//     [0xc9] = OPCODE(CPU_OPCODE_CMP, OPCODE_CLASS_ALU, ADDRESS_MODE_IMMEDIATE),
+//     [0xcd] = OPCODE(CPU_OPCODE_CMP, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE),
+//     [0xcf] = OPCODE(CPU_OPCODE_CMP, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_LONG),
+//     [0xd1] = OPCODE(CPU_OPCODE_CMP, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDIRECT_INDEXED),
+//     [0xd2] = OPCODE(CPU_OPCODE_CMP, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDIRECT),
+//     [0xd3] = OPCODE(CPU_OPCODE_CMP, OPCODE_CLASS_ALU, ADDRESS_MODE_STACK_RELATIVE_INDIRECT_INDEXED),
+//     [0xd5] = OPCODE(CPU_OPCODE_CMP, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDEXED_X),
+//     [0xd7] = OPCODE(CPU_OPCODE_CMP, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDIRECT_LONG_INDEXED),
+//     [0xd9] = OPCODE(CPU_OPCODE_CMP, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_INDEXED_Y),
+//     [0xdd] = OPCODE(CPU_OPCODE_CMP, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_INDEXED_X),
+//     [0xdf] = OPCODE(CPU_OPCODE_CMP, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_LONG_INDEXED_X),
 
-    [0x02] = OPCODE(OPCODE_COP, OPCODE_CLASS_STANDALONE, ADDRESS_MODE_STACK),
+//     [0x02] = OPCODE(CPU_OPCODE_COP, OPCODE_CLASS_STANDALONE, ADDRESS_MODE_STACK),
 
-    [0xe0] = OPCODE(OPCODE_CPX, OPCODE_CLASS_ALU, ADDRESS_MODE_IMMEDIATE),
-    [0xe4] = OPCODE(OPCODE_CPX, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT),
-    [0xec] = OPCODE(OPCODE_CPX, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE),
+//     [0xe0] = OPCODE(CPU_OPCODE_CPX, OPCODE_CLASS_ALU, ADDRESS_MODE_IMMEDIATE),
+//     [0xe4] = OPCODE(CPU_OPCODE_CPX, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT),
+//     [0xec] = OPCODE(CPU_OPCODE_CPX, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE),
 
-    [0xc0] = OPCODE(OPCODE_CPY, OPCODE_CLASS_ALU, ADDRESS_MODE_IMMEDIATE),
-    [0xc4] = OPCODE(OPCODE_CPY, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT),
-    [0xcc] = OPCODE(OPCODE_CPY, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE),
+//     [0xc0] = OPCODE(CPU_OPCODE_CPY, OPCODE_CLASS_ALU, ADDRESS_MODE_IMMEDIATE),
+//     [0xc4] = OPCODE(CPU_OPCODE_CPY, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT),
+//     [0xcc] = OPCODE(CPU_OPCODE_CPY, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE),
 
-    [0x3a] = OPCODE(OPCODE_DEC, OPCODE_CLASS_ALU, ADDRESS_MODE_ACCUMULATOR),
-    [0xc6] = OPCODE(OPCODE_DEC, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT),
-    [0xce] = OPCODE(OPCODE_DEC, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE),
-    [0xd6] = OPCODE(OPCODE_DEC, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDEXED_X),
-    [0xde] = OPCODE(OPCODE_DEC, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_INDEXED_X),
+//     [0x3a] = OPCODE(CPU_OPCODE_DEC, OPCODE_CLASS_ALU, ADDRESS_MODE_ACCUMULATOR),
+//     [0xc6] = OPCODE(CPU_OPCODE_DEC, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT),
+//     [0xce] = OPCODE(CPU_OPCODE_DEC, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE),
+//     [0xd6] = OPCODE(CPU_OPCODE_DEC, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDEXED_X),
+//     [0xde] = OPCODE(CPU_OPCODE_DEC, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_INDEXED_X),
 
-    [0xca] = OPCODE(OPCODE_DEX, OPCODE_CLASS_ALU, ADDRESS_MODE_IMPLIED),
-    [0x88] = OPCODE(OPCODE_DEY, OPCODE_CLASS_ALU, ADDRESS_MODE_IMPLIED),
+//     [0xca] = OPCODE(CPU_OPCODE_DEX, OPCODE_CLASS_ALU, ADDRESS_MODE_IMPLIED),
+//     [0x88] = OPCODE(CPU_OPCODE_DEY, OPCODE_CLASS_ALU, ADDRESS_MODE_IMPLIED),
 
-    [0x41] = OPCODE(OPCODE_EOR, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDEXED_INDIRECT),
-    [0x43] = OPCODE(OPCODE_EOR, OPCODE_CLASS_ALU, ADDRESS_MODE_STACK_RELATIVE),
-    [0x45] = OPCODE(OPCODE_EOR, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT),
-    [0x47] = OPCODE(OPCODE_EOR, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDIRECT_LONG),
-    [0x49] = OPCODE(OPCODE_EOR, OPCODE_CLASS_ALU, ADDRESS_MODE_IMMEDIATE),
-    [0x4d] = OPCODE(OPCODE_EOR, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE),
-    [0x4f] = OPCODE(OPCODE_EOR, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_LONG),
-    [0x51] = OPCODE(OPCODE_EOR, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDIRECT_INDEXED),
-    [0x52] = OPCODE(OPCODE_EOR, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDIRECT),
-    [0x53] = OPCODE(OPCODE_EOR, OPCODE_CLASS_ALU, ADDRESS_MODE_STACK_RELATIVE_INDIRECT_INDEXED),
-    [0x55] = OPCODE(OPCODE_EOR, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDEXED_X),
-    [0x57] = OPCODE(OPCODE_EOR, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDIRECT_LONG_INDEXED),
-    [0x59] = OPCODE(OPCODE_EOR, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_INDEXED_Y),
-    [0x5d] = OPCODE(OPCODE_EOR, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_INDEXED_X),
-    [0x5f] = OPCODE(OPCODE_EOR, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_LONG_INDEXED_X),
+//     [0x41] = OPCODE(CPU_OPCODE_EOR, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDEXED_INDIRECT),
+//     [0x43] = OPCODE(CPU_OPCODE_EOR, OPCODE_CLASS_ALU, ADDRESS_MODE_STACK_RELATIVE),
+//     [0x45] = OPCODE(CPU_OPCODE_EOR, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT),
+//     [0x47] = OPCODE(CPU_OPCODE_EOR, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDIRECT_LONG),
+//     [0x49] = OPCODE(CPU_OPCODE_EOR, OPCODE_CLASS_ALU, ADDRESS_MODE_IMMEDIATE),
+//     [0x4d] = OPCODE(CPU_OPCODE_EOR, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE),
+//     [0x4f] = OPCODE(CPU_OPCODE_EOR, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_LONG),
+//     [0x51] = OPCODE(CPU_OPCODE_EOR, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDIRECT_INDEXED),
+//     [0x52] = OPCODE(CPU_OPCODE_EOR, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDIRECT),
+//     [0x53] = OPCODE(CPU_OPCODE_EOR, OPCODE_CLASS_ALU, ADDRESS_MODE_STACK_RELATIVE_INDIRECT_INDEXED),
+//     [0x55] = OPCODE(CPU_OPCODE_EOR, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDEXED_X),
+//     [0x57] = OPCODE(CPU_OPCODE_EOR, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDIRECT_LONG_INDEXED),
+//     [0x59] = OPCODE(CPU_OPCODE_EOR, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_INDEXED_Y),
+//     [0x5d] = OPCODE(CPU_OPCODE_EOR, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_INDEXED_X),
+//     [0x5f] = OPCODE(CPU_OPCODE_EOR, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_LONG_INDEXED_X),
 
-    [0x1a] = OPCODE(OPCODE_INC, OPCODE_CLASS_ALU, ADDRESS_MODE_ACCUMULATOR),
-    [0xe6] = OPCODE(OPCODE_INC, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT),
-    [0xee] = OPCODE(OPCODE_INC, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE),
-    [0xf6] = OPCODE(OPCODE_INC, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDEXED_X),
-    [0xfe] = OPCODE(OPCODE_INC, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_INDEXED_X),
+//     [0x1a] = OPCODE(CPU_OPCODE_INC, OPCODE_CLASS_ALU, ADDRESS_MODE_ACCUMULATOR),
+//     [0xe6] = OPCODE(CPU_OPCODE_INC, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT),
+//     [0xee] = OPCODE(CPU_OPCODE_INC, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE),
+//     [0xf6] = OPCODE(CPU_OPCODE_INC, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDEXED_X),
+//     [0xfe] = OPCODE(CPU_OPCODE_INC, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_INDEXED_X),
 
-    [0xe8] = OPCODE(OPCODE_INX, OPCODE_CLASS_ALU, ADDRESS_MODE_IMPLIED),
-    [0xc8] = OPCODE(OPCODE_INY, OPCODE_CLASS_ALU, ADDRESS_MODE_IMPLIED),
+//     [0xe8] = OPCODE(CPU_OPCODE_INX, OPCODE_CLASS_ALU, ADDRESS_MODE_IMPLIED),
+//     [0xc8] = OPCODE(CPU_OPCODE_INY, OPCODE_CLASS_ALU, ADDRESS_MODE_IMPLIED),
 
-    [0x4c] = OPCODE(OPCODE_JMP, OPCODE_CLASS_BRANCH, ADDRESS_MODE_ABSOLUTE),
-    [0x5c] = OPCODE(OPCODE_JMP, OPCODE_CLASS_BRANCH, ADDRESS_MODE_ABSOLUTE_LONG),
-    [0x6c] = OPCODE(OPCODE_JMP, OPCODE_CLASS_BRANCH, ADDRESS_MODE_ABSOLUTE_INDIRECT),
-    [0x7c] = OPCODE(OPCODE_JMP, OPCODE_CLASS_BRANCH, ADDRESS_MODE_ABSOLUTE_INDEXED_INDIRECT),
-    [0xdc] = OPCODE(OPCODE_JML, OPCODE_CLASS_BRANCH, ADDRESS_MODE_ABSOLUTE_INDIRECT),
+//     [0x4c] = OPCODE(CPU_OPCODE_JMP, OPCODE_CLASS_BRANCH, ADDRESS_MODE_ABSOLUTE),
+//     [0x5c] = OPCODE(CPU_OPCODE_JMP, OPCODE_CLASS_BRANCH, ADDRESS_MODE_ABSOLUTE_LONG),
+//     [0x6c] = OPCODE(CPU_OPCODE_JMP, OPCODE_CLASS_BRANCH, ADDRESS_MODE_ABSOLUTE_INDIRECT),
+//     [0x7c] = OPCODE(CPU_OPCODE_JMP, OPCODE_CLASS_BRANCH, ADDRESS_MODE_ABSOLUTE_INDEXED_INDIRECT),
+//     [0xdc] = OPCODE(CPU_OPCODE_JML, OPCODE_CLASS_BRANCH, ADDRESS_MODE_ABSOLUTE_INDIRECT),
 
-    [0x22] = OPCODE(OPCODE_JSL, OPCODE_CLASS_BRANCH, ADDRESS_MODE_ABSOLUTE_LONG),
+//     [0x22] = OPCODE(CPU_OPCODE_JSL, OPCODE_CLASS_BRANCH, ADDRESS_MODE_ABSOLUTE_LONG),
 
-    [0x20] = OPCODE(OPCODE_JSR, OPCODE_CLASS_BRANCH, ADDRESS_MODE_ABSOLUTE),
-    [0xfc] = OPCODE(OPCODE_JSR, OPCODE_CLASS_BRANCH, ADDRESS_MODE_ABSOLUTE_INDEXED_INDIRECT),
+//     [0x20] = OPCODE(CPU_OPCODE_JSR, OPCODE_CLASS_BRANCH, ADDRESS_MODE_ABSOLUTE),
+//     [0xfc] = OPCODE(CPU_OPCODE_JSR, OPCODE_CLASS_BRANCH, ADDRESS_MODE_ABSOLUTE_INDEXED_INDIRECT),
 
-    [0xa1] = OPCODE(OPCODE_LDA, OPCODE_CLASS_LOAD, ADDRESS_MODE_DIRECT_INDEXED_INDIRECT),
-    [0xa3] = OPCODE(OPCODE_LDA, OPCODE_CLASS_LOAD, ADDRESS_MODE_STACK_RELATIVE),
-    [0xa5] = OPCODE(OPCODE_LDA, OPCODE_CLASS_LOAD, ADDRESS_MODE_DIRECT),
-    [0xa7] = OPCODE(OPCODE_LDA, OPCODE_CLASS_LOAD, ADDRESS_MODE_DIRECT_INDIRECT_LONG),
-    [0xa9] = OPCODE(OPCODE_LDA, OPCODE_CLASS_LOAD, ADDRESS_MODE_IMMEDIATE),
-    [0xad] = OPCODE(OPCODE_LDA, OPCODE_CLASS_LOAD, ADDRESS_MODE_ABSOLUTE),
-    [0xaf] = OPCODE(OPCODE_LDA, OPCODE_CLASS_LOAD, ADDRESS_MODE_ABSOLUTE_LONG),
-    [0xb1] = OPCODE(OPCODE_LDA, OPCODE_CLASS_LOAD, ADDRESS_MODE_DIRECT_INDIRECT_INDEXED),
-    [0xb2] = OPCODE(OPCODE_LDA, OPCODE_CLASS_LOAD, ADDRESS_MODE_DIRECT_INDIRECT),
-    [0xb3] = OPCODE(OPCODE_LDA, OPCODE_CLASS_LOAD, ADDRESS_MODE_STACK_RELATIVE_INDIRECT_INDEXED),
-    [0xb5] = OPCODE(OPCODE_LDA, OPCODE_CLASS_LOAD, ADDRESS_MODE_DIRECT_INDEXED_X),
-    [0xb7] = OPCODE(OPCODE_LDA, OPCODE_CLASS_LOAD, ADDRESS_MODE_DIRECT_INDIRECT_LONG_INDEXED),
-    [0xb9] = OPCODE(OPCODE_LDA, OPCODE_CLASS_LOAD, ADDRESS_MODE_ABSOLUTE_INDEXED_Y),
-    [0xbd] = OPCODE(OPCODE_LDA, OPCODE_CLASS_LOAD, ADDRESS_MODE_ABSOLUTE_INDEXED_X),
-    [0xbf] = OPCODE(OPCODE_LDA, OPCODE_CLASS_LOAD, ADDRESS_MODE_ABSOLUTE_LONG_INDEXED_X),
+//     [0xa1] = OPCODE(CPU_OPCODE_LDA, OPCODE_CLASS_LOAD, ADDRESS_MODE_DIRECT_INDEXED_INDIRECT),
+//     [0xa3] = OPCODE(CPU_OPCODE_LDA, OPCODE_CLASS_LOAD, ADDRESS_MODE_STACK_RELATIVE),
+//     [0xa5] = OPCODE(CPU_OPCODE_LDA, OPCODE_CLASS_LOAD, ADDRESS_MODE_DIRECT),
+//     [0xa7] = OPCODE(CPU_OPCODE_LDA, OPCODE_CLASS_LOAD, ADDRESS_MODE_DIRECT_INDIRECT_LONG),
+//     [0xa9] = OPCODE(CPU_OPCODE_LDA, OPCODE_CLASS_LOAD, ADDRESS_MODE_IMMEDIATE),
+//     [0xad] = OPCODE(CPU_OPCODE_LDA, OPCODE_CLASS_LOAD, ADDRESS_MODE_ABSOLUTE),
+//     [0xaf] = OPCODE(CPU_OPCODE_LDA, OPCODE_CLASS_LOAD, ADDRESS_MODE_ABSOLUTE_LONG),
+//     [0xb1] = OPCODE(CPU_OPCODE_LDA, OPCODE_CLASS_LOAD, ADDRESS_MODE_DIRECT_INDIRECT_INDEXED),
+//     [0xb2] = OPCODE(CPU_OPCODE_LDA, OPCODE_CLASS_LOAD, ADDRESS_MODE_DIRECT_INDIRECT),
+//     [0xb3] = OPCODE(CPU_OPCODE_LDA, OPCODE_CLASS_LOAD, ADDRESS_MODE_STACK_RELATIVE_INDIRECT_INDEXED),
+//     [0xb5] = OPCODE(CPU_OPCODE_LDA, OPCODE_CLASS_LOAD, ADDRESS_MODE_DIRECT_INDEXED_X),
+//     [0xb7] = OPCODE(CPU_OPCODE_LDA, OPCODE_CLASS_LOAD, ADDRESS_MODE_DIRECT_INDIRECT_LONG_INDEXED),
+//     [0xb9] = OPCODE(CPU_OPCODE_LDA, OPCODE_CLASS_LOAD, ADDRESS_MODE_ABSOLUTE_INDEXED_Y),
+//     [0xbd] = OPCODE(CPU_OPCODE_LDA, OPCODE_CLASS_LOAD, ADDRESS_MODE_ABSOLUTE_INDEXED_X),
+//     [0xbf] = OPCODE(CPU_OPCODE_LDA, OPCODE_CLASS_LOAD, ADDRESS_MODE_ABSOLUTE_LONG_INDEXED_X),
 
-    [0xa2] = OPCODE(OPCODE_LDX, OPCODE_CLASS_LOAD, ADDRESS_MODE_IMMEDIATE),
-    [0xa6] = OPCODE(OPCODE_LDX, OPCODE_CLASS_LOAD, ADDRESS_MODE_DIRECT),
-    [0xae] = OPCODE(OPCODE_LDX, OPCODE_CLASS_LOAD, ADDRESS_MODE_ABSOLUTE),
-    [0xb6] = OPCODE(OPCODE_LDX, OPCODE_CLASS_LOAD, ADDRESS_MODE_DIRECT_INDEXED_Y),
-    [0xbe] = OPCODE(OPCODE_LDX, OPCODE_CLASS_LOAD, ADDRESS_MODE_ABSOLUTE_INDEXED_Y),
+//     [0xa2] = OPCODE(CPU_OPCODE_LDX, OPCODE_CLASS_LOAD, ADDRESS_MODE_IMMEDIATE),
+//     [0xa6] = OPCODE(CPU_OPCODE_LDX, OPCODE_CLASS_LOAD, ADDRESS_MODE_DIRECT),
+//     [0xae] = OPCODE(CPU_OPCODE_LDX, OPCODE_CLASS_LOAD, ADDRESS_MODE_ABSOLUTE),
+//     [0xb6] = OPCODE(CPU_OPCODE_LDX, OPCODE_CLASS_LOAD, ADDRESS_MODE_DIRECT_INDEXED_Y),
+//     [0xbe] = OPCODE(CPU_OPCODE_LDX, OPCODE_CLASS_LOAD, ADDRESS_MODE_ABSOLUTE_INDEXED_Y),
 
-    [0xa0] = OPCODE(OPCODE_LDY, OPCODE_CLASS_LOAD, ADDRESS_MODE_IMMEDIATE),
-    [0xa4] = OPCODE(OPCODE_LDY, OPCODE_CLASS_LOAD, ADDRESS_MODE_DIRECT),
-    [0xac] = OPCODE(OPCODE_LDY, OPCODE_CLASS_LOAD, ADDRESS_MODE_ABSOLUTE),
-    [0xb4] = OPCODE(OPCODE_LDY, OPCODE_CLASS_LOAD, ADDRESS_MODE_DIRECT_INDEXED_X),
-    [0xbc] = OPCODE(OPCODE_LDY, OPCODE_CLASS_LOAD, ADDRESS_MODE_ABSOLUTE_INDEXED_Y),
+//     [0xa0] = OPCODE(CPU_OPCODE_LDY, OPCODE_CLASS_LOAD, ADDRESS_MODE_IMMEDIATE),
+//     [0xa4] = OPCODE(CPU_OPCODE_LDY, OPCODE_CLASS_LOAD, ADDRESS_MODE_DIRECT),
+//     [0xac] = OPCODE(CPU_OPCODE_LDY, OPCODE_CLASS_LOAD, ADDRESS_MODE_ABSOLUTE),
+//     [0xb4] = OPCODE(CPU_OPCODE_LDY, OPCODE_CLASS_LOAD, ADDRESS_MODE_DIRECT_INDEXED_X),
+//     [0xbc] = OPCODE(CPU_OPCODE_LDY, OPCODE_CLASS_LOAD, ADDRESS_MODE_ABSOLUTE_INDEXED_Y),
 
-    [0x46] = OPCODE(OPCODE_LSR, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT),
-    [0x4a] = OPCODE(OPCODE_LSR, OPCODE_CLASS_ALU, ADDRESS_MODE_ACCUMULATOR),
-    [0x4e] = OPCODE(OPCODE_LSR, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE),
-    [0x56] = OPCODE(OPCODE_LSR, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDEXED_X),
-    [0x5e] = OPCODE(OPCODE_LSR, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_INDEXED_X),
+//     [0x46] = OPCODE(CPU_OPCODE_LSR, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT),
+//     [0x4a] = OPCODE(CPU_OPCODE_LSR, OPCODE_CLASS_ALU, ADDRESS_MODE_ACCUMULATOR),
+//     [0x4e] = OPCODE(CPU_OPCODE_LSR, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE),
+//     [0x56] = OPCODE(CPU_OPCODE_LSR, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDEXED_X),
+//     [0x5e] = OPCODE(CPU_OPCODE_LSR, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_INDEXED_X),
 
-    [0x54] = OPCODE(OPCODE_MVN, OPCODE_CLASS_STANDALONE, ADDRESS_MODE_BLOCK_MOVE),
-    [0x44] = OPCODE(OPCODE_MVP, OPCODE_CLASS_STANDALONE, ADDRESS_MODE_BLOCK_MOVE),
+//     [0x54] = OPCODE(CPU_OPCODE_MVN, OPCODE_CLASS_STANDALONE, ADDRESS_MODE_BLOCK_MOVE),
+//     [0x44] = OPCODE(CPU_OPCODE_MVP, OPCODE_CLASS_STANDALONE, ADDRESS_MODE_BLOCK_MOVE),
 
-    [0xea] = OPCODE(OPCODE_NOP, OPCODE_CLASS_STANDALONE, ADDRESS_MODE_IMPLIED),
+//     [0xea] = OPCODE(CPU_OPCODE_NOP, OPCODE_CLASS_STANDALONE, ADDRESS_MODE_IMPLIED),
 
-    [0x01] = OPCODE(OPCODE_ORA, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDEXED_INDIRECT),
-    [0x03] = OPCODE(OPCODE_ORA, OPCODE_CLASS_ALU, ADDRESS_MODE_STACK_RELATIVE),
-    [0x05] = OPCODE(OPCODE_ORA, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT),
-    [0x07] = OPCODE(OPCODE_ORA, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDIRECT_LONG),
-    [0x09] = OPCODE(OPCODE_ORA, OPCODE_CLASS_ALU, ADDRESS_MODE_IMMEDIATE),
-    [0x0d] = OPCODE(OPCODE_ORA, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE),
-    [0x0f] = OPCODE(OPCODE_ORA, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_LONG),
-    [0x11] = OPCODE(OPCODE_ORA, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDIRECT_INDEXED),
-    [0x12] = OPCODE(OPCODE_ORA, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDIRECT),
-    [0x13] = OPCODE(OPCODE_ORA, OPCODE_CLASS_ALU, ADDRESS_MODE_STACK_RELATIVE_INDIRECT_INDEXED),
-    [0x15] = OPCODE(OPCODE_ORA, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDEXED_X),
-    [0x17] = OPCODE(OPCODE_ORA, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDIRECT_LONG_INDEXED),
-    [0x19] = OPCODE(OPCODE_ORA, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_INDEXED_Y),
-    [0x1d] = OPCODE(OPCODE_ORA, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_INDEXED_X),
-    [0x1f] = OPCODE(OPCODE_ORA, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_LONG_INDEXED_X),
+//     [0x01] = OPCODE(CPU_OPCODE_ORA, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDEXED_INDIRECT),
+//     [0x03] = OPCODE(CPU_OPCODE_ORA, OPCODE_CLASS_ALU, ADDRESS_MODE_STACK_RELATIVE),
+//     [0x05] = OPCODE(CPU_OPCODE_ORA, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT),
+//     [0x07] = OPCODE(CPU_OPCODE_ORA, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDIRECT_LONG),
+//     [0x09] = OPCODE(CPU_OPCODE_ORA, OPCODE_CLASS_ALU, ADDRESS_MODE_IMMEDIATE),
+//     [0x0d] = OPCODE(CPU_OPCODE_ORA, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE),
+//     [0x0f] = OPCODE(CPU_OPCODE_ORA, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_LONG),
+//     [0x11] = OPCODE(CPU_OPCODE_ORA, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDIRECT_INDEXED),
+//     [0x12] = OPCODE(CPU_OPCODE_ORA, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDIRECT),
+//     [0x13] = OPCODE(CPU_OPCODE_ORA, OPCODE_CLASS_ALU, ADDRESS_MODE_STACK_RELATIVE_INDIRECT_INDEXED),
+//     [0x15] = OPCODE(CPU_OPCODE_ORA, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDEXED_X),
+//     [0x17] = OPCODE(CPU_OPCODE_ORA, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDIRECT_LONG_INDEXED),
+//     [0x19] = OPCODE(CPU_OPCODE_ORA, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_INDEXED_Y),
+//     [0x1d] = OPCODE(CPU_OPCODE_ORA, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_INDEXED_X),
+//     [0x1f] = OPCODE(CPU_OPCODE_ORA, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_LONG_INDEXED_X),
 
 
-    [0xf4] = OPCODE(OPCODE_PEA, OPCODE_CLASS_STACK, ADDRESS_MODE_STACK),
-    [0xd4] = OPCODE(OPCODE_PEI, OPCODE_CLASS_STACK, ADDRESS_MODE_STACK),
-    [0x62] = OPCODE(OPCODE_PER, OPCODE_CLASS_STACK, ADDRESS_MODE_STACK),
-    [0x48] = OPCODE(OPCODE_PHA, OPCODE_CLASS_STACK, ADDRESS_MODE_STACK),
-    [0x8b] = OPCODE(OPCODE_PHB, OPCODE_CLASS_STACK, ADDRESS_MODE_STACK),
-    [0x0b] = OPCODE(OPCODE_PHD, OPCODE_CLASS_STACK, ADDRESS_MODE_STACK),
-    [0x4b] = OPCODE(OPCODE_PHK, OPCODE_CLASS_STACK, ADDRESS_MODE_STACK),
-    [0x08] = OPCODE(OPCODE_PHP, OPCODE_CLASS_STACK, ADDRESS_MODE_STACK),
-    [0xda] = OPCODE(OPCODE_PHX, OPCODE_CLASS_STACK, ADDRESS_MODE_STACK),
-    [0x5a] = OPCODE(OPCODE_PHY, OPCODE_CLASS_STACK, ADDRESS_MODE_STACK),
-    [0x68] = OPCODE(OPCODE_PLA, OPCODE_CLASS_STACK, ADDRESS_MODE_STACK),
-    [0xab] = OPCODE(OPCODE_PLB, OPCODE_CLASS_STACK, ADDRESS_MODE_STACK),
-    [0x2b] = OPCODE(OPCODE_PLD, OPCODE_CLASS_STACK, ADDRESS_MODE_STACK),
-    [0x28] = OPCODE(OPCODE_PLP, OPCODE_CLASS_STACK, ADDRESS_MODE_STACK),
-    [0xfa] = OPCODE(OPCODE_PLX, OPCODE_CLASS_STACK, ADDRESS_MODE_STACK),
-    [0x7a] = OPCODE(OPCODE_PLY, OPCODE_CLASS_STACK, ADDRESS_MODE_STACK),
+//     [0xf4] = OPCODE(CPU_OPCODE_PEA, OPCODE_CLASS_STACK, ADDRESS_MODE_STACK),
+//     [0xd4] = OPCODE(CPU_OPCODE_PEI, OPCODE_CLASS_STACK, ADDRESS_MODE_STACK),
+//     [0x62] = OPCODE(CPU_OPCODE_PER, OPCODE_CLASS_STACK, ADDRESS_MODE_STACK),
+//     [0x48] = OPCODE(CPU_OPCODE_PHA, OPCODE_CLASS_STACK, ADDRESS_MODE_STACK),
+//     [0x8b] = OPCODE(CPU_OPCODE_PHB, OPCODE_CLASS_STACK, ADDRESS_MODE_STACK),
+//     [0x0b] = OPCODE(CPU_OPCODE_PHD, OPCODE_CLASS_STACK, ADDRESS_MODE_STACK),
+//     [0x4b] = OPCODE(CPU_OPCODE_PHK, OPCODE_CLASS_STACK, ADDRESS_MODE_STACK),
+//     [0x08] = OPCODE(CPU_OPCODE_PHP, OPCODE_CLASS_STACK, ADDRESS_MODE_STACK),
+//     [0xda] = OPCODE(CPU_OPCODE_PHX, OPCODE_CLASS_STACK, ADDRESS_MODE_STACK),
+//     [0x5a] = OPCODE(CPU_OPCODE_PHY, OPCODE_CLASS_STACK, ADDRESS_MODE_STACK),
+//     [0x68] = OPCODE(CPU_OPCODE_PLA, OPCODE_CLASS_STACK, ADDRESS_MODE_STACK),
+//     [0xab] = OPCODE(CPU_OPCODE_PLB, OPCODE_CLASS_STACK, ADDRESS_MODE_STACK),
+//     [0x2b] = OPCODE(CPU_OPCODE_PLD, OPCODE_CLASS_STACK, ADDRESS_MODE_STACK),
+//     [0x28] = OPCODE(CPU_OPCODE_PLP, OPCODE_CLASS_STACK, ADDRESS_MODE_STACK),
+//     [0xfa] = OPCODE(CPU_OPCODE_PLX, OPCODE_CLASS_STACK, ADDRESS_MODE_STACK),
+//     [0x7a] = OPCODE(CPU_OPCODE_PLY, OPCODE_CLASS_STACK, ADDRESS_MODE_STACK),
 
-    [0x26] = OPCODE(OPCODE_ROL, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT),
-    [0x2a] = OPCODE(OPCODE_ROL, OPCODE_CLASS_ALU, ADDRESS_MODE_ACCUMULATOR),
-    [0x2e] = OPCODE(OPCODE_ROL, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE),
-    [0x36] = OPCODE(OPCODE_ROL, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDEXED_X),
-    [0x3e] = OPCODE(OPCODE_ROL, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_INDEXED_X),
+//     [0x26] = OPCODE(CPU_OPCODE_ROL, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT),
+//     [0x2a] = OPCODE(CPU_OPCODE_ROL, OPCODE_CLASS_ALU, ADDRESS_MODE_ACCUMULATOR),
+//     [0x2e] = OPCODE(CPU_OPCODE_ROL, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE),
+//     [0x36] = OPCODE(CPU_OPCODE_ROL, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDEXED_X),
+//     [0x3e] = OPCODE(CPU_OPCODE_ROL, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_INDEXED_X),
 
-    [0x66] = OPCODE(OPCODE_ROR, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT),
-    [0x6a] = OPCODE(OPCODE_ROR, OPCODE_CLASS_ALU, ADDRESS_MODE_ACCUMULATOR),
-    [0x6e] = OPCODE(OPCODE_ROR, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE),
-    [0x76] = OPCODE(OPCODE_ROR, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDEXED_X),
-    [0x7e] = OPCODE(OPCODE_ROR, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_INDEXED_X),
+//     [0x66] = OPCODE(CPU_OPCODE_ROR, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT),
+//     [0x6a] = OPCODE(CPU_OPCODE_ROR, OPCODE_CLASS_ALU, ADDRESS_MODE_ACCUMULATOR),
+//     [0x6e] = OPCODE(CPU_OPCODE_ROR, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE),
+//     [0x76] = OPCODE(CPU_OPCODE_ROR, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDEXED_X),
+//     [0x7e] = OPCODE(CPU_OPCODE_ROR, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_INDEXED_X),
 
-    [0x40] = OPCODE(OPCODE_RTI, OPCODE_CLASS_BRANCH, ADDRESS_MODE_STACK),
-    [0x6b] = OPCODE(OPCODE_RTL, OPCODE_CLASS_BRANCH, ADDRESS_MODE_STACK),
-    [0x60] = OPCODE(OPCODE_RTS, OPCODE_CLASS_BRANCH, ADDRESS_MODE_STACK),
+//     [0x40] = OPCODE(CPU_OPCODE_RTI, OPCODE_CLASS_BRANCH, ADDRESS_MODE_STACK),
+//     [0x6b] = OPCODE(CPU_OPCODE_RTL, OPCODE_CLASS_BRANCH, ADDRESS_MODE_STACK),
+//     [0x60] = OPCODE(CPU_OPCODE_RTS, OPCODE_CLASS_BRANCH, ADDRESS_MODE_STACK),
 
-    [0xe1] = OPCODE(OPCODE_SBC, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDEXED_INDIRECT),
-    [0xe3] = OPCODE(OPCODE_SBC, OPCODE_CLASS_ALU, ADDRESS_MODE_STACK_RELATIVE),
-    [0xe5] = OPCODE(OPCODE_SBC, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT),
-    [0xe7] = OPCODE(OPCODE_SBC, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDIRECT_LONG),
-    [0xe9] = OPCODE(OPCODE_SBC, OPCODE_CLASS_ALU, ADDRESS_MODE_IMMEDIATE),
-    [0xed] = OPCODE(OPCODE_SBC, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE),
-    [0xef] = OPCODE(OPCODE_SBC, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_LONG),
-    [0xf1] = OPCODE(OPCODE_SBC, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDIRECT_INDEXED),
-    [0xf2] = OPCODE(OPCODE_SBC, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDIRECT),
-    [0xf3] = OPCODE(OPCODE_SBC, OPCODE_CLASS_ALU, ADDRESS_MODE_STACK_RELATIVE_INDIRECT_INDEXED),
-    [0xf5] = OPCODE(OPCODE_SBC, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDEXED_X),
-    [0xf7] = OPCODE(OPCODE_SBC, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDIRECT_LONG_INDEXED),
-    [0xf9] = OPCODE(OPCODE_SBC, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_INDEXED_Y),
-    [0xfd] = OPCODE(OPCODE_SBC, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_INDEXED_X),
-    [0xff] = OPCODE(OPCODE_SBC, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_LONG_INDEXED_X),
+//     [0xe1] = OPCODE(CPU_OPCODE_SBC, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDEXED_INDIRECT),
+//     [0xe3] = OPCODE(CPU_OPCODE_SBC, OPCODE_CLASS_ALU, ADDRESS_MODE_STACK_RELATIVE),
+//     [0xe5] = OPCODE(CPU_OPCODE_SBC, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT),
+//     [0xe7] = OPCODE(CPU_OPCODE_SBC, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDIRECT_LONG),
+//     [0xe9] = OPCODE(CPU_OPCODE_SBC, OPCODE_CLASS_ALU, ADDRESS_MODE_IMMEDIATE),
+//     [0xed] = OPCODE(CPU_OPCODE_SBC, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE),
+//     [0xef] = OPCODE(CPU_OPCODE_SBC, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_LONG),
+//     [0xf1] = OPCODE(CPU_OPCODE_SBC, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDIRECT_INDEXED),
+//     [0xf2] = OPCODE(CPU_OPCODE_SBC, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDIRECT),
+//     [0xf3] = OPCODE(CPU_OPCODE_SBC, OPCODE_CLASS_ALU, ADDRESS_MODE_STACK_RELATIVE_INDIRECT_INDEXED),
+//     [0xf5] = OPCODE(CPU_OPCODE_SBC, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDEXED_X),
+//     [0xf7] = OPCODE(CPU_OPCODE_SBC, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT_INDIRECT_LONG_INDEXED),
+//     [0xf9] = OPCODE(CPU_OPCODE_SBC, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_INDEXED_Y),
+//     [0xfd] = OPCODE(CPU_OPCODE_SBC, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_INDEXED_X),
+//     [0xff] = OPCODE(CPU_OPCODE_SBC, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE_LONG_INDEXED_X),
 
-    [0xdb] = OPCODE(OPCODE_STP, OPCODE_CLASS_STANDALONE, ADDRESS_MODE_IMPLIED),
+//     [0xdb] = OPCODE(CPU_OPCODE_STP, OPCODE_CLASS_STANDALONE, ADDRESS_MODE_IMPLIED),
 
-    [0x81] = OPCODE(OPCODE_STA, OPCODE_CLASS_STORE, ADDRESS_MODE_DIRECT_INDEXED_INDIRECT),
-    [0x83] = OPCODE(OPCODE_STA, OPCODE_CLASS_STORE, ADDRESS_MODE_STACK_RELATIVE),
-    [0x85] = OPCODE(OPCODE_STA, OPCODE_CLASS_STORE, ADDRESS_MODE_DIRECT),
-    [0x87] = OPCODE(OPCODE_STA, OPCODE_CLASS_STORE, ADDRESS_MODE_DIRECT_INDIRECT_LONG),
-    [0x8d] = OPCODE(OPCODE_STA, OPCODE_CLASS_STORE, ADDRESS_MODE_ABSOLUTE),
-    [0x8f] = OPCODE(OPCODE_STA, OPCODE_CLASS_STORE, ADDRESS_MODE_ABSOLUTE_LONG),
-    [0x91] = OPCODE(OPCODE_STA, OPCODE_CLASS_STORE, ADDRESS_MODE_DIRECT_INDIRECT_INDEXED),
-    [0x92] = OPCODE(OPCODE_STA, OPCODE_CLASS_STORE, ADDRESS_MODE_DIRECT_INDIRECT),
-    [0x93] = OPCODE(OPCODE_STA, OPCODE_CLASS_STORE, ADDRESS_MODE_STACK_RELATIVE_INDIRECT_INDEXED),
-    [0x95] = OPCODE(OPCODE_STA, OPCODE_CLASS_STORE, ADDRESS_MODE_DIRECT_INDEXED_X),
-    [0x97] = OPCODE(OPCODE_STA, OPCODE_CLASS_STORE, ADDRESS_MODE_DIRECT_INDIRECT_LONG_INDEXED),
-    [0x99] = OPCODE(OPCODE_STA, OPCODE_CLASS_STORE, ADDRESS_MODE_ABSOLUTE_INDEXED_Y),
-    [0x9d] = OPCODE(OPCODE_STA, OPCODE_CLASS_STORE, ADDRESS_MODE_ABSOLUTE_INDEXED_X),
-    [0x9f] = OPCODE(OPCODE_STA, OPCODE_CLASS_STORE, ADDRESS_MODE_ABSOLUTE_LONG_INDEXED_X),
+//     [0x81] = OPCODE(CPU_OPCODE_STA, OPCODE_CLASS_STORE, ADDRESS_MODE_DIRECT_INDEXED_INDIRECT),
+//     [0x83] = OPCODE(CPU_OPCODE_STA, OPCODE_CLASS_STORE, ADDRESS_MODE_STACK_RELATIVE),
+//     [0x85] = OPCODE(CPU_OPCODE_STA, OPCODE_CLASS_STORE, ADDRESS_MODE_DIRECT),
+//     [0x87] = OPCODE(CPU_OPCODE_STA, OPCODE_CLASS_STORE, ADDRESS_MODE_DIRECT_INDIRECT_LONG),
+//     [0x8d] = OPCODE(CPU_OPCODE_STA, OPCODE_CLASS_STORE, ADDRESS_MODE_ABSOLUTE),
+//     [0x8f] = OPCODE(CPU_OPCODE_STA, OPCODE_CLASS_STORE, ADDRESS_MODE_ABSOLUTE_LONG),
+//     [0x91] = OPCODE(CPU_OPCODE_STA, OPCODE_CLASS_STORE, ADDRESS_MODE_DIRECT_INDIRECT_INDEXED),
+//     [0x92] = OPCODE(CPU_OPCODE_STA, OPCODE_CLASS_STORE, ADDRESS_MODE_DIRECT_INDIRECT),
+//     [0x93] = OPCODE(CPU_OPCODE_STA, OPCODE_CLASS_STORE, ADDRESS_MODE_STACK_RELATIVE_INDIRECT_INDEXED),
+//     [0x95] = OPCODE(CPU_OPCODE_STA, OPCODE_CLASS_STORE, ADDRESS_MODE_DIRECT_INDEXED_X),
+//     [0x97] = OPCODE(CPU_OPCODE_STA, OPCODE_CLASS_STORE, ADDRESS_MODE_DIRECT_INDIRECT_LONG_INDEXED),
+//     [0x99] = OPCODE(CPU_OPCODE_STA, OPCODE_CLASS_STORE, ADDRESS_MODE_ABSOLUTE_INDEXED_Y),
+//     [0x9d] = OPCODE(CPU_OPCODE_STA, OPCODE_CLASS_STORE, ADDRESS_MODE_ABSOLUTE_INDEXED_X),
+//     [0x9f] = OPCODE(CPU_OPCODE_STA, OPCODE_CLASS_STORE, ADDRESS_MODE_ABSOLUTE_LONG_INDEXED_X),
 
-    [0x86] = OPCODE(OPCODE_STX, OPCODE_CLASS_STORE, ADDRESS_MODE_DIRECT),
-    [0x8e] = OPCODE(OPCODE_STX, OPCODE_CLASS_STORE, ADDRESS_MODE_ABSOLUTE),
-    [0x96] = OPCODE(OPCODE_STX, OPCODE_CLASS_STORE, ADDRESS_MODE_DIRECT_INDEXED_Y),
+//     [0x86] = OPCODE(CPU_OPCODE_STX, OPCODE_CLASS_STORE, ADDRESS_MODE_DIRECT),
+//     [0x8e] = OPCODE(CPU_OPCODE_STX, OPCODE_CLASS_STORE, ADDRESS_MODE_ABSOLUTE),
+//     [0x96] = OPCODE(CPU_OPCODE_STX, OPCODE_CLASS_STORE, ADDRESS_MODE_DIRECT_INDEXED_Y),
 
-    [0x84] = OPCODE(OPCODE_STY, OPCODE_CLASS_STORE, ADDRESS_MODE_DIRECT),
-    [0x8c] = OPCODE(OPCODE_STY, OPCODE_CLASS_STORE, ADDRESS_MODE_ABSOLUTE),
-    [0x94] = OPCODE(OPCODE_STY, OPCODE_CLASS_STORE, ADDRESS_MODE_DIRECT_INDEXED_X),
+//     [0x84] = OPCODE(CPU_OPCODE_STY, OPCODE_CLASS_STORE, ADDRESS_MODE_DIRECT),
+//     [0x8c] = OPCODE(CPU_OPCODE_STY, OPCODE_CLASS_STORE, ADDRESS_MODE_ABSOLUTE),
+//     [0x94] = OPCODE(CPU_OPCODE_STY, OPCODE_CLASS_STORE, ADDRESS_MODE_DIRECT_INDEXED_X),
 
-    [0x64] = OPCODE(OPCODE_STZ, OPCODE_CLASS_STORE, ADDRESS_MODE_DIRECT),
-    [0x74] = OPCODE(OPCODE_STZ, OPCODE_CLASS_STORE, ADDRESS_MODE_DIRECT_INDEXED_X),
-    [0x9c] = OPCODE(OPCODE_STZ, OPCODE_CLASS_STORE, ADDRESS_MODE_ABSOLUTE),
-    [0x9e] = OPCODE(OPCODE_STZ, OPCODE_CLASS_STORE, ADDRESS_MODE_ABSOLUTE_INDEXED_X),
+//     [0x64] = OPCODE(CPU_OPCODE_STZ, OPCODE_CLASS_STORE, ADDRESS_MODE_DIRECT),
+//     [0x74] = OPCODE(CPU_OPCODE_STZ, OPCODE_CLASS_STORE, ADDRESS_MODE_DIRECT_INDEXED_X),
+//     [0x9c] = OPCODE(CPU_OPCODE_STZ, OPCODE_CLASS_STORE, ADDRESS_MODE_ABSOLUTE),
+//     [0x9e] = OPCODE(CPU_OPCODE_STZ, OPCODE_CLASS_STORE, ADDRESS_MODE_ABSOLUTE_INDEXED_X),
 
-    [0xaa] = OPCODE(OPCODE_TAX, OPCODE_CLASS_TRANSFER, ADDRESS_MODE_IMPLIED),
-    [0xa8] = OPCODE(OPCODE_TAY, OPCODE_CLASS_TRANSFER, ADDRESS_MODE_IMPLIED),
-    [0x5b] = OPCODE(OPCODE_TCD, OPCODE_CLASS_TRANSFER, ADDRESS_MODE_IMPLIED),
-    [0x1b] = OPCODE(OPCODE_TCS, OPCODE_CLASS_TRANSFER, ADDRESS_MODE_IMPLIED),
-    [0x7b] = OPCODE(OPCODE_TDC, OPCODE_CLASS_TRANSFER, ADDRESS_MODE_IMPLIED),
+//     [0xaa] = OPCODE(CPU_OPCODE_TAX, OPCODE_CLASS_TRANSFER, ADDRESS_MODE_IMPLIED),
+//     [0xa8] = OPCODE(CPU_OPCODE_TAY, OPCODE_CLASS_TRANSFER, ADDRESS_MODE_IMPLIED),
+//     [0x5b] = OPCODE(CPU_OPCODE_TCD, OPCODE_CLASS_TRANSFER, ADDRESS_MODE_IMPLIED),
+//     [0x1b] = OPCODE(CPU_OPCODE_TCS, OPCODE_CLASS_TRANSFER, ADDRESS_MODE_IMPLIED),
+//     [0x7b] = OPCODE(CPU_OPCODE_TDC, OPCODE_CLASS_TRANSFER, ADDRESS_MODE_IMPLIED),
 
-    [0x14] = OPCODE(OPCODE_TRB, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT),
-    [0x1c] = OPCODE(OPCODE_TRB, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE),
+//     [0x14] = OPCODE(CPU_OPCODE_TRB, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT),
+//     [0x1c] = OPCODE(CPU_OPCODE_TRB, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE),
 
-    [0x04] = OPCODE(OPCODE_TSB, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT),
-    [0x0c] = OPCODE(OPCODE_TSB, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE),
+//     [0x04] = OPCODE(CPU_OPCODE_TSB, OPCODE_CLASS_ALU, ADDRESS_MODE_DIRECT),
+//     [0x0c] = OPCODE(CPU_OPCODE_TSB, OPCODE_CLASS_ALU, ADDRESS_MODE_ABSOLUTE),
 
-    [0x3b] = OPCODE(OPCODE_TSC, OPCODE_CLASS_TRANSFER, ADDRESS_MODE_ACCUMULATOR),
-    [0xba] = OPCODE(OPCODE_TSX, OPCODE_CLASS_TRANSFER, ADDRESS_MODE_ACCUMULATOR),
-    [0x8a] = OPCODE(OPCODE_TXA, OPCODE_CLASS_TRANSFER, ADDRESS_MODE_ACCUMULATOR),
-    [0x9a] = OPCODE(OPCODE_TXS, OPCODE_CLASS_TRANSFER, ADDRESS_MODE_ACCUMULATOR),
-    [0x9b] = OPCODE(OPCODE_TXY, OPCODE_CLASS_TRANSFER, ADDRESS_MODE_ACCUMULATOR),
-    [0x98] = OPCODE(OPCODE_TYA, OPCODE_CLASS_TRANSFER, ADDRESS_MODE_ACCUMULATOR),
-    [0xbb] = OPCODE(OPCODE_TYX, OPCODE_CLASS_TRANSFER, ADDRESS_MODE_ACCUMULATOR),
-    [0xcb] = OPCODE(OPCODE_WAI, OPCODE_CLASS_STANDALONE, ADDRESS_MODE_ACCUMULATOR),
-    [0x42] = OPCODE(OPCODE_WDM, OPCODE_CLASS_STANDALONE, ADDRESS_MODE_ACCUMULATOR),
-    [0xeb] = OPCODE(OPCODE_XBA, OPCODE_CLASS_STANDALONE, ADDRESS_MODE_ACCUMULATOR),
-    [0xfb] = OPCODE(OPCODE_XCE, OPCODE_CLASS_STANDALONE, ADDRESS_MODE_ACCUMULATOR)
-};
+//     [0x3b] = OPCODE(CPU_OPCODE_TSC, OPCODE_CLASS_TRANSFER, ADDRESS_MODE_ACCUMULATOR),
+//     [0xba] = OPCODE(CPU_OPCODE_TSX, OPCODE_CLASS_TRANSFER, ADDRESS_MODE_ACCUMULATOR),
+//     [0x8a] = OPCODE(CPU_OPCODE_TXA, OPCODE_CLASS_TRANSFER, ADDRESS_MODE_ACCUMULATOR),
+//     [0x9a] = OPCODE(CPU_OPCODE_TXS, OPCODE_CLASS_TRANSFER, ADDRESS_MODE_ACCUMULATOR),
+//     [0x9b] = OPCODE(CPU_OPCODE_TXY, OPCODE_CLASS_TRANSFER, ADDRESS_MODE_ACCUMULATOR),
+//     [0x98] = OPCODE(CPU_OPCODE_TYA, OPCODE_CLASS_TRANSFER, ADDRESS_MODE_ACCUMULATOR),
+//     [0xbb] = OPCODE(CPU_OPCODE_TYX, OPCODE_CLASS_TRANSFER, ADDRESS_MODE_ACCUMULATOR),
+//     [0xcb] = OPCODE(CPU_OPCODE_WAI, OPCODE_CLASS_STANDALONE, ADDRESS_MODE_ACCUMULATOR),
+//     [0x42] = OPCODE(CPU_OPCODE_WDM, OPCODE_CLASS_STANDALONE, ADDRESS_MODE_ACCUMULATOR),
+//     [0xeb] = OPCODE(CPU_OPCODE_XBA, OPCODE_CLASS_STANDALONE, ADDRESS_MODE_ACCUMULATOR),
+//     [0xfb] = OPCODE(CPU_OPCODE_XCE, OPCODE_CLASS_STANDALONE, ADDRESS_MODE_ACCUMULATOR)
+// };
 
 struct opcode_info_t opcode_info[] = {
-    [ADC_IMM]           = {.opcode = OPCODE_ADC, .addr_mode = ADDRESS_MODE_IMMEDIATE,                       .width[0] = 3, .width[1] = 2, .width_flag = STATUS_FLAG_M},
-    [ADC_ABS]           = {.opcode = OPCODE_ADC, .addr_mode = ADDRESS_MODE_ABSOLUTE,                        .width[0] = 3},
-    [ADC_ABSL]          = {.opcode = OPCODE_ADC, .addr_mode = ADDRESS_MODE_ABSOLUTE_LONG,                   .width[0] = 4},
-    [ADC_DIR]           = {.opcode = OPCODE_ADC, .addr_mode = ADDRESS_MODE_DIRECT,                          .width[0] = 2},
-    [ADC_DIR_IND]       = {.opcode = OPCODE_ADC, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT,                 .width[0] = 2},
-    [ADC_DIR_INDL]      = {.opcode = OPCODE_ADC, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT_LONG,            .width[0] = 2},
-    [ADC_ABS_X]         = {.opcode = OPCODE_ADC, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_X,              .width[0] = 3},
-    [ADC_ABSL_X]        = {.opcode = OPCODE_ADC, .addr_mode = ADDRESS_MODE_ABSOLUTE_LONG_INDEXED_X,         .width[0] = 4},
-    [ADC_ABS_Y]         = {.opcode = OPCODE_ADC, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_Y,              .width[0] = 3},
-    [ADC_DIR_X]         = {.opcode = OPCODE_ADC, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_X,                .width[0] = 2},
-    [ADC_DIR_X_IND]     = {.opcode = OPCODE_ADC, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_INDIRECT,         .width[0] = 2},
-    [ADC_DIR_IND_Y]     = {.opcode = OPCODE_ADC, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT_INDEXED,         .width[0] = 2},
-    [ADC_DIR_INDL_Y]    = {.opcode = OPCODE_ADC, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT_LONG_INDEXED,    .width[0] = 2},
-    [ADC_S_REL]         = {.opcode = OPCODE_ADC, .addr_mode = ADDRESS_MODE_STACK_RELATIVE,                  .width[0] = 2},
-    [ADC_S_REL_IND_Y]   = {.opcode = OPCODE_ADC, .addr_mode = ADDRESS_MODE_STACK_RELATIVE_INDIRECT_INDEXED, .width[0] = 2},
+    [CPU_OPCODE_ADC_IMM]           = {.opcode = CPU_INST_ADC, .addr_mode = ADDRESS_MODE_IMMEDIATE,                       .width[0] = 3, .width[1] = 2, .width_flag = CPU_STATUS_FLAG_M},
+    [CPU_OPCODE_ADC_ABS]           = {.opcode = CPU_INST_ADC, .addr_mode = ADDRESS_MODE_ABSOLUTE,                        .width[0] = 3},
+    [CPU_OPCODE_ADC_ABSL]          = {.opcode = CPU_INST_ADC, .addr_mode = ADDRESS_MODE_ABSOLUTE_LONG,                   .width[0] = 4},
+    [CPU_OPCODE_ADC_DIR]           = {.opcode = CPU_INST_ADC, .addr_mode = ADDRESS_MODE_DIRECT,                          .width[0] = 2},
+    [CPU_OPCODE_ADC_DIR_IND]       = {.opcode = CPU_INST_ADC, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT,                 .width[0] = 2},
+    [CPU_OPCODE_ADC_DIR_INDL]      = {.opcode = CPU_INST_ADC, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT_LONG,            .width[0] = 2},
+    [CPU_OPCODE_ADC_ABS_X]         = {.opcode = CPU_INST_ADC, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_X,              .width[0] = 3},
+    [CPU_OPCODE_ADC_ABSL_X]        = {.opcode = CPU_INST_ADC, .addr_mode = ADDRESS_MODE_ABSOLUTE_LONG_INDEXED_X,         .width[0] = 4},
+    [CPU_OPCODE_ADC_ABS_Y]         = {.opcode = CPU_INST_ADC, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_Y,              .width[0] = 3},
+    [CPU_OPCODE_ADC_DIR_X]         = {.opcode = CPU_INST_ADC, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_X,                .width[0] = 2},
+    [CPU_OPCODE_ADC_DIR_X_IND]     = {.opcode = CPU_INST_ADC, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_INDIRECT,         .width[0] = 2},
+    [CPU_OPCODE_ADC_DIR_IND_Y]     = {.opcode = CPU_INST_ADC, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT_INDEXED,         .width[0] = 2},
+    [CPU_OPCODE_ADC_DIR_INDL_Y]    = {.opcode = CPU_INST_ADC, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT_LONG_INDEXED,    .width[0] = 2},
+    [CPU_OPCODE_ADC_S_REL]         = {.opcode = CPU_INST_ADC, .addr_mode = ADDRESS_MODE_STACK_RELATIVE,                  .width[0] = 2},
+    [CPU_OPCODE_ADC_S_REL_IND_Y]   = {.opcode = CPU_INST_ADC, .addr_mode = ADDRESS_MODE_STACK_RELATIVE_INDIRECT_INDEXED, .width[0] = 2},
 
-    [AND_IMM]           = {.opcode = OPCODE_AND, .addr_mode = ADDRESS_MODE_IMMEDIATE,                       .width[0] = 3, .width[1] = 2, .width_flag = STATUS_FLAG_M},
-    [AND_ABS]           = {.opcode = OPCODE_AND, .addr_mode = ADDRESS_MODE_ABSOLUTE,                        .width[0] = 3},
-    [AND_ABSL]          = {.opcode = OPCODE_AND, .addr_mode = ADDRESS_MODE_ABSOLUTE_LONG,                   .width[0] = 4},
-    [AND_DIR]           = {.opcode = OPCODE_AND, .addr_mode = ADDRESS_MODE_DIRECT,                          .width[0] = 2},
-    [AND_DIR_IND]       = {.opcode = OPCODE_AND, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT,                 .width[0] = 2},
-    [AND_DIR_INDL]      = {.opcode = OPCODE_AND, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT_LONG,            .width[0] = 2},
-    [AND_ABS_X]         = {.opcode = OPCODE_AND, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_X,              .width[0] = 3},
-    [AND_ABSL_X]        = {.opcode = OPCODE_AND, .addr_mode = ADDRESS_MODE_ABSOLUTE_LONG_INDEXED_X,         .width[0] = 4},
-    [AND_ABS_Y]         = {.opcode = OPCODE_AND, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_Y,              .width[0] = 3},
-    [AND_DIR_X]         = {.opcode = OPCODE_AND, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_X,                .width[0] = 2},
-    [AND_DIR_X_IND]     = {.opcode = OPCODE_AND, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_INDIRECT,         .width[0] = 2},
-    [AND_DIR_IND_Y]     = {.opcode = OPCODE_AND, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT_INDEXED,         .width[0] = 2},
-    [AND_DIR_INDL_Y]    = {.opcode = OPCODE_AND, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT_LONG_INDEXED,    .width[0] = 2},
-    [AND_S_REL]         = {.opcode = OPCODE_AND, .addr_mode = ADDRESS_MODE_STACK_RELATIVE,                  .width[0] = 2},
-    [AND_S_REL_IND_Y]   = {.opcode = OPCODE_AND, .addr_mode = ADDRESS_MODE_STACK_RELATIVE_INDIRECT_INDEXED, .width[0] = 2},
+    [CPU_OPCODE_AND_IMM]           = {.opcode = CPU_INST_AND, .addr_mode = ADDRESS_MODE_IMMEDIATE,                       .width[0] = 3, .width[1] = 2, .width_flag = CPU_STATUS_FLAG_M},
+    [CPU_OPCODE_AND_ABS]           = {.opcode = CPU_INST_AND, .addr_mode = ADDRESS_MODE_ABSOLUTE,                        .width[0] = 3},
+    [CPU_OPCODE_AND_ABSL]          = {.opcode = CPU_INST_AND, .addr_mode = ADDRESS_MODE_ABSOLUTE_LONG,                   .width[0] = 4},
+    [CPU_OPCODE_AND_DIR]           = {.opcode = CPU_INST_AND, .addr_mode = ADDRESS_MODE_DIRECT,                          .width[0] = 2},
+    [CPU_OPCODE_AND_DIR_IND]       = {.opcode = CPU_INST_AND, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT,                 .width[0] = 2},
+    [CPU_OPCODE_AND_DIR_INDL]      = {.opcode = CPU_INST_AND, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT_LONG,            .width[0] = 2},
+    [CPU_OPCODE_AND_ABS_X]         = {.opcode = CPU_INST_AND, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_X,              .width[0] = 3},
+    [CPU_OPCODE_AND_ABSL_X]        = {.opcode = CPU_INST_AND, .addr_mode = ADDRESS_MODE_ABSOLUTE_LONG_INDEXED_X,         .width[0] = 4},
+    [CPU_OPCODE_AND_ABS_Y]         = {.opcode = CPU_INST_AND, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_Y,              .width[0] = 3},
+    [CPU_OPCODE_AND_DIR_X]         = {.opcode = CPU_INST_AND, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_X,                .width[0] = 2},
+    [CPU_OPCODE_AND_DIR_X_IND]     = {.opcode = CPU_INST_AND, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_INDIRECT,         .width[0] = 2},
+    [CPU_OPCODE_AND_DIR_IND_Y]     = {.opcode = CPU_INST_AND, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT_INDEXED,         .width[0] = 2},
+    [CPU_OPCODE_AND_DIR_INDL_Y]    = {.opcode = CPU_INST_AND, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT_LONG_INDEXED,    .width[0] = 2},
+    [CPU_OPCODE_AND_S_REL]         = {.opcode = CPU_INST_AND, .addr_mode = ADDRESS_MODE_STACK_RELATIVE,                  .width[0] = 2},
+    [CPU_OPCODE_AND_S_REL_IND_Y]   = {.opcode = CPU_INST_AND, .addr_mode = ADDRESS_MODE_STACK_RELATIVE_INDIRECT_INDEXED, .width[0] = 2},
 
-    [ASL_ACC]           = {.opcode = OPCODE_ASL, .addr_mode = ADDRESS_MODE_ACCUMULATOR,                     .width[0] = 1},
-    [ASL_ABS]           = {.opcode = OPCODE_ASL, .addr_mode = ADDRESS_MODE_ABSOLUTE,                        .width[0] = 3},
-    [ASL_DIR]           = {.opcode = OPCODE_ASL, .addr_mode = ADDRESS_MODE_DIRECT,                          .width[0] = 2},
-    [ASL_ABS_X]         = {.opcode = OPCODE_ASL, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_X,              .width[0] = 3},  
-    [ASL_DIR_X]         = {.opcode = OPCODE_ASL, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_X,                .width[0] = 2},
+    [CPU_OPCODE_ASL_ACC]           = {.opcode = CPU_INST_ASL, .addr_mode = ADDRESS_MODE_ACCUMULATOR,                     .width[0] = 1},
+    [CPU_OPCODE_ASL_ABS]           = {.opcode = CPU_INST_ASL, .addr_mode = ADDRESS_MODE_ABSOLUTE,                        .width[0] = 3},
+    [CPU_OPCODE_ASL_DIR]           = {.opcode = CPU_INST_ASL, .addr_mode = ADDRESS_MODE_DIRECT,                          .width[0] = 2},
+    [CPU_OPCODE_ASL_ABS_X]         = {.opcode = CPU_INST_ASL, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_X,              .width[0] = 3},  
+    [CPU_OPCODE_ASL_DIR_X]         = {.opcode = CPU_INST_ASL, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_X,                .width[0] = 2},
 
-    [BCC_PC_REL]        = {.opcode = OPCODE_BCC, .addr_mode = ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE,        .width[0] = 2},
-    [BCS_PC_REL]        = {.opcode = OPCODE_BCS, .addr_mode = ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE,        .width[0] = 2},
-    [BEQ_PC_REL]        = {.opcode = OPCODE_BEQ, .addr_mode = ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE,        .width[0] = 2},
-    [BMI_PC_REL]        = {.opcode = OPCODE_BMI, .addr_mode = ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE,        .width[0] = 2},
-    [BNE_PC_REL]        = {.opcode = OPCODE_BNE, .addr_mode = ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE,        .width[0] = 2},
-    [BPL_PC_REL]        = {.opcode = OPCODE_BPL, .addr_mode = ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE,        .width[0] = 2},
-    [BRA_PC_REL]        = {.opcode = OPCODE_BRA, .addr_mode = ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE,        .width[0] = 2},
-    [BRL_PC_RELL]       = {.opcode = OPCODE_BRL, .addr_mode = ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE_LONG,   .width[0] = 3},
-    [BVC_PC_REL]        = {.opcode = OPCODE_BVC, .addr_mode = ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE,        .width[0] = 2},
-    [BVS_PC_REL]        = {.opcode = OPCODE_BVS, .addr_mode = ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE,        .width[0] = 2},
+    [CPU_OPCODE_BCC_PC_REL]        = {.opcode = CPU_INST_BCC, .addr_mode = ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE,        .width[0] = 2},
+    [CPU_OPCODE_BCS_PC_REL]        = {.opcode = CPU_INST_BCS, .addr_mode = ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE,        .width[0] = 2},
+    [CPU_OPCODE_BEQ_PC_REL]        = {.opcode = CPU_INST_BEQ, .addr_mode = ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE,        .width[0] = 2},
+    [CPU_OPCODE_BMI_PC_REL]        = {.opcode = CPU_INST_BMI, .addr_mode = ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE,        .width[0] = 2},
+    [CPU_OPCODE_BNE_PC_REL]        = {.opcode = CPU_INST_BNE, .addr_mode = ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE,        .width[0] = 2},
+    [CPU_OPCODE_BPL_PC_REL]        = {.opcode = CPU_INST_BPL, .addr_mode = ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE,        .width[0] = 2},
+    [CPU_OPCODE_BRA_PC_REL]        = {.opcode = CPU_INST_BRA, .addr_mode = ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE,        .width[0] = 2},
+    [CPU_OPCODE_BRL_PC_RELL]       = {.opcode = CPU_INST_BRL, .addr_mode = ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE_LONG,   .width[0] = 3},
+    [CPU_OPCODE_BVC_PC_REL]        = {.opcode = CPU_INST_BVC, .addr_mode = ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE,        .width[0] = 2},
+    [CPU_OPCODE_BVS_PC_REL]        = {.opcode = CPU_INST_BVS, .addr_mode = ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE,        .width[0] = 2},
 
-    [BIT_IMM]           = {.opcode = OPCODE_BIT, .addr_mode = ADDRESS_MODE_IMMEDIATE,                       .width[0] = 3, .width[1] = 2, .width_flag = STATUS_FLAG_M},
-    [BIT_ABS]           = {.opcode = OPCODE_BIT, .addr_mode = ADDRESS_MODE_ABSOLUTE,                        .width[0] = 3},
-    [BIT_DIR]           = {.opcode = OPCODE_BIT, .addr_mode = ADDRESS_MODE_DIRECT,                          .width[0] = 2},
-    [BIT_ABS_X]         = {.opcode = OPCODE_BIT, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_X,              .width[0] = 3},
-    [BIT_DIR_X]         = {.opcode = OPCODE_BIT, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_X,                .width[0] = 2},
+    [CPU_OPCODE_BIT_IMM]           = {.opcode = CPU_INST_BIT, .addr_mode = ADDRESS_MODE_IMMEDIATE,                       .width[0] = 3, .width[1] = 2, .width_flag = CPU_STATUS_FLAG_M},
+    [CPU_OPCODE_BIT_ABS]           = {.opcode = CPU_INST_BIT, .addr_mode = ADDRESS_MODE_ABSOLUTE,                        .width[0] = 3},
+    [CPU_OPCODE_BIT_DIR]           = {.opcode = CPU_INST_BIT, .addr_mode = ADDRESS_MODE_DIRECT,                          .width[0] = 2},
+    [CPU_OPCODE_BIT_ABS_X]         = {.opcode = CPU_INST_BIT, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_X,              .width[0] = 3},
+    [CPU_OPCODE_BIT_DIR_X]         = {.opcode = CPU_INST_BIT, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_X,                .width[0] = 2},
 
-    [BRK_S]             = {.opcode = OPCODE_BRK, .addr_mode = ADDRESS_MODE_STACK,                           .width[0] = 2, .width[1] = 1, .width_flag = STATUS_FLAG_E},
+    [CPU_OPCODE_BRK_S]             = {.opcode = CPU_INST_BRK, .addr_mode = ADDRESS_MODE_STACK,                           .width[0] = 2, .width[1] = 1, .width_flag = CPU_STATUS_FLAG_E},
 
-    [CLC_IMP]           = {.opcode = OPCODE_CLC, .addr_mode = ADDRESS_MODE_IMPLIED,                         .width[0] = 1},
-    [CLD_IMP]           = {.opcode = OPCODE_CLD, .addr_mode = ADDRESS_MODE_IMPLIED,                         .width[0] = 1},
-    [CLI_IMP]           = {.opcode = OPCODE_CLI, .addr_mode = ADDRESS_MODE_IMPLIED,                         .width[0] = 1},
-    [CLV_IMP]           = {.opcode = OPCODE_CLV, .addr_mode = ADDRESS_MODE_IMPLIED,                         .width[0] = 1},
+    [CPU_OPCODE_CLC_IMP]           = {.opcode = CPU_INST_CLC, .addr_mode = ADDRESS_MODE_IMPLIED,                         .width[0] = 1},
+    [CPU_OPCODE_CLD_IMP]           = {.opcode = CPU_INST_CLD, .addr_mode = ADDRESS_MODE_IMPLIED,                         .width[0] = 1},
+    [CPU_OPCODE_CLI_IMP]           = {.opcode = CPU_INST_CLI, .addr_mode = ADDRESS_MODE_IMPLIED,                         .width[0] = 1},
+    [CPU_OPCODE_CLV_IMP]           = {.opcode = CPU_INST_CLV, .addr_mode = ADDRESS_MODE_IMPLIED,                         .width[0] = 1},
 
-    [CMP_IMM]           = {.opcode = OPCODE_CMP, .addr_mode = ADDRESS_MODE_IMMEDIATE,                       .width[0] = 3, .width[1] = 2, .width_flag = STATUS_FLAG_M},
-    [CMP_ABS]           = {.opcode = OPCODE_CMP, .addr_mode = ADDRESS_MODE_ABSOLUTE,                        .width[0] = 3},
-    [CMP_ABSL]          = {.opcode = OPCODE_CMP, .addr_mode = ADDRESS_MODE_ABSOLUTE_LONG,                   .width[0] = 4},
-    [CMP_DIR]           = {.opcode = OPCODE_CMP, .addr_mode = ADDRESS_MODE_DIRECT,                          .width[0] = 2},
-    [CMP_DIR_IND]       = {.opcode = OPCODE_CMP, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT,                 .width[0] = 2},
-    [CMP_DIR_INDL]      = {.opcode = OPCODE_CMP, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT_LONG,            .width[0] = 2},
-    [CMP_ABS_X]         = {.opcode = OPCODE_CMP, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_X,              .width[0] = 3},
-    [CMP_ABSL_X]        = {.opcode = OPCODE_CMP, .addr_mode = ADDRESS_MODE_ABSOLUTE_LONG_INDEXED_X,         .width[0] = 4},
-    [CMP_ABS_Y]         = {.opcode = OPCODE_CMP, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_Y,              .width[0] = 3},
-    [CMP_DIR_X]         = {.opcode = OPCODE_CMP, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_X,                .width[0] = 2},
-    [CMP_DIR_X_IND]     = {.opcode = OPCODE_CMP, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_INDIRECT,         .width[0] = 2},
-    [CMP_DIR_IND_Y]     = {.opcode = OPCODE_CMP, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT_INDEXED,         .width[0] = 2},
-    [CMP_DIR_INDL_Y]    = {.opcode = OPCODE_CMP, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT_LONG_INDEXED,    .width[0] = 2},
-    [CMP_S_REL]         = {.opcode = OPCODE_CMP, .addr_mode = ADDRESS_MODE_STACK_RELATIVE,                  .width[0] = 2},
-    [CMP_S_REL_IND_Y]   = {.opcode = OPCODE_CMP, .addr_mode = ADDRESS_MODE_STACK_RELATIVE_INDIRECT_INDEXED, .width[0] = 2},
+    [CPU_OPCODE_CMP_IMM]           = {.opcode = CPU_INST_CMP, .addr_mode = ADDRESS_MODE_IMMEDIATE,                       .width[0] = 3, .width[1] = 2, .width_flag = CPU_STATUS_FLAG_M},
+    [CPU_OPCODE_CMP_ABS]           = {.opcode = CPU_INST_CMP, .addr_mode = ADDRESS_MODE_ABSOLUTE,                        .width[0] = 3},
+    [CPU_OPCODE_CMP_ABSL]          = {.opcode = CPU_INST_CMP, .addr_mode = ADDRESS_MODE_ABSOLUTE_LONG,                   .width[0] = 4},
+    [CPU_OPCODE_CMP_DIR]           = {.opcode = CPU_INST_CMP, .addr_mode = ADDRESS_MODE_DIRECT,                          .width[0] = 2},
+    [CPU_OPCODE_CMP_DIR_IND]       = {.opcode = CPU_INST_CMP, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT,                 .width[0] = 2},
+    [CPU_OPCODE_CMP_DIR_INDL]      = {.opcode = CPU_INST_CMP, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT_LONG,            .width[0] = 2},
+    [CPU_OPCODE_CMP_ABS_X]         = {.opcode = CPU_INST_CMP, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_X,              .width[0] = 3},
+    [CPU_OPCODE_CMP_ABSL_X]        = {.opcode = CPU_INST_CMP, .addr_mode = ADDRESS_MODE_ABSOLUTE_LONG_INDEXED_X,         .width[0] = 4},
+    [CPU_OPCODE_CMP_ABS_Y]         = {.opcode = CPU_INST_CMP, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_Y,              .width[0] = 3},
+    [CPU_OPCODE_CMP_DIR_X]         = {.opcode = CPU_INST_CMP, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_X,                .width[0] = 2},
+    [CPU_OPCODE_CMP_DIR_X_IND]     = {.opcode = CPU_INST_CMP, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_INDIRECT,         .width[0] = 2},
+    [CPU_OPCODE_CMP_DIR_IND_Y]     = {.opcode = CPU_INST_CMP, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT_INDEXED,         .width[0] = 2},
+    [CPU_OPCODE_CMP_DIR_INDL_Y]    = {.opcode = CPU_INST_CMP, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT_LONG_INDEXED,    .width[0] = 2},
+    [CPU_OPCODE_CMP_S_REL]         = {.opcode = CPU_INST_CMP, .addr_mode = ADDRESS_MODE_STACK_RELATIVE,                  .width[0] = 2},
+    [CPU_OPCODE_CMP_S_REL_IND_Y]   = {.opcode = CPU_INST_CMP, .addr_mode = ADDRESS_MODE_STACK_RELATIVE_INDIRECT_INDEXED, .width[0] = 2},
 
-    [COP_S]             = {.opcode = OPCODE_COP, .addr_mode = ADDRESS_MODE_STACK,                           .width[0] = 1},
+    [CPU_OPCODE_COP_S]             = {.opcode = CPU_INST_COP, .addr_mode = ADDRESS_MODE_STACK,                           .width[0] = 1},
 
-    [CPX_IMM]           = {.opcode = OPCODE_CPX, .addr_mode = ADDRESS_MODE_IMMEDIATE,                       .width[0] = 3, .width[1] = 2, .width_flag = STATUS_FLAG_X},
-    [CPX_ABS]           = {.opcode = OPCODE_CPX, .addr_mode = ADDRESS_MODE_ABSOLUTE,                        .width[0] = 3},
-    [CPX_DIR]           = {.opcode = OPCODE_CPX, .addr_mode = ADDRESS_MODE_DIRECT,                          .width[0] = 2},
+    [CPU_OPCODE_CPX_IMM]           = {.opcode = CPU_INST_CPX, .addr_mode = ADDRESS_MODE_IMMEDIATE,                       .width[0] = 3, .width[1] = 2, .width_flag = CPU_STATUS_FLAG_X},
+    [CPU_OPCODE_CPX_ABS]           = {.opcode = CPU_INST_CPX, .addr_mode = ADDRESS_MODE_ABSOLUTE,                        .width[0] = 3},
+    [CPU_OPCODE_CPX_DIR]           = {.opcode = CPU_INST_CPX, .addr_mode = ADDRESS_MODE_DIRECT,                          .width[0] = 2},
 
-    [CPY_IMM]           = {.opcode = OPCODE_CPY, .addr_mode = ADDRESS_MODE_IMMEDIATE,                       .width[0] = 3, .width[1] = 2, .width_flag = STATUS_FLAG_X},
-    [CPY_ABS]           = {.opcode = OPCODE_CPY, .addr_mode = ADDRESS_MODE_ABSOLUTE,                        .width[0] = 3},
-    [CPY_DIR]           = {.opcode = OPCODE_CPY, .addr_mode = ADDRESS_MODE_DIRECT,                          .width[0] = 2},
+    [CPU_OPCODE_CPY_IMM]           = {.opcode = CPU_INST_CPY, .addr_mode = ADDRESS_MODE_IMMEDIATE,                       .width[0] = 3, .width[1] = 2, .width_flag = CPU_STATUS_FLAG_X},
+    [CPU_OPCODE_CPY_ABS]           = {.opcode = CPU_INST_CPY, .addr_mode = ADDRESS_MODE_ABSOLUTE,                        .width[0] = 3},
+    [CPU_OPCODE_CPY_DIR]           = {.opcode = CPU_INST_CPY, .addr_mode = ADDRESS_MODE_DIRECT,                          .width[0] = 2},
 
-    [DEC_ACC]           = {.opcode = OPCODE_DEC, .addr_mode = ADDRESS_MODE_ACCUMULATOR,                     .width[0] = 1},
-    [DEC_ABS]           = {.opcode = OPCODE_DEC, .addr_mode = ADDRESS_MODE_ABSOLUTE,                        .width[0] = 3},
-    [DEC_DIR]           = {.opcode = OPCODE_DEC, .addr_mode = ADDRESS_MODE_DIRECT,                          .width[0] = 2},
-    [DEC_ABS_X]         = {.opcode = OPCODE_DEC, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_X,              .width[0] = 3},
-    [DEC_DIR_X]         = {.opcode = OPCODE_DEC, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_X,                .width[0] = 2},
+    [CPU_OPCODE_DEC_ACC]           = {.opcode = CPU_INST_DEC, .addr_mode = ADDRESS_MODE_ACCUMULATOR,                     .width[0] = 1},
+    [CPU_OPCODE_DEC_ABS]           = {.opcode = CPU_INST_DEC, .addr_mode = ADDRESS_MODE_ABSOLUTE,                        .width[0] = 3},
+    [CPU_OPCODE_DEC_DIR]           = {.opcode = CPU_INST_DEC, .addr_mode = ADDRESS_MODE_DIRECT,                          .width[0] = 2},
+    [CPU_OPCODE_DEC_ABS_X]         = {.opcode = CPU_INST_DEC, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_X,              .width[0] = 3},
+    [CPU_OPCODE_DEC_DIR_X]         = {.opcode = CPU_INST_DEC, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_X,                .width[0] = 2},
 
-    [DEX_IMP]           = {.opcode = OPCODE_DEX, .addr_mode = ADDRESS_MODE_IMPLIED,                         .width[0] = 1},
-    [DEY_IMP]           = {.opcode = OPCODE_DEY, .addr_mode = ADDRESS_MODE_IMPLIED,                         .width[0] = 1},
+    [CPU_OPCODE_DEX_IMP]           = {.opcode = CPU_INST_DEX, .addr_mode = ADDRESS_MODE_IMPLIED,                         .width[0] = 1},
+    [CPU_OPCODE_DEY_IMP]           = {.opcode = CPU_INST_DEY, .addr_mode = ADDRESS_MODE_IMPLIED,                         .width[0] = 1},
 
-    [EOR_IMM]           = {.opcode = OPCODE_EOR, .addr_mode = ADDRESS_MODE_IMMEDIATE,                       .width[0] = 3, .width[1] = 2, .width_flag = STATUS_FLAG_M},
-    [EOR_ABS]           = {.opcode = OPCODE_EOR, .addr_mode = ADDRESS_MODE_ABSOLUTE,                        .width[0] = 3},
-    [EOR_ABSL]          = {.opcode = OPCODE_EOR, .addr_mode = ADDRESS_MODE_ABSOLUTE_LONG,                   .width[0] = 4},
-    [EOR_DIR]           = {.opcode = OPCODE_EOR, .addr_mode = ADDRESS_MODE_DIRECT,                          .width[0] = 2},
-    [EOR_DIR_IND]       = {.opcode = OPCODE_EOR, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT,                 .width[0] = 2},
-    [EOR_DIR_INDL]      = {.opcode = OPCODE_EOR, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT_LONG,            .width[0] = 2},
-    [EOR_ABS_X]         = {.opcode = OPCODE_EOR, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_X,              .width[0] = 3},
-    [EOR_ABSL_X]        = {.opcode = OPCODE_EOR, .addr_mode = ADDRESS_MODE_ABSOLUTE_LONG_INDEXED_X,         .width[0] = 4},
-    [EOR_ABS_Y]         = {.opcode = OPCODE_EOR, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_Y,              .width[0] = 3},
-    [EOR_DIR_X]         = {.opcode = OPCODE_EOR, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_X,                .width[0] = 2},
-    [EOR_DIR_X_IND]     = {.opcode = OPCODE_EOR, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_INDIRECT,         .width[0] = 2},
-    [EOR_DIR_IND_Y]     = {.opcode = OPCODE_EOR, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT_INDEXED,         .width[0] = 2},
-    [EOR_DIR_INDL_Y]    = {.opcode = OPCODE_EOR, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT_LONG_INDEXED,    .width[0] = 2},
-    [EOR_S_REL]         = {.opcode = OPCODE_EOR, .addr_mode = ADDRESS_MODE_STACK_RELATIVE,                  .width[0] = 2},
-    [EOR_S_REL_IND_Y]   = {.opcode = OPCODE_EOR, .addr_mode = ADDRESS_MODE_STACK_RELATIVE_INDIRECT_INDEXED, .width[0] = 2},
+    [CPU_OPCODE_EOR_IMM]           = {.opcode = CPU_INST_EOR, .addr_mode = ADDRESS_MODE_IMMEDIATE,                       .width[0] = 3, .width[1] = 2, .width_flag = CPU_STATUS_FLAG_M},
+    [CPU_OPCODE_EOR_ABS]           = {.opcode = CPU_INST_EOR, .addr_mode = ADDRESS_MODE_ABSOLUTE,                        .width[0] = 3},
+    [CPU_OPCODE_EOR_ABSL]          = {.opcode = CPU_INST_EOR, .addr_mode = ADDRESS_MODE_ABSOLUTE_LONG,                   .width[0] = 4},
+    [CPU_OPCODE_EOR_DIR]           = {.opcode = CPU_INST_EOR, .addr_mode = ADDRESS_MODE_DIRECT,                          .width[0] = 2},
+    [CPU_OPCODE_EOR_DIR_IND]       = {.opcode = CPU_INST_EOR, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT,                 .width[0] = 2},
+    [CPU_OPCODE_EOR_DIR_INDL]      = {.opcode = CPU_INST_EOR, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT_LONG,            .width[0] = 2},
+    [CPU_OPCODE_EOR_ABS_X]         = {.opcode = CPU_INST_EOR, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_X,              .width[0] = 3},
+    [CPU_OPCODE_EOR_ABSL_X]        = {.opcode = CPU_INST_EOR, .addr_mode = ADDRESS_MODE_ABSOLUTE_LONG_INDEXED_X,         .width[0] = 4},
+    [CPU_OPCODE_EOR_ABS_Y]         = {.opcode = CPU_INST_EOR, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_Y,              .width[0] = 3},
+    [CPU_OPCODE_EOR_DIR_X]         = {.opcode = CPU_INST_EOR, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_X,                .width[0] = 2},
+    [CPU_OPCODE_EOR_DIR_X_IND]     = {.opcode = CPU_INST_EOR, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_INDIRECT,         .width[0] = 2},
+    [CPU_OPCODE_EOR_DIR_IND_Y]     = {.opcode = CPU_INST_EOR, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT_INDEXED,         .width[0] = 2},
+    [CPU_OPCODE_EOR_DIR_INDL_Y]    = {.opcode = CPU_INST_EOR, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT_LONG_INDEXED,    .width[0] = 2},
+    [CPU_OPCODE_EOR_S_REL]         = {.opcode = CPU_INST_EOR, .addr_mode = ADDRESS_MODE_STACK_RELATIVE,                  .width[0] = 2},
+    [CPU_OPCODE_EOR_S_REL_IND_Y]   = {.opcode = CPU_INST_EOR, .addr_mode = ADDRESS_MODE_STACK_RELATIVE_INDIRECT_INDEXED, .width[0] = 2},
 
-    [INC_ACC]           = {.opcode = OPCODE_INC, .addr_mode = ADDRESS_MODE_ACCUMULATOR,                     .width[0] = 1},
-    [INC_ABS]           = {.opcode = OPCODE_INC, .addr_mode = ADDRESS_MODE_ABSOLUTE,                        .width[0] = 3},
-    [INC_DIR]           = {.opcode = OPCODE_INC, .addr_mode = ADDRESS_MODE_DIRECT,                          .width[0] = 2},
-    [INC_ABS_X]         = {.opcode = OPCODE_INC, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_X,              .width[0] = 3},
-    [INC_DIR_X]         = {.opcode = OPCODE_INC, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_X,                .width[0] = 2},
+    [CPU_OPCODE_INC_ACC]           = {.opcode = CPU_INST_INC, .addr_mode = ADDRESS_MODE_ACCUMULATOR,                     .width[0] = 1},
+    [CPU_OPCODE_INC_ABS]           = {.opcode = CPU_INST_INC, .addr_mode = ADDRESS_MODE_ABSOLUTE,                        .width[0] = 3},
+    [CPU_OPCODE_INC_DIR]           = {.opcode = CPU_INST_INC, .addr_mode = ADDRESS_MODE_DIRECT,                          .width[0] = 2},
+    [CPU_OPCODE_INC_ABS_X]         = {.opcode = CPU_INST_INC, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_X,              .width[0] = 3},
+    [CPU_OPCODE_INC_DIR_X]         = {.opcode = CPU_INST_INC, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_X,                .width[0] = 2},
 
-    [INX_IMP]           = {.opcode = OPCODE_INX, .addr_mode = ADDRESS_MODE_IMPLIED,                         .width[0] = 1},
-    [INY_IMP]           = {.opcode = OPCODE_INY, .addr_mode = ADDRESS_MODE_IMPLIED,                         .width[0] = 1},
+    [CPU_OPCODE_INX_IMP]           = {.opcode = CPU_INST_INX, .addr_mode = ADDRESS_MODE_IMPLIED,                         .width[0] = 1},
+    [CPU_OPCODE_INY_IMP]           = {.opcode = CPU_INST_INY, .addr_mode = ADDRESS_MODE_IMPLIED,                         .width[0] = 1},
 
-    [JMP_ABS]           = {.opcode = OPCODE_JMP, .addr_mode = ADDRESS_MODE_ABSOLUTE,                        .width[0] = 3},
-    [JMP_ABS_IND]       = {.opcode = OPCODE_JMP, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDIRECT,               .width[0] = 3},
-    [JMP_ABS_X_IND]     = {.opcode = OPCODE_JMP, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_INDIRECT,       .width[0] = 3},
-    [JMP_ABSL]          = {.opcode = OPCODE_JMP, .addr_mode = ADDRESS_MODE_ABSOLUTE_LONG,                   .width[0] = 4},
-    [JML_ABS_IND]       = {.opcode = OPCODE_JMP, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDIRECT,               .width[0] = 3},
+    [CPU_OPCODE_JMP_ABS]           = {.opcode = CPU_INST_JMP, .addr_mode = ADDRESS_MODE_ABSOLUTE,                        .width[0] = 3},
+    [CPU_OPCODE_JMP_ABS_IND]       = {.opcode = CPU_INST_JMP, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDIRECT,               .width[0] = 3},
+    [CPU_OPCODE_JMP_ABS_X_IND]     = {.opcode = CPU_INST_JMP, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_INDIRECT,       .width[0] = 3},
+    [CPU_OPCODE_JMP_ABSL]          = {.opcode = CPU_INST_JMP, .addr_mode = ADDRESS_MODE_ABSOLUTE_LONG,                   .width[0] = 4},
+    [CPU_OPCODE_JML_ABS_IND]       = {.opcode = CPU_INST_JMP, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDIRECT,               .width[0] = 3},
 
-    [JSR_ABS]           = {.opcode = OPCODE_JSR, .addr_mode = ADDRESS_MODE_ABSOLUTE,                        .width[0] = 3},
-    [JSR_ABS_X_IND]     = {.opcode = OPCODE_JSR, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_INDIRECT,       .width[0] = 3},
-    [JSL_ABSL]          = {.opcode = OPCODE_JSL, .addr_mode = ADDRESS_MODE_ABSOLUTE_LONG,                   .width[0] = 4},
+    [CPU_OPCODE_JSR_ABS]           = {.opcode = CPU_INST_JSR, .addr_mode = ADDRESS_MODE_ABSOLUTE,                        .width[0] = 3},
+    [CPU_OPCODE_JSR_ABS_X_IND]     = {.opcode = CPU_INST_JSR, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_INDIRECT,       .width[0] = 3},
+    [CPU_OPCODE_JSL_ABSL]          = {.opcode = CPU_INST_JSL, .addr_mode = ADDRESS_MODE_ABSOLUTE_LONG,                   .width[0] = 4},
 
-    [LDA_IMM]           = {.opcode = OPCODE_LDA, .addr_mode = ADDRESS_MODE_IMMEDIATE,                       .width[0] = 3, .width[1] = 2, .width_flag = STATUS_FLAG_M},
-    [LDA_ABS]           = {.opcode = OPCODE_LDA, .addr_mode = ADDRESS_MODE_ABSOLUTE,                        .width[0] = 3},
-    [LDA_ABSL]          = {.opcode = OPCODE_LDA, .addr_mode = ADDRESS_MODE_ABSOLUTE_LONG,                   .width[0] = 4},
-    [LDA_DIR]           = {.opcode = OPCODE_LDA, .addr_mode = ADDRESS_MODE_DIRECT,                          .width[0] = 2},
-    [LDA_DIR_IND]       = {.opcode = OPCODE_LDA, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT,                 .width[0] = 2},
-    [LDA_DIR_INDL]      = {.opcode = OPCODE_LDA, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT_LONG,            .width[0] = 2},
-    [LDA_ABS_X]         = {.opcode = OPCODE_LDA, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_X,              .width[0] = 3},
-    [LDA_ABSL_X]        = {.opcode = OPCODE_LDA, .addr_mode = ADDRESS_MODE_ABSOLUTE_LONG_INDEXED_X,         .width[0] = 4},
-    [LDA_ABS_Y]         = {.opcode = OPCODE_LDA, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_Y,              .width[0] = 3},
-    [LDA_DIR_X]         = {.opcode = OPCODE_LDA, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_X,                .width[0] = 2},
-    [LDA_DIR_X_IND]     = {.opcode = OPCODE_LDA, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_INDIRECT,         .width[0] = 2},
-    [LDA_DIR_IND_Y]     = {.opcode = OPCODE_LDA, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT_INDEXED,         .width[0] = 2},
-    [LDA_DIR_INDL_Y]    = {.opcode = OPCODE_LDA, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT_LONG_INDEXED,    .width[0] = 2},
-    [LDA_S_REL]         = {.opcode = OPCODE_LDA, .addr_mode = ADDRESS_MODE_STACK_RELATIVE,                  .width[0] = 2},
-    [LDA_S_REL_IND_Y]   = {.opcode = OPCODE_LDA, .addr_mode = ADDRESS_MODE_STACK_RELATIVE_INDIRECT_INDEXED, .width[0] = 2},
+    [CPU_OPCODE_LDA_IMM]           = {.opcode = CPU_INST_LDA, .addr_mode = ADDRESS_MODE_IMMEDIATE,                       .width[0] = 3, .width[1] = 2, .width_flag = CPU_STATUS_FLAG_M},
+    [CPU_OPCODE_LDA_ABS]           = {.opcode = CPU_INST_LDA, .addr_mode = ADDRESS_MODE_ABSOLUTE,                        .width[0] = 3},
+    [CPU_OPCODE_LDA_ABSL]          = {.opcode = CPU_INST_LDA, .addr_mode = ADDRESS_MODE_ABSOLUTE_LONG,                   .width[0] = 4},
+    [CPU_OPCODE_LDA_DIR]           = {.opcode = CPU_INST_LDA, .addr_mode = ADDRESS_MODE_DIRECT,                          .width[0] = 2},
+    [CPU_OPCODE_LDA_DIR_IND]       = {.opcode = CPU_INST_LDA, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT,                 .width[0] = 2},
+    [CPU_OPCODE_LDA_DIR_INDL]      = {.opcode = CPU_INST_LDA, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT_LONG,            .width[0] = 2},
+    [CPU_OPCODE_LDA_ABS_X]         = {.opcode = CPU_INST_LDA, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_X,              .width[0] = 3},
+    [CPU_OPCODE_LDA_ABSL_X]        = {.opcode = CPU_INST_LDA, .addr_mode = ADDRESS_MODE_ABSOLUTE_LONG_INDEXED_X,         .width[0] = 4},
+    [CPU_OPCODE_LDA_ABS_Y]         = {.opcode = CPU_INST_LDA, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_Y,              .width[0] = 3},
+    [CPU_OPCODE_LDA_DIR_X]         = {.opcode = CPU_INST_LDA, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_X,                .width[0] = 2},
+    [CPU_OPCODE_LDA_DIR_X_IND]     = {.opcode = CPU_INST_LDA, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_INDIRECT,         .width[0] = 2},
+    [CPU_OPCODE_LDA_DIR_IND_Y]     = {.opcode = CPU_INST_LDA, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT_INDEXED,         .width[0] = 2},
+    [CPU_OPCODE_LDA_DIR_INDL_Y]    = {.opcode = CPU_INST_LDA, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT_LONG_INDEXED,    .width[0] = 2},
+    [CPU_OPCODE_LDA_S_REL]         = {.opcode = CPU_INST_LDA, .addr_mode = ADDRESS_MODE_STACK_RELATIVE,                  .width[0] = 2},
+    [CPU_OPCODE_LDA_S_REL_IND_Y]   = {.opcode = CPU_INST_LDA, .addr_mode = ADDRESS_MODE_STACK_RELATIVE_INDIRECT_INDEXED, .width[0] = 2},
 
-    [LDX_IMM]           = {.opcode = OPCODE_LDX, .addr_mode = ADDRESS_MODE_IMMEDIATE,                       .width[0] = 3, .width[1] = 2, .width_flag = STATUS_FLAG_X},
-    [LDX_ABS]           = {.opcode = OPCODE_LDX, .addr_mode = ADDRESS_MODE_ABSOLUTE,                        .width[0] = 3},
-    [LDX_DIR]           = {.opcode = OPCODE_LDX, .addr_mode = ADDRESS_MODE_DIRECT,                          .width[0] = 2},
-    [LDX_ABS_Y]         = {.opcode = OPCODE_LDX, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_Y,              .width[0] = 3},
-    [LDX_DIR_Y]         = {.opcode = OPCODE_LDX, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_Y,                .width[0] = 2},
+    [CPU_OPCODE_LDX_IMM]           = {.opcode = CPU_INST_LDX, .addr_mode = ADDRESS_MODE_IMMEDIATE,                       .width[0] = 3, .width[1] = 2, .width_flag = CPU_STATUS_FLAG_X},
+    [CPU_OPCODE_LDX_ABS]           = {.opcode = CPU_INST_LDX, .addr_mode = ADDRESS_MODE_ABSOLUTE,                        .width[0] = 3},
+    [CPU_OPCODE_LDX_DIR]           = {.opcode = CPU_INST_LDX, .addr_mode = ADDRESS_MODE_DIRECT,                          .width[0] = 2},
+    [CPU_OPCODE_LDX_ABS_Y]         = {.opcode = CPU_INST_LDX, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_Y,              .width[0] = 3},
+    [CPU_OPCODE_LDX_DIR_Y]         = {.opcode = CPU_INST_LDX, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_Y,                .width[0] = 2},
 
-    [LDY_IMM]           = {.opcode = OPCODE_LDY, .addr_mode = ADDRESS_MODE_IMMEDIATE,                       .width[0] = 3, .width[1] = 2, .width_flag = STATUS_FLAG_X},
-    [LDY_ABS]           = {.opcode = OPCODE_LDY, .addr_mode = ADDRESS_MODE_ABSOLUTE,                        .width[0] = 3},
-    [LDY_DIR]           = {.opcode = OPCODE_LDY, .addr_mode = ADDRESS_MODE_DIRECT,                          .width[0] = 2},
-    [LDY_ABS_X]         = {.opcode = OPCODE_LDY, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_X,              .width[0] = 3},
-    [LDY_DIR_X]         = {.opcode = OPCODE_LDY, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_X,                .width[0] = 2},
+    [CPU_OPCODE_LDY_IMM]           = {.opcode = CPU_INST_LDY, .addr_mode = ADDRESS_MODE_IMMEDIATE,                       .width[0] = 3, .width[1] = 2, .width_flag = CPU_STATUS_FLAG_X},
+    [CPU_OPCODE_LDY_ABS]           = {.opcode = CPU_INST_LDY, .addr_mode = ADDRESS_MODE_ABSOLUTE,                        .width[0] = 3},
+    [CPU_OPCODE_LDY_DIR]           = {.opcode = CPU_INST_LDY, .addr_mode = ADDRESS_MODE_DIRECT,                          .width[0] = 2},
+    [CPU_OPCODE_LDY_ABS_X]         = {.opcode = CPU_INST_LDY, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_X,              .width[0] = 3},
+    [CPU_OPCODE_LDY_DIR_X]         = {.opcode = CPU_INST_LDY, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_X,                .width[0] = 2},
 
-    [LSR_ACC]           = {.opcode = OPCODE_LSR, .addr_mode = ADDRESS_MODE_ACCUMULATOR,                     .width[0] = 1},
-    [LSR_ABS]           = {.opcode = OPCODE_LSR, .addr_mode = ADDRESS_MODE_ABSOLUTE,                        .width[0] = 3},
-    [LSR_DIR]           = {.opcode = OPCODE_LSR, .addr_mode = ADDRESS_MODE_DIRECT,                          .width[0] = 2},
-    [LSR_ABS_X]         = {.opcode = OPCODE_LSR, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_X,              .width[0] = 3},  
-    [LSR_DIR_X]         = {.opcode = OPCODE_LSR, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_X,                .width[0] = 2},
+    [CPU_OPCODE_LSR_ACC]           = {.opcode = CPU_INST_LSR, .addr_mode = ADDRESS_MODE_ACCUMULATOR,                     .width[0] = 1},
+    [CPU_OPCODE_LSR_ABS]           = {.opcode = CPU_INST_LSR, .addr_mode = ADDRESS_MODE_ABSOLUTE,                        .width[0] = 3},
+    [CPU_OPCODE_LSR_DIR]           = {.opcode = CPU_INST_LSR, .addr_mode = ADDRESS_MODE_DIRECT,                          .width[0] = 2},
+    [CPU_OPCODE_LSR_ABS_X]         = {.opcode = CPU_INST_LSR, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_X,              .width[0] = 3},  
+    [CPU_OPCODE_LSR_DIR_X]         = {.opcode = CPU_INST_LSR, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_X,                .width[0] = 2},
 
-    [MVN_BLK]           = {.opcode = OPCODE_MVN, .addr_mode = ADDRESS_MODE_BLOCK_MOVE,                      .width[0] = 3},
-    [MVP_BLK]           = {.opcode = OPCODE_MVP, .addr_mode = ADDRESS_MODE_BLOCK_MOVE,                      .width[0] = 3},
+    [CPU_OPCODE_MVN_BLK]           = {.opcode = CPU_INST_MVN, .addr_mode = ADDRESS_MODE_BLOCK_MOVE,                      .width[0] = 3},
+    [CPU_OPCODE_MVP_BLK]           = {.opcode = CPU_INST_MVP, .addr_mode = ADDRESS_MODE_BLOCK_MOVE,                      .width[0] = 3},
 
-    [NOP_IMP]           = {.opcode = OPCODE_NOP, .addr_mode = ADDRESS_MODE_IMPLIED,                         .width[0] = 1},
+    [CPU_OPCODE_NOP_IMP]           = {.opcode = CPU_INST_NOP, .addr_mode = ADDRESS_MODE_IMPLIED,                         .width[0] = 1},
 
-    [ORA_IMM]           = {.opcode = OPCODE_ORA, .addr_mode = ADDRESS_MODE_IMMEDIATE,                       .width[0] = 3, .width[1] = 2, .width_flag = STATUS_FLAG_M},
-    [ORA_ABS]           = {.opcode = OPCODE_ORA, .addr_mode = ADDRESS_MODE_ABSOLUTE,                        .width[0] = 3},
-    [ORA_ABSL]          = {.opcode = OPCODE_ORA, .addr_mode = ADDRESS_MODE_ABSOLUTE_LONG,                   .width[0] = 4},
-    [ORA_DIR]           = {.opcode = OPCODE_ORA, .addr_mode = ADDRESS_MODE_DIRECT,                          .width[0] = 2},
-    [ORA_DIR_IND]       = {.opcode = OPCODE_ORA, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT,                 .width[0] = 2},
-    [ORA_DIR_INDL]      = {.opcode = OPCODE_ORA, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT_LONG,            .width[0] = 2},
-    [ORA_ABS_X]         = {.opcode = OPCODE_ORA, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_X,              .width[0] = 3},
-    [ORA_ABSL_X]        = {.opcode = OPCODE_ORA, .addr_mode = ADDRESS_MODE_ABSOLUTE_LONG_INDEXED_X,         .width[0] = 4},
-    [ORA_ABS_Y]         = {.opcode = OPCODE_ORA, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_Y,              .width[0] = 3},
-    [ORA_DIR_X]         = {.opcode = OPCODE_ORA, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_X,                .width[0] = 2},
-    [ORA_DIR_X_IND]     = {.opcode = OPCODE_ORA, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_INDIRECT,         .width[0] = 2},
-    [ORA_DIR_IND_Y]     = {.opcode = OPCODE_ORA, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT_INDEXED,         .width[0] = 2},
-    [ORA_DIR_INDL_Y]    = {.opcode = OPCODE_ORA, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT_LONG_INDEXED,    .width[0] = 2},
-    [ORA_S_REL]         = {.opcode = OPCODE_ORA, .addr_mode = ADDRESS_MODE_STACK_RELATIVE,                  .width[0] = 2},
-    [ORA_S_REL_IND_Y]   = {.opcode = OPCODE_ORA, .addr_mode = ADDRESS_MODE_STACK_RELATIVE_INDIRECT_INDEXED, .width[0] = 2},
+    [CPU_OPCODE_ORA_IMM]           = {.opcode = CPU_INST_ORA, .addr_mode = ADDRESS_MODE_IMMEDIATE,                       .width[0] = 3, .width[1] = 2, .width_flag = CPU_STATUS_FLAG_M},
+    [CPU_OPCODE_ORA_ABS]           = {.opcode = CPU_INST_ORA, .addr_mode = ADDRESS_MODE_ABSOLUTE,                        .width[0] = 3},
+    [CPU_OPCODE_ORA_ABSL]          = {.opcode = CPU_INST_ORA, .addr_mode = ADDRESS_MODE_ABSOLUTE_LONG,                   .width[0] = 4},
+    [CPU_OPCODE_ORA_DIR]           = {.opcode = CPU_INST_ORA, .addr_mode = ADDRESS_MODE_DIRECT,                          .width[0] = 2},
+    [CPU_OPCODE_ORA_DIR_IND]       = {.opcode = CPU_INST_ORA, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT,                 .width[0] = 2},
+    [CPU_OPCODE_ORA_DIR_INDL]      = {.opcode = CPU_INST_ORA, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT_LONG,            .width[0] = 2},
+    [CPU_OPCODE_ORA_ABS_X]         = {.opcode = CPU_INST_ORA, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_X,              .width[0] = 3},
+    [CPU_OPCODE_ORA_ABSL_X]        = {.opcode = CPU_INST_ORA, .addr_mode = ADDRESS_MODE_ABSOLUTE_LONG_INDEXED_X,         .width[0] = 4},
+    [CPU_OPCODE_ORA_ABS_Y]         = {.opcode = CPU_INST_ORA, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_Y,              .width[0] = 3},
+    [CPU_OPCODE_ORA_DIR_X]         = {.opcode = CPU_INST_ORA, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_X,                .width[0] = 2},
+    [CPU_OPCODE_ORA_DIR_X_IND]     = {.opcode = CPU_INST_ORA, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_INDIRECT,         .width[0] = 2},
+    [CPU_OPCODE_ORA_DIR_IND_Y]     = {.opcode = CPU_INST_ORA, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT_INDEXED,         .width[0] = 2},
+    [CPU_OPCODE_ORA_DIR_INDL_Y]    = {.opcode = CPU_INST_ORA, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT_LONG_INDEXED,    .width[0] = 2},
+    [CPU_OPCODE_ORA_S_REL]         = {.opcode = CPU_INST_ORA, .addr_mode = ADDRESS_MODE_STACK_RELATIVE,                  .width[0] = 2},
+    [CPU_OPCODE_ORA_S_REL_IND_Y]   = {.opcode = CPU_INST_ORA, .addr_mode = ADDRESS_MODE_STACK_RELATIVE_INDIRECT_INDEXED, .width[0] = 2},
     
-    [PEA_S]             = {.opcode = OPCODE_PEA, .addr_mode = ADDRESS_MODE_STACK,                           .width[0] = 3},
-    [PEI_S]             = {.opcode = OPCODE_PEI, .addr_mode = ADDRESS_MODE_STACK,                           .width[0] = 2},
-    [PER_S]             = {.opcode = OPCODE_PER, .addr_mode = ADDRESS_MODE_STACK,                           .width[0] = 3},
-    [PHA_S]             = {.opcode = OPCODE_PHA, .addr_mode = ADDRESS_MODE_STACK,                           .width[0] = 1},
-    [PHB_S]             = {.opcode = OPCODE_PHB, .addr_mode = ADDRESS_MODE_STACK,                           .width[0] = 1},
-    [PHD_S]             = {.opcode = OPCODE_PHD, .addr_mode = ADDRESS_MODE_STACK,                           .width[0] = 1},
-    [PHK_S]             = {.opcode = OPCODE_PHK, .addr_mode = ADDRESS_MODE_STACK,                           .width[0] = 1},
-    [PHP_S]             = {.opcode = OPCODE_PHP, .addr_mode = ADDRESS_MODE_STACK,                           .width[0] = 1},
-    [PHX_S]             = {.opcode = OPCODE_PHX, .addr_mode = ADDRESS_MODE_STACK,                           .width[0] = 1},
-    [PHY_S]             = {.opcode = OPCODE_PHY, .addr_mode = ADDRESS_MODE_STACK,                           .width[0] = 1},
+    [CPU_OPCODE_PEA_S]             = {.opcode = CPU_INST_PEA, .addr_mode = ADDRESS_MODE_STACK,                           .width[0] = 3},
+    [CPU_OPCODE_PEI_S]             = {.opcode = CPU_INST_PEI, .addr_mode = ADDRESS_MODE_STACK,                           .width[0] = 2},
+    [CPU_OPCODE_PER_S]             = {.opcode = CPU_INST_PER, .addr_mode = ADDRESS_MODE_STACK,                           .width[0] = 3},
+    [CPU_OPCODE_PHA_S]             = {.opcode = CPU_INST_PHA, .addr_mode = ADDRESS_MODE_STACK,                           .width[0] = 1},
+    [CPU_OPCODE_PHB_S]             = {.opcode = CPU_INST_PHB, .addr_mode = ADDRESS_MODE_STACK,                           .width[0] = 1},
+    [CPU_OPCODE_PHD_S]             = {.opcode = CPU_INST_PHD, .addr_mode = ADDRESS_MODE_STACK,                           .width[0] = 1},
+    [CPU_OPCODE_PHK_S]             = {.opcode = CPU_INST_PHK, .addr_mode = ADDRESS_MODE_STACK,                           .width[0] = 1},
+    [CPU_OPCODE_PHP_S]             = {.opcode = CPU_INST_PHP, .addr_mode = ADDRESS_MODE_STACK,                           .width[0] = 1},
+    [CPU_OPCODE_PHX_S]             = {.opcode = CPU_INST_PHX, .addr_mode = ADDRESS_MODE_STACK,                           .width[0] = 1},
+    [CPU_OPCODE_PHY_S]             = {.opcode = CPU_INST_PHY, .addr_mode = ADDRESS_MODE_STACK,                           .width[0] = 1},
 
-    [PLA_S]             = {.opcode = OPCODE_PLA, .addr_mode = ADDRESS_MODE_STACK,                           .width[0] = 1},
-    [PLB_S]             = {.opcode = OPCODE_PLB, .addr_mode = ADDRESS_MODE_STACK,                           .width[0] = 1},
-    [PLD_S]             = {.opcode = OPCODE_PLD, .addr_mode = ADDRESS_MODE_STACK,                           .width[0] = 1},
-    [PLP_S]             = {.opcode = OPCODE_PLP, .addr_mode = ADDRESS_MODE_STACK,                           .width[0] = 1},
-    [PLX_S]             = {.opcode = OPCODE_PLX, .addr_mode = ADDRESS_MODE_STACK,                           .width[0] = 1},
-    [PLY_S]             = {.opcode = OPCODE_PLY, .addr_mode = ADDRESS_MODE_STACK,                           .width[0] = 1},
+    [CPU_OPCODE_PLA_S]             = {.opcode = CPU_INST_PLA, .addr_mode = ADDRESS_MODE_STACK,                           .width[0] = 1},
+    [CPU_OPCODE_PLB_S]             = {.opcode = CPU_INST_PLB, .addr_mode = ADDRESS_MODE_STACK,                           .width[0] = 1},
+    [CPU_OPCODE_PLD_S]             = {.opcode = CPU_INST_PLD, .addr_mode = ADDRESS_MODE_STACK,                           .width[0] = 1},
+    [CPU_OPCODE_PLP_S]             = {.opcode = CPU_INST_PLP, .addr_mode = ADDRESS_MODE_STACK,                           .width[0] = 1},
+    [CPU_OPCODE_PLX_S]             = {.opcode = CPU_INST_PLX, .addr_mode = ADDRESS_MODE_STACK,                           .width[0] = 1},
+    [CPU_OPCODE_PLY_S]             = {.opcode = CPU_INST_PLY, .addr_mode = ADDRESS_MODE_STACK,                           .width[0] = 1},
 
-    [REP_IMM]           = {.opcode = OPCODE_REP, .addr_mode = ADDRESS_MODE_IMMEDIATE,                       .width[0] = 2},
+    [CPU_OPCODE_REP_IMM]           = {.opcode = CPU_INST_REP, .addr_mode = ADDRESS_MODE_IMMEDIATE,                       .width[0] = 2},
 
-    [ROL_ACC]           = {.opcode = OPCODE_ROL, .addr_mode = ADDRESS_MODE_ACCUMULATOR,                     .width[0] = 1},
-    [ROL_ABS]           = {.opcode = OPCODE_ROL, .addr_mode = ADDRESS_MODE_ABSOLUTE,                        .width[0] = 3},
-    [ROL_DIR]           = {.opcode = OPCODE_ROL, .addr_mode = ADDRESS_MODE_DIRECT,                          .width[0] = 2},
-    [ROL_ABS_X]         = {.opcode = OPCODE_ROL, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_X,              .width[0] = 3},
-    [ROL_DIR_X]         = {.opcode = OPCODE_ROL, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_X,                .width[0] = 2},
+    [CPU_OPCODE_ROL_ACC]           = {.opcode = CPU_INST_ROL, .addr_mode = ADDRESS_MODE_ACCUMULATOR,                     .width[0] = 1},
+    [CPU_OPCODE_ROL_ABS]           = {.opcode = CPU_INST_ROL, .addr_mode = ADDRESS_MODE_ABSOLUTE,                        .width[0] = 3},
+    [CPU_OPCODE_ROL_DIR]           = {.opcode = CPU_INST_ROL, .addr_mode = ADDRESS_MODE_DIRECT,                          .width[0] = 2},
+    [CPU_OPCODE_ROL_ABS_X]         = {.opcode = CPU_INST_ROL, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_X,              .width[0] = 3},
+    [CPU_OPCODE_ROL_DIR_X]         = {.opcode = CPU_INST_ROL, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_X,                .width[0] = 2},
 
-    [ROR_ACC]           = {.opcode = OPCODE_ROR, .addr_mode = ADDRESS_MODE_ACCUMULATOR,                     .width[0] = 1},
-    [ROR_ABS]           = {.opcode = OPCODE_ROR, .addr_mode = ADDRESS_MODE_ABSOLUTE,                        .width[0] = 3},
-    [ROR_DIR]           = {.opcode = OPCODE_ROR, .addr_mode = ADDRESS_MODE_DIRECT,                          .width[0] = 2},
-    [ROR_ABS_X]         = {.opcode = OPCODE_ROR, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_X,              .width[0] = 3},
-    [ROR_DIR_X]         = {.opcode = OPCODE_ROR, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_X,                .width[0] = 2},
+    [CPU_OPCODE_ROR_ACC]           = {.opcode = CPU_INST_ROR, .addr_mode = ADDRESS_MODE_ACCUMULATOR,                     .width[0] = 1},
+    [CPU_OPCODE_ROR_ABS]           = {.opcode = CPU_INST_ROR, .addr_mode = ADDRESS_MODE_ABSOLUTE,                        .width[0] = 3},
+    [CPU_OPCODE_ROR_DIR]           = {.opcode = CPU_INST_ROR, .addr_mode = ADDRESS_MODE_DIRECT,                          .width[0] = 2},
+    [CPU_OPCODE_ROR_ABS_X]         = {.opcode = CPU_INST_ROR, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_X,              .width[0] = 3},
+    [CPU_OPCODE_ROR_DIR_X]         = {.opcode = CPU_INST_ROR, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_X,                .width[0] = 2},
 
-    [RTI_S]             = {.opcode = OPCODE_RTI, .addr_mode = ADDRESS_MODE_STACK,                           .width[0] = 1},
-    [RTL_S]             = {.opcode = OPCODE_RTL, .addr_mode = ADDRESS_MODE_STACK,                           .width[0] = 1},
-    [RTS_S]             = {.opcode = OPCODE_RTS, .addr_mode = ADDRESS_MODE_STACK,                           .width[0] = 1},
+    [CPU_OPCODE_RTI_S]             = {.opcode = CPU_INST_RTI, .addr_mode = ADDRESS_MODE_STACK,                           .width[0] = 1},
+    [CPU_OPCODE_RTL_S]             = {.opcode = CPU_INST_RTL, .addr_mode = ADDRESS_MODE_STACK,                           .width[0] = 1},
+    [CPU_OPCODE_RTS_S]             = {.opcode = CPU_INST_RTS, .addr_mode = ADDRESS_MODE_STACK,                           .width[0] = 1},
 
-    [SBC_IMM]           = {.opcode = OPCODE_SBC, .addr_mode = ADDRESS_MODE_IMMEDIATE,                       .width[0] = 3, .width[1] = 2, .width_flag = STATUS_FLAG_M},
-    [SBC_ABS]           = {.opcode = OPCODE_SBC, .addr_mode = ADDRESS_MODE_ABSOLUTE,                        .width[0] = 3},
-    [SBC_ABSL]          = {.opcode = OPCODE_SBC, .addr_mode = ADDRESS_MODE_ABSOLUTE_LONG,                   .width[0] = 4},
-    [SBC_DIR]           = {.opcode = OPCODE_SBC, .addr_mode = ADDRESS_MODE_DIRECT,                          .width[0] = 2},
-    [SBC_DIR_IND]       = {.opcode = OPCODE_SBC, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT,                 .width[0] = 2},
-    [SBC_DIR_INDL]      = {.opcode = OPCODE_SBC, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT_LONG,            .width[0] = 2},
-    [SBC_ABS_X]         = {.opcode = OPCODE_SBC, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_X,              .width[0] = 3},
-    [SBC_ABSL_X]        = {.opcode = OPCODE_SBC, .addr_mode = ADDRESS_MODE_ABSOLUTE_LONG_INDEXED_X,         .width[0] = 4},
-    [SBC_ABS_Y]         = {.opcode = OPCODE_SBC, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_Y,              .width[0] = 3},
-    [SBC_DIR_X]         = {.opcode = OPCODE_SBC, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_X,                .width[0] = 2},
-    [SBC_DIR_X_IND]     = {.opcode = OPCODE_SBC, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_INDIRECT,         .width[0] = 2},
-    [SBC_DIR_IND_Y]     = {.opcode = OPCODE_SBC, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT_INDEXED,         .width[0] = 2},
-    [SBC_DIR_INDL_Y]    = {.opcode = OPCODE_SBC, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT_LONG_INDEXED,    .width[0] = 2},
-    [SBC_S_REL]         = {.opcode = OPCODE_SBC, .addr_mode = ADDRESS_MODE_STACK_RELATIVE,                  .width[0] = 2},
-    [SBC_S_REL_IND_Y]   = {.opcode = OPCODE_SBC, .addr_mode = ADDRESS_MODE_STACK_RELATIVE_INDIRECT_INDEXED, .width[0] = 2},
+    [CPU_OPCODE_SBC_IMM]           = {.opcode = CPU_INST_SBC, .addr_mode = ADDRESS_MODE_IMMEDIATE,                       .width[0] = 3, .width[1] = 2, .width_flag = CPU_STATUS_FLAG_M},
+    [CPU_OPCODE_SBC_ABS]           = {.opcode = CPU_INST_SBC, .addr_mode = ADDRESS_MODE_ABSOLUTE,                        .width[0] = 3},
+    [CPU_OPCODE_SBC_ABSL]          = {.opcode = CPU_INST_SBC, .addr_mode = ADDRESS_MODE_ABSOLUTE_LONG,                   .width[0] = 4},
+    [CPU_OPCODE_SBC_DIR]           = {.opcode = CPU_INST_SBC, .addr_mode = ADDRESS_MODE_DIRECT,                          .width[0] = 2},
+    [CPU_OPCODE_SBC_DIR_IND]       = {.opcode = CPU_INST_SBC, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT,                 .width[0] = 2},
+    [CPU_OPCODE_SBC_DIR_INDL]      = {.opcode = CPU_INST_SBC, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT_LONG,            .width[0] = 2},
+    [CPU_OPCODE_SBC_ABS_X]         = {.opcode = CPU_INST_SBC, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_X,              .width[0] = 3},
+    [CPU_OPCODE_SBC_ABSL_X]        = {.opcode = CPU_INST_SBC, .addr_mode = ADDRESS_MODE_ABSOLUTE_LONG_INDEXED_X,         .width[0] = 4},
+    [CPU_OPCODE_SBC_ABS_Y]         = {.opcode = CPU_INST_SBC, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_Y,              .width[0] = 3},
+    [CPU_OPCODE_SBC_DIR_X]         = {.opcode = CPU_INST_SBC, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_X,                .width[0] = 2},
+    [CPU_OPCODE_SBC_DIR_X_IND]     = {.opcode = CPU_INST_SBC, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_INDIRECT,         .width[0] = 2},
+    [CPU_OPCODE_SBC_DIR_IND_Y]     = {.opcode = CPU_INST_SBC, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT_INDEXED,         .width[0] = 2},
+    [CPU_OPCODE_SBC_DIR_INDL_Y]    = {.opcode = CPU_INST_SBC, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT_LONG_INDEXED,    .width[0] = 2},
+    [CPU_OPCODE_SBC_S_REL]         = {.opcode = CPU_INST_SBC, .addr_mode = ADDRESS_MODE_STACK_RELATIVE,                  .width[0] = 2},
+    [CPU_OPCODE_SBC_S_REL_IND_Y]   = {.opcode = CPU_INST_SBC, .addr_mode = ADDRESS_MODE_STACK_RELATIVE_INDIRECT_INDEXED, .width[0] = 2},
 
-    [SEC_IMP]           = {.opcode = OPCODE_SEC, .addr_mode = ADDRESS_MODE_IMPLIED,                         .width[0] = 1},
-    [SED_IMP]           = {.opcode = OPCODE_SED, .addr_mode = ADDRESS_MODE_IMPLIED,                         .width[0] = 1},
-    [SEI_IMP]           = {.opcode = OPCODE_SEI, .addr_mode = ADDRESS_MODE_IMPLIED,                         .width[0] = 1},
-    [SEP_IMM]           = {.opcode = OPCODE_SEP, .addr_mode = ADDRESS_MODE_IMPLIED,                         .width[0] = 2},
+    [CPU_OPCODE_SEC_IMP]           = {.opcode = CPU_INST_SEC, .addr_mode = ADDRESS_MODE_IMPLIED,                         .width[0] = 1},
+    [CPU_OPCODE_SED_IMP]           = {.opcode = CPU_INST_SED, .addr_mode = ADDRESS_MODE_IMPLIED,                         .width[0] = 1},
+    [CPU_OPCODE_SEI_IMP]           = {.opcode = CPU_INST_SEI, .addr_mode = ADDRESS_MODE_IMPLIED,                         .width[0] = 1},
+    [CPU_OPCODE_SEP_IMM]           = {.opcode = CPU_INST_SEP, .addr_mode = ADDRESS_MODE_IMPLIED,                         .width[0] = 2},
 
-    [STA_ABS]           = {.opcode = OPCODE_STA, .addr_mode = ADDRESS_MODE_ABSOLUTE,                        .width[0] = 3},
-    [STA_ABSL]          = {.opcode = OPCODE_STA, .addr_mode = ADDRESS_MODE_ABSOLUTE_LONG,                   .width[0] = 4},
-    [STA_DIR]           = {.opcode = OPCODE_STA, .addr_mode = ADDRESS_MODE_DIRECT,                          .width[0] = 2},
-    [STA_DIR_IND]       = {.opcode = OPCODE_STA, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT,                 .width[0] = 2},
-    [STA_DIR_INDL]      = {.opcode = OPCODE_STA, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT_LONG,            .width[0] = 2},
-    [STA_ABS_X]         = {.opcode = OPCODE_STA, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_X,              .width[0] = 3},
-    [STA_ABSL_X]        = {.opcode = OPCODE_STA, .addr_mode = ADDRESS_MODE_ABSOLUTE_LONG_INDEXED_X,         .width[0] = 4},
-    [STA_ABS_Y]         = {.opcode = OPCODE_STA, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_Y,              .width[0] = 3},
-    [STA_DIR_X]         = {.opcode = OPCODE_STA, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_X,                .width[0] = 2},
-    [STA_DIR_X_IND]     = {.opcode = OPCODE_STA, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_INDIRECT,         .width[0] = 2},
-    [STA_DIR_IND_Y]     = {.opcode = OPCODE_STA, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT_INDEXED,         .width[0] = 2},
-    [STA_DIR_INDL_Y]    = {.opcode = OPCODE_STA, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT_LONG_INDEXED,    .width[0] = 2},
-    [STA_S_REL]         = {.opcode = OPCODE_STA, .addr_mode = ADDRESS_MODE_STACK_RELATIVE,                  .width[0] = 2},
-    [STA_S_REL_IND_Y]   = {.opcode = OPCODE_STA, .addr_mode = ADDRESS_MODE_STACK_RELATIVE_INDIRECT_INDEXED, .width[0] = 2},
+    [CPU_OPCODE_STA_ABS]           = {.opcode = CPU_INST_STA, .addr_mode = ADDRESS_MODE_ABSOLUTE,                        .width[0] = 3},
+    [CPU_OPCODE_STA_ABSL]          = {.opcode = CPU_INST_STA, .addr_mode = ADDRESS_MODE_ABSOLUTE_LONG,                   .width[0] = 4},
+    [CPU_OPCODE_STA_DIR]           = {.opcode = CPU_INST_STA, .addr_mode = ADDRESS_MODE_DIRECT,                          .width[0] = 2},
+    [CPU_OPCODE_STA_DIR_IND]       = {.opcode = CPU_INST_STA, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT,                 .width[0] = 2},
+    [CPU_OPCODE_STA_DIR_INDL]      = {.opcode = CPU_INST_STA, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT_LONG,            .width[0] = 2},
+    [CPU_OPCODE_STA_ABS_X]         = {.opcode = CPU_INST_STA, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_X,              .width[0] = 3},
+    [CPU_OPCODE_STA_ABSL_X]        = {.opcode = CPU_INST_STA, .addr_mode = ADDRESS_MODE_ABSOLUTE_LONG_INDEXED_X,         .width[0] = 4},
+    [CPU_OPCODE_STA_ABS_Y]         = {.opcode = CPU_INST_STA, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_Y,              .width[0] = 3},
+    [CPU_OPCODE_STA_DIR_X]         = {.opcode = CPU_INST_STA, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_X,                .width[0] = 2},
+    [CPU_OPCODE_STA_DIR_X_IND]     = {.opcode = CPU_INST_STA, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_INDIRECT,         .width[0] = 2},
+    [CPU_OPCODE_STA_DIR_IND_Y]     = {.opcode = CPU_INST_STA, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT_INDEXED,         .width[0] = 2},
+    [CPU_OPCODE_STA_DIR_INDL_Y]    = {.opcode = CPU_INST_STA, .addr_mode = ADDRESS_MODE_DIRECT_INDIRECT_LONG_INDEXED,    .width[0] = 2},
+    [CPU_OPCODE_STA_S_REL]         = {.opcode = CPU_INST_STA, .addr_mode = ADDRESS_MODE_STACK_RELATIVE,                  .width[0] = 2},
+    [CPU_OPCODE_STA_S_REL_IND_Y]   = {.opcode = CPU_INST_STA, .addr_mode = ADDRESS_MODE_STACK_RELATIVE_INDIRECT_INDEXED, .width[0] = 2},
 
-    [STP_IMP]           = {.opcode = OPCODE_STP, .addr_mode = ADDRESS_MODE_IMPLIED,                         .width[0] = 1},
+    [CPU_OPCODE_STP_IMP]           = {.opcode = CPU_INST_STP, .addr_mode = ADDRESS_MODE_IMPLIED,                         .width[0] = 1},
 
-    [STX_ABS]           = {.opcode = OPCODE_STX, .addr_mode = ADDRESS_MODE_ABSOLUTE,                        .width[0] = 3},
-    [STX_DIR]           = {.opcode = OPCODE_STX, .addr_mode = ADDRESS_MODE_DIRECT,                          .width[0] = 2},
-    [STX_DIR_Y]         = {.opcode = OPCODE_STX, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_Y,                .width[0] = 2},
+    [CPU_OPCODE_STX_ABS]           = {.opcode = CPU_INST_STX, .addr_mode = ADDRESS_MODE_ABSOLUTE,                        .width[0] = 3},
+    [CPU_OPCODE_STX_DIR]           = {.opcode = CPU_INST_STX, .addr_mode = ADDRESS_MODE_DIRECT,                          .width[0] = 2},
+    [CPU_OPCODE_STX_DIR_Y]         = {.opcode = CPU_INST_STX, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_Y,                .width[0] = 2},
 
-    [STY_ABS]           = {.opcode = OPCODE_STY, .addr_mode = ADDRESS_MODE_ABSOLUTE,                        .width[0] = 3},
-    [STY_DIR]           = {.opcode = OPCODE_STY, .addr_mode = ADDRESS_MODE_DIRECT,                          .width[0] = 2},
-    [STY_DIR_X]         = {.opcode = OPCODE_STY, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_X,                .width[0] = 2},
+    [CPU_OPCODE_STY_ABS]           = {.opcode = CPU_INST_STY, .addr_mode = ADDRESS_MODE_ABSOLUTE,                        .width[0] = 3},
+    [CPU_OPCODE_STY_DIR]           = {.opcode = CPU_INST_STY, .addr_mode = ADDRESS_MODE_DIRECT,                          .width[0] = 2},
+    [CPU_OPCODE_STY_DIR_X]         = {.opcode = CPU_INST_STY, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_X,                .width[0] = 2},
 
-    [STZ_ABS]           = {.opcode = OPCODE_STZ, .addr_mode = ADDRESS_MODE_ABSOLUTE,                        .width[0] = 3},
-    [STZ_DIR]           = {.opcode = OPCODE_STZ, .addr_mode = ADDRESS_MODE_DIRECT,                          .width[0] = 2},
-    [STZ_ABS_X]         = {.opcode = OPCODE_STZ, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_X,              .width[0] = 3},
-    [STZ_DIR_X]         = {.opcode = OPCODE_STZ, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_X,                .width[0] = 2},
+    [CPU_OPCODE_STZ_ABS]           = {.opcode = CPU_INST_STZ, .addr_mode = ADDRESS_MODE_ABSOLUTE,                        .width[0] = 3},
+    [CPU_OPCODE_STZ_DIR]           = {.opcode = CPU_INST_STZ, .addr_mode = ADDRESS_MODE_DIRECT,                          .width[0] = 2},
+    [CPU_OPCODE_STZ_ABS_X]         = {.opcode = CPU_INST_STZ, .addr_mode = ADDRESS_MODE_ABSOLUTE_INDEXED_X,              .width[0] = 3},
+    [CPU_OPCODE_STZ_DIR_X]         = {.opcode = CPU_INST_STZ, .addr_mode = ADDRESS_MODE_DIRECT_INDEXED_X,                .width[0] = 2},
 
-    [TAX_IMP]           = {.opcode = OPCODE_TAX, .addr_mode = ADDRESS_MODE_IMPLIED,                         .width[0] = 1},
-    [TAY_IMP]           = {.opcode = OPCODE_TAY, .addr_mode = ADDRESS_MODE_IMPLIED,                         .width[0] = 1},
-    [TCD_IMP]           = {.opcode = OPCODE_TCD, .addr_mode = ADDRESS_MODE_IMPLIED,                         .width[0] = 1},
-    [TCS_IMP]           = {.opcode = OPCODE_TCS, .addr_mode = ADDRESS_MODE_IMPLIED,                         .width[0] = 1},
-    [TDC_IMP]           = {.opcode = OPCODE_TDC, .addr_mode = ADDRESS_MODE_IMPLIED,                         .width[0] = 1},
-    [TSC_ACC]           = {.opcode = OPCODE_TSC, .addr_mode = ADDRESS_MODE_ACCUMULATOR,                     .width[0] = 1},
-    [TSX_ACC]           = {.opcode = OPCODE_TSX, .addr_mode = ADDRESS_MODE_ACCUMULATOR,                     .width[0] = 1},
-    [TXA_ACC]           = {.opcode = OPCODE_TXA, .addr_mode = ADDRESS_MODE_ACCUMULATOR,                     .width[0] = 1},
-    [TXS_ACC]           = {.opcode = OPCODE_TXS, .addr_mode = ADDRESS_MODE_ACCUMULATOR,                     .width[0] = 1},
-    [TXY_ACC]           = {.opcode = OPCODE_TXY, .addr_mode = ADDRESS_MODE_ACCUMULATOR,                     .width[0] = 1},
-    [TYA_ACC]           = {.opcode = OPCODE_TYA, .addr_mode = ADDRESS_MODE_ACCUMULATOR,                     .width[0] = 1},
-    [TYX_ACC]           = {.opcode = OPCODE_TYX, .addr_mode = ADDRESS_MODE_ACCUMULATOR,                     .width[0] = 1},
+    [CPU_OPCODE_TAX_IMP]           = {.opcode = CPU_INST_TAX, .addr_mode = ADDRESS_MODE_IMPLIED,                         .width[0] = 1},
+    [CPU_OPCODE_TAY_IMP]           = {.opcode = CPU_INST_TAY, .addr_mode = ADDRESS_MODE_IMPLIED,                         .width[0] = 1},
+    [CPU_OPCODE_TCD_IMP]           = {.opcode = CPU_INST_TCD, .addr_mode = ADDRESS_MODE_IMPLIED,                         .width[0] = 1},
+    [CPU_OPCODE_TCS_IMP]           = {.opcode = CPU_INST_TCS, .addr_mode = ADDRESS_MODE_IMPLIED,                         .width[0] = 1},
+    [CPU_OPCODE_TDC_IMP]           = {.opcode = CPU_INST_TDC, .addr_mode = ADDRESS_MODE_IMPLIED,                         .width[0] = 1},
+    [CPU_OPCODE_TSC_ACC]           = {.opcode = CPU_INST_TSC, .addr_mode = ADDRESS_MODE_ACCUMULATOR,                     .width[0] = 1},
+    [CPU_OPCODE_TSX_ACC]           = {.opcode = CPU_INST_TSX, .addr_mode = ADDRESS_MODE_ACCUMULATOR,                     .width[0] = 1},
+    [CPU_OPCODE_TXA_ACC]           = {.opcode = CPU_INST_TXA, .addr_mode = ADDRESS_MODE_ACCUMULATOR,                     .width[0] = 1},
+    [CPU_OPCODE_TXS_ACC]           = {.opcode = CPU_INST_TXS, .addr_mode = ADDRESS_MODE_ACCUMULATOR,                     .width[0] = 1},
+    [CPU_OPCODE_TXY_ACC]           = {.opcode = CPU_INST_TXY, .addr_mode = ADDRESS_MODE_ACCUMULATOR,                     .width[0] = 1},
+    [CPU_OPCODE_TYA_ACC]           = {.opcode = CPU_INST_TYA, .addr_mode = ADDRESS_MODE_ACCUMULATOR,                     .width[0] = 1},
+    [CPU_OPCODE_TYX_ACC]           = {.opcode = CPU_INST_TYX, .addr_mode = ADDRESS_MODE_ACCUMULATOR,                     .width[0] = 1},
 
-    [TRB_ABS]           = {.opcode = OPCODE_TRB, .addr_mode = ADDRESS_MODE_ABSOLUTE,                        .width[0] = 3},
-    [TRB_DIR]           = {.opcode = OPCODE_TRB, .addr_mode = ADDRESS_MODE_DIRECT,                          .width[0] = 2},
+    [CPU_OPCODE_TRB_ABS]           = {.opcode = CPU_INST_TRB, .addr_mode = ADDRESS_MODE_ABSOLUTE,                        .width[0] = 3},
+    [CPU_OPCODE_TRB_DIR]           = {.opcode = CPU_INST_TRB, .addr_mode = ADDRESS_MODE_DIRECT,                          .width[0] = 2},
 
-    [TSB_ABS]           = {.opcode = OPCODE_TSB, .addr_mode = ADDRESS_MODE_ABSOLUTE,                        .width[0] = 3},
-    [TSB_DIR]           = {.opcode = OPCODE_TSB, .addr_mode = ADDRESS_MODE_DIRECT,                          .width[0] = 2},
+    [CPU_OPCODE_TSB_ABS]           = {.opcode = CPU_INST_TSB, .addr_mode = ADDRESS_MODE_ABSOLUTE,                        .width[0] = 3},
+    [CPU_OPCODE_TSB_DIR]           = {.opcode = CPU_INST_TSB, .addr_mode = ADDRESS_MODE_DIRECT,                          .width[0] = 2},
 
-    [WAI_ACC]           = {.opcode = OPCODE_WAI, .addr_mode = ADDRESS_MODE_ACCUMULATOR,                     .width[0] = 1},
+    [CPU_OPCODE_WAI_ACC]           = {.opcode = CPU_INST_WAI, .addr_mode = ADDRESS_MODE_ACCUMULATOR,                     .width[0] = 1},
 
-    [WDM_ACC]           = {.opcode = OPCODE_WDM, .addr_mode = ADDRESS_MODE_ACCUMULATOR,                     .width[0] = 2},
+    [CPU_OPCODE_WDM_ACC]           = {.opcode = CPU_INST_WDM, .addr_mode = ADDRESS_MODE_ACCUMULATOR,                     .width[0] = 2},
 
-    [XBA_ACC]           = {.opcode = OPCODE_XBA, .addr_mode = ADDRESS_MODE_ACCUMULATOR,                     .width[0] = 1},
-    [XCE_ACC]           = {.opcode = OPCODE_XCE, .addr_mode = ADDRESS_MODE_ACCUMULATOR,                     .width[0] = 1},
+    [CPU_OPCODE_XBA_ACC]           = {.opcode = CPU_INST_XBA, .addr_mode = ADDRESS_MODE_ACCUMULATOR,                     .width[0] = 1},
+    [CPU_OPCODE_XCE_ACC]           = {.opcode = CPU_INST_XCE, .addr_mode = ADDRESS_MODE_ACCUMULATOR,                     .width[0] = 1},
 };
 
 const char *opcode_strs[] = {
-    [OPCODE_BRK] = "BRK",
-    [OPCODE_BIT] = "BIT",
-    [OPCODE_BCC] = "BCC",
-    [OPCODE_BCS] = "BCS",
-    [OPCODE_BNE] = "BNE",
-    [OPCODE_BEQ] = "BEQ",
-    [OPCODE_BPL] = "BPL",
-    [OPCODE_BMI] = "BMI",
-    [OPCODE_BVC] = "BVC",
-    [OPCODE_BVS] = "BVS",
-    [OPCODE_BRA] = "BRA",
-    [OPCODE_BRL] = "BRL",
-    [OPCODE_CLC] = "CLC",
-    [OPCODE_CLD] = "CLD",
-    [OPCODE_CLV] = "CLV",
-    [OPCODE_CLI] = "CLI",
-    [OPCODE_CMP] = "CMP",
-    [OPCODE_CPX] = "CPX",
-    [OPCODE_CPY] = "CPY",
-    [OPCODE_ADC] = "ADC",
-    [OPCODE_AND] = "AND",
-    [OPCODE_SBC] = "SBC",
-    [OPCODE_EOR] = "EOR",
-    [OPCODE_ORA] = "ORA",
-    [OPCODE_ROL] = "ROL",
-    [OPCODE_ROR] = "ROR",
-    [OPCODE_DEC] = "DEC",
-    [OPCODE_INC] = "INC",
-    [OPCODE_ASL] = "ASL",
-    [OPCODE_LSR] = "LSR",
-    [OPCODE_DEX] = "DEX",
-    [OPCODE_INX] = "INX",
-    [OPCODE_DEY] = "DEY",
-    [OPCODE_INY] = "INY",
-    [OPCODE_TRB] = "TRB",
-    [OPCODE_TSB] = "TSB",
-    [OPCODE_JMP] = "JMP",
-    [OPCODE_JML] = "JML",
-    [OPCODE_JSL] = "JSL",
-    [OPCODE_JSR] = "JSR",
-    [OPCODE_LDA] = "LDA",
-    [OPCODE_LDX] = "LDX",
-    [OPCODE_LDY] = "LDY",
-    [OPCODE_STA] = "STA",
-    [OPCODE_STX] = "STX",
-    [OPCODE_STY] = "STY",
-    [OPCODE_STZ] = "STZ",
-    [OPCODE_MVN] = "MVN",
-    [OPCODE_MVP] = "MVP",
-    [OPCODE_NOP] = "NOP",
-    [OPCODE_PEA] = "PEA",
-    [OPCODE_PEI] = "PEI",
-    [OPCODE_PER] = "PER",
-    [OPCODE_PHA] = "PHA",
-    [OPCODE_PHB] = "PHB",
-    [OPCODE_PHD] = "PHD",
-    [OPCODE_PHK] = "PHK",
-    [OPCODE_PHP] = "PHP",
-    [OPCODE_PHX] = "PHX",
-    [OPCODE_PHY] = "PHY",
-    [OPCODE_PLA] = "PLA",
-    [OPCODE_PLB] = "PLB",
-    [OPCODE_PLD] = "PLD",
-    [OPCODE_PLP] = "PLP",
-    [OPCODE_PLX] = "PLX",
-    [OPCODE_PLY] = "PLY",
-    [OPCODE_REP] = "REP",
-    [OPCODE_RTI] = "RTI",
-    [OPCODE_RTL] = "RTL",
-    [OPCODE_RTS] = "RTS",
-    [OPCODE_SEP] = "SEP",
-    [OPCODE_SEC] = "SEC",
-    [OPCODE_SED] = "SED",
-    [OPCODE_SEI] = "SEI",
-    [OPCODE_TAX] = "TAX",
-    [OPCODE_TAY] = "TAY",
-    [OPCODE_TCD] = "TCD",
-    [OPCODE_TCS] = "TCS",
-    [OPCODE_TDC] = "TDC",
-    [OPCODE_TSC] = "TSC",
-    [OPCODE_TSX] = "TSX",
-    [OPCODE_TXA] = "TXA",
-    [OPCODE_TXS] = "TXS",
-    [OPCODE_TXY] = "TXY",
-    [OPCODE_TYA] = "TYA",
-    [OPCODE_TYX] = "TYX",
-    [OPCODE_WAI] = "WAI",
-    [OPCODE_WDM] = "WDM",
-    [OPCODE_XBA] = "XBA",
-    [OPCODE_STP] = "STP",
-    [OPCODE_COP] = "COP",
-    [OPCODE_XCE] = "XCE",
-    [OPCODE_UNKNOWN] = "UNKNOWN",
+    [CPU_INST_BRK] = "BRK",
+    [CPU_INST_BIT] = "BIT",
+    [CPU_INST_BCC] = "BCC",
+    [CPU_INST_BCS] = "BCS",
+    [CPU_INST_BNE] = "BNE",
+    [CPU_INST_BEQ] = "BEQ",
+    [CPU_INST_BPL] = "BPL",
+    [CPU_INST_BMI] = "BMI",
+    [CPU_INST_BVC] = "BVC",
+    [CPU_INST_BVS] = "BVS",
+    [CPU_INST_BRA] = "BRA",
+    [CPU_INST_BRL] = "BRL",
+    [CPU_INST_CLC] = "CLC",
+    [CPU_INST_CLD] = "CLD",
+    [CPU_INST_CLV] = "CLV",
+    [CPU_INST_CLI] = "CLI",
+    [CPU_INST_CMP] = "CMP",
+    [CPU_INST_CPX] = "CPX",
+    [CPU_INST_CPY] = "CPY",
+    [CPU_INST_ADC] = "ADC",
+    [CPU_INST_AND] = "AND",
+    [CPU_INST_SBC] = "SBC",
+    [CPU_INST_EOR] = "EOR",
+    [CPU_INST_ORA] = "ORA",
+    [CPU_INST_ROL] = "ROL",
+    [CPU_INST_ROR] = "ROR",
+    [CPU_INST_DEC] = "DEC",
+    [CPU_INST_INC] = "INC",
+    [CPU_INST_ASL] = "ASL",
+    [CPU_INST_LSR] = "LSR",
+    [CPU_INST_DEX] = "DEX",
+    [CPU_INST_INX] = "INX",
+    [CPU_INST_DEY] = "DEY",
+    [CPU_INST_INY] = "INY",
+    [CPU_INST_TRB] = "TRB",
+    [CPU_INST_TSB] = "TSB",
+    [CPU_INST_JMP] = "JMP",
+    [CPU_INST_JML] = "JML",
+    [CPU_INST_JSL] = "JSL",
+    [CPU_INST_JSR] = "JSR",
+    [CPU_INST_LDA] = "LDA",
+    [CPU_INST_LDX] = "LDX",
+    [CPU_INST_LDY] = "LDY",
+    [CPU_INST_STA] = "STA",
+    [CPU_INST_STX] = "STX",
+    [CPU_INST_STY] = "STY",
+    [CPU_INST_STZ] = "STZ",
+    [CPU_INST_MVN] = "MVN",
+    [CPU_INST_MVP] = "MVP",
+    [CPU_INST_NOP] = "NOP",
+    [CPU_INST_PEA] = "PEA",
+    [CPU_INST_PEI] = "PEI",
+    [CPU_INST_PER] = "PER",
+    [CPU_INST_PHA] = "PHA",
+    [CPU_INST_PHB] = "PHB",
+    [CPU_INST_PHD] = "PHD",
+    [CPU_INST_PHK] = "PHK",
+    [CPU_INST_PHP] = "PHP",
+    [CPU_INST_PHX] = "PHX",
+    [CPU_INST_PHY] = "PHY",
+    [CPU_INST_PLA] = "PLA",
+    [CPU_INST_PLB] = "PLB",
+    [CPU_INST_PLD] = "PLD",
+    [CPU_INST_PLP] = "PLP",
+    [CPU_INST_PLX] = "PLX",
+    [CPU_INST_PLY] = "PLY",
+    [CPU_INST_REP] = "REP",
+    [CPU_INST_RTI] = "RTI",
+    [CPU_INST_RTL] = "RTL",
+    [CPU_INST_RTS] = "RTS",
+    [CPU_INST_SEP] = "SEP",
+    [CPU_INST_SEC] = "SEC",
+    [CPU_INST_SED] = "SED",
+    [CPU_INST_SEI] = "SEI",
+    [CPU_INST_TAX] = "TAX",
+    [CPU_INST_TAY] = "TAY",
+    [CPU_INST_TCD] = "TCD",
+    [CPU_INST_TCS] = "TCS",
+    [CPU_INST_TDC] = "TDC",
+    [CPU_INST_TSC] = "TSC",
+    [CPU_INST_TSX] = "TSX",
+    [CPU_INST_TXA] = "TXA",
+    [CPU_INST_TXS] = "TXS",
+    [CPU_INST_TXY] = "TXY",
+    [CPU_INST_TYA] = "TYA",
+    [CPU_INST_TYX] = "TYX",
+    [CPU_INST_WAI] = "WAI",
+    [CPU_INST_WDM] = "WDM",
+    [CPU_INST_XBA] = "XBA",
+    [CPU_INST_STP] = "STP",
+    [CPU_INST_COP] = "COP",
+    [CPU_INST_XCE] = "XCE",
+    [CPU_INST_UNKNOWN] = "UNKNOWN",
 };
 
 const char *addr_mode_strs[] = {
@@ -5782,400 +5782,115 @@ char *memory_str(unsigned int effective_address)
 }
 
 
-uint32_t opcode_width(struct opcode_t *opcode)
-{
-    uint32_t width = 0;
-    switch(opcode->address_mode)
-    {
-        case ADDRESS_MODE_ABSOLUTE:
-        case ADDRESS_MODE_ABSOLUTE_INDEXED_INDIRECT:
-        case ADDRESS_MODE_ABSOLUTE_INDEXED_X:
-        case ADDRESS_MODE_ABSOLUTE_INDEXED_Y:
-        case ADDRESS_MODE_BLOCK_MOVE:
-        case ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE_LONG:
-            width = 3;
-        break;
+// uint32_t opcode_width(struct opcode_t *opcode)
+// {
+//     uint32_t width = 0;
+//     switch(opcode->address_mode)
+//     {
+//         case ADDRESS_MODE_ABSOLUTE:
+//         case ADDRESS_MODE_ABSOLUTE_INDEXED_INDIRECT:
+//         case ADDRESS_MODE_ABSOLUTE_INDEXED_X:
+//         case ADDRESS_MODE_ABSOLUTE_INDEXED_Y:
+//         case ADDRESS_MODE_BLOCK_MOVE:
+//         case ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE_LONG:
+//             width = 3;
+//         break;
 
-        case ADDRESS_MODE_ABSOLUTE_INDIRECT:
-            if(opcode->opcode == OPCODE_JML)
-            {
-                width = 4;
-            }
-            else
-            {
-                width = 3;
-            }
-        break;
+//         case ADDRESS_MODE_ABSOLUTE_INDIRECT:
+//             if(opcode->opcode == CPU_OPCODE_JML)
+//             {
+//                 width = 4;
+//             }
+//             else
+//             {
+//                 width = 3;
+//             }
+//         break;
 
-        case ADDRESS_MODE_ABSOLUTE_LONG:
-            width = 4;
-        break;
+//         case ADDRESS_MODE_ABSOLUTE_LONG:
+//             width = 4;
+//         break;
 
-        case ADDRESS_MODE_ACCUMULATOR:
-        case ADDRESS_MODE_IMPLIED:
-        case ADDRESS_MODE_STACK:
-            width = 1;
-        break;
+//         case ADDRESS_MODE_ACCUMULATOR:
+//         case ADDRESS_MODE_IMPLIED:
+//         case ADDRESS_MODE_STACK:
+//             width = 1;
+//         break;
 
-        case ADDRESS_MODE_DIRECT_INDEXED_INDIRECT:
-        case ADDRESS_MODE_DIRECT_INDEXED_X:
-        case ADDRESS_MODE_DIRECT_INDEXED_Y:
-        case ADDRESS_MODE_DIRECT_INDIRECT_INDEXED:
-        case ADDRESS_MODE_DIRECT_INDIRECT_LONG_INDEXED:
-        case ADDRESS_MODE_DIRECT_INDIRECT_LONG:
-        case ADDRESS_MODE_DIRECT_INDIRECT:
-        case ADDRESS_MODE_DIRECT:
-        case ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE:
-        case ADDRESS_MODE_STACK_RELATIVE:
-        case ADDRESS_MODE_STACK_RELATIVE_INDIRECT_INDEXED:
-            width = 2;
-        break;
+//         case ADDRESS_MODE_DIRECT_INDEXED_INDIRECT:
+//         case ADDRESS_MODE_DIRECT_INDEXED_X:
+//         case ADDRESS_MODE_DIRECT_INDEXED_Y:
+//         case ADDRESS_MODE_DIRECT_INDIRECT_INDEXED:
+//         case ADDRESS_MODE_DIRECT_INDIRECT_LONG_INDEXED:
+//         case ADDRESS_MODE_DIRECT_INDIRECT_LONG:
+//         case ADDRESS_MODE_DIRECT_INDIRECT:
+//         case ADDRESS_MODE_DIRECT:
+//         case ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE:
+//         case ADDRESS_MODE_STACK_RELATIVE:
+//         case ADDRESS_MODE_STACK_RELATIVE_INDIRECT_INDEXED:
+//             width = 2;
+//         break;
 
-        case ADDRESS_MODE_IMMEDIATE:
-            switch(opcode->opcode)
-            {
-                case OPCODE_LDA:
-                case OPCODE_CMP:
-                case OPCODE_AND:
-                case OPCODE_EOR:
-                case OPCODE_ORA:
-                case OPCODE_ADC:
-                case OPCODE_BIT:
-                case OPCODE_SBC:
-                case OPCODE_ROR:
-                case OPCODE_ROL:
-                case OPCODE_LSR:
-                case OPCODE_ASL:
-                    if(cpu_state.reg_p.m)
-                    {
-                        width = 2;
-                    }
-                    else
-                    {
-                        width = 3;
-                    }
-                break;
+//         case ADDRESS_MODE_IMMEDIATE:
+//             switch(opcode->opcode)
+//             {
+//                 case CPU_OPCODE_LDA:
+//                 case CPU_OPCODE_CMP:
+//                 case CPU_OPCODE_AND:
+//                 case CPU_OPCODE_EOR:
+//                 case CPU_OPCODE_ORA:
+//                 case CPU_OPCODE_ADC:
+//                 case CPU_OPCODE_BIT:
+//                 case CPU_OPCODE_SBC:
+//                 case CPU_OPCODE_ROR:
+//                 case CPU_OPCODE_ROL:
+//                 case CPU_OPCODE_LSR:
+//                 case CPU_OPCODE_ASL:
+//                     if(cpu_state.reg_p.m)
+//                     {
+//                         width = 2;
+//                     }
+//                     else
+//                     {
+//                         width = 3;
+//                     }
+//                 break;
 
-                case OPCODE_LDX:
-                case OPCODE_LDY:
-                case OPCODE_CPX:
-                case OPCODE_CPY:
-                    if(cpu_state.reg_p.x)
-                    {
-                        width = 2;
-                    }
-                    else
-                    {
-                        width = 3;
-                    }
-                break;
+//                 case CPU_OPCODE_LDX:
+//                 case CPU_OPCODE_LDY:
+//                 case CPU_OPCODE_CPX:
+//                 case CPU_OPCODE_CPY:
+//                     if(cpu_state.reg_p.x)
+//                     {
+//                         width = 2;
+//                     }
+//                     else
+//                     {
+//                         width = 3;
+//                     }
+//                 break;
 
-                default:
-                    width = 2;
-                break;
-            }
-        break;
-    }
+//                 default:
+//                     width = 2;
+//                 break;
+//             }
+//         break;
+//     }
 
-    return width;
-}
+//     return width;
+// }
 
-char instruction_str_buffer[512];
+// char instruction_str_buffer[512];
 
-char *instruction_str(uint32_t effective_address)
-{
-//    char *opcode_str;
-    const char *opcode_str;
-    char addr_mode_str[128];
-//    char flags_str[32];
-    char temp_str[64];
-    int32_t width = 0;
-    struct opcode_t opcode;
-
-    opcode = opcode_matrix[peek_byte(effective_address)];
-    width = opcode_width(&opcode);
-
-    switch(opcode.address_mode)
-    {
-        case ADDRESS_MODE_ABSOLUTE:
-//            strcpy(addr_mode_str, "absolute addr (");
-            sprintf(addr_mode_str, "DBR(%02x):addr(%04x)", cpu_state.regs[REG_DBR].word, peek_word(effective_address + 1));
-//            strcat(addr_mode_str, temp_str);
-            // for(int32_t index = width - 1; index > 0; index--)
-            // {
-//            sprintf(temp_str, "%04x", peek_word(effective_address + 1));
-//            strcat(addr_mode_str, temp_str);
-            // }
-//            strcat(addr_mode_str, ")");
-        break;
-
-        case ADDRESS_MODE_ABSOLUTE_INDEXED_INDIRECT:
-        {
-//            strcpy(addr_mode_str, "absolute addr ( pointer (");
-//            strcat(addr_mode_str, "00:");
-//            uint32_t pointer = peek_word(effective_address + 1);
-//            sprintf(temp_str, "%04x", pointer);
-//            strcat(addr_mode_str, temp_str);
-//            strcat(addr_mode_str, ") + ");
-//            sprintf(temp_str, "X(%04x) ) = ", cpu_state.regs[REG_X].word);
-//            strcat(addr_mode_str, temp_str);
-//            sprintf(temp_str, "(%04x)", peek_word(pointer));
-//            strcat(addr_mode_str, temp_str);
-            uint16_t address = peek_word(effective_address + 1);
-            uint16_t target = peek_word(address + cpu_state.regs[REG_X].word);
-            if(opcode.opcode == OPCODE_JMP || opcode.opcode == OPCODE_JSR)
-            {
-                sprintf(addr_mode_str, "[addr(%04x) + X(%04x)] => PBR(%02x):%04x", address, cpu_state.regs[REG_X].word,
-                                                                            cpu_state.regs[REG_PBR].byte[0], target);
-            }
-        }
-        break;
-
-        case ADDRESS_MODE_ABSOLUTE_INDEXED_X:
-        {
-            uint16_t address = peek_word(effective_address + 1);
-            sprintf(addr_mode_str, "addr(%04x) + X(%04x) => DBR(%02x):%04x", address, cpu_state.regs[REG_X].word,
-                                                        cpu_state.regs[REG_DBR].byte[0], cpu_state.regs[REG_X].word + address);
-        }
-//            strcpy(addr_mode_str, "absolute addr (");
-//            sprintf(temp_str, "DBR(%02x):", cpu_state.regs[REG_DBR].word);
-//            strcat(addr_mode_str, temp_str);
-//            sprintf(temp_str, "%04x", peek_word(effective_address + 1));
-//            strcat(addr_mode_str, temp_str);
-//            strcat(addr_mode_str, ") + ");
-//            sprintf(temp_str, "X(%04x) )", cpu_state.regs[REG_X].word);
-//            strcat(addr_mode_str, temp_str);
-        break;
-
-        case ADDRESS_MODE_ABSOLUTE_INDEXED_Y:
-        {
-            uint16_t address = peek_word(effective_address + 1);
-            sprintf(addr_mode_str, "addr(%04x) + Y(%04x) => DBR(%02x):%04x", address, cpu_state.regs[REG_Y].word,
-                                                        cpu_state.regs[REG_DBR].byte[0], cpu_state.regs[REG_Y].word + address);
-        }
-//            strcpy(addr_mode_str, "absolute addr (");
-//            sprintf(temp_str, "DBR(%02x):", cpu_state.regs[REG_DBR].word);
-//            strcat(addr_mode_str, temp_str);
-//            sprintf(temp_str, "%04x", peek_word(effective_address + 1));
-//            strcat(addr_mode_str, temp_str);
-//            strcat(addr_mode_str, ") + ");
-//            sprintf(temp_str, "Y(%04x)", cpu_state.regs[REG_Y].word);
-//            strcat(addr_mode_str, temp_str);
-        break;
-
-        case ADDRESS_MODE_ABSOLUTE_INDIRECT:
-        {
-            strcpy(addr_mode_str, "absolute addr ( pointer (");
-            uint32_t pointer = peek_word(effective_address + 1);
-            // for(int32_t index = width - 1; index > 0; index--)
-            // {
-            sprintf(temp_str, "%04x", pointer);
-            strcat(addr_mode_str, temp_str);
-            // }
-            strcat(addr_mode_str, ") ) = ");
-            sprintf(temp_str, "(%04x)", peek_word(pointer));
-            strcat(addr_mode_str, temp_str);
-        }
-        break;
-
-        case ADDRESS_MODE_ABSOLUTE_LONG_INDEXED_X:
-        {
-            strcpy(addr_mode_str, "absolute long addr (");
-            uint32_t pointer = peek_word(effective_address + 1);
-            pointer |= (uint32_t)peek_byte(effective_address + 3) << 16;
-            // for(int32_t index = width - 1; index > 0; index--)
-            // {
-            sprintf(temp_str, "%06x", pointer);
-            strcat(addr_mode_str, temp_str);
-            // }
-
-            strcat(addr_mode_str, ") + ");
-            sprintf(temp_str, "X(%04x)", cpu_state.regs[REG_X].word);
-            strcat(addr_mode_str, temp_str);
-        }
-        break;
-
-        case ADDRESS_MODE_ABSOLUTE_LONG:
-        {
-            uint32_t address = peek_word(effective_address + 1);
-            address |= (uint32_t)peek_byte(effective_address + 3) << 16;
-            sprintf(addr_mode_str, "addrl(%06x)", address);
-//            strcpy(addr_mode_str, "absolute long addr (");
-//            uint32_t pointer = peek_word(effective_address + 1);
-//            pointer |= (uint32_t)peek_byte(effective_address + 3) << 16;
-//            sprintf(temp_str, "%06x", pointer);
-//            strcat(addr_mode_str, temp_str);
-//            strcat(addr_mode_str, ")");
-        }
-        break;
-
-        case ADDRESS_MODE_ACCUMULATOR:
-            addr_mode_str[0] = '\0';
-            if(opcode.opcode != OPCODE_XCE && opcode.opcode != OPCODE_TXS && opcode.opcode != OPCODE_WDM && opcode.opcode != OPCODE_WAI)
-            {
-                sprintf(addr_mode_str, "accumulator(%04x)", cpu_state.regs[REG_ACCUM].word);
-            }
-        break;
-
-        case ADDRESS_MODE_BLOCK_MOVE:
-            sprintf(addr_mode_str, "dst addr(%02x:%04x), src addr(%02x:%04x)", peek_byte(effective_address + 1), cpu_state.regs[REG_Y].word,
-                                                                               peek_byte(effective_address + 2), cpu_state.regs[REG_X].word);
-        break;
-
-        case ADDRESS_MODE_DIRECT_INDEXED_INDIRECT:
-            strcpy(addr_mode_str, "direct indexed indirect - (d,x)");
-        break;
-
-        case ADDRESS_MODE_DIRECT_INDEXED_X:
-            sprintf(addr_mode_str, "D(%04x) + X(%04x) => 00:%04x", cpu_state.regs[REG_D].word, cpu_state.regs[REG_X].word,
-                                                                   cpu_state.regs[REG_D].word + cpu_state.regs[REG_X].word);
-        break;
-
-        case ADDRESS_MODE_DIRECT_INDEXED_Y:
-            sprintf(addr_mode_str, "D(%04x) + Y(%04x) => 00:%04x", cpu_state.regs[REG_D].word, cpu_state.regs[REG_Y].word,
-                                                                   cpu_state.regs[REG_D].word + cpu_state.regs[REG_Y].word);
-        break;
-
-        case ADDRESS_MODE_DIRECT_INDIRECT_INDEXED:
-        {
-            uint8_t offset = peek_byte(effective_address + 1);
-            uint16_t address = peek_word(cpu_state.regs[REG_D].word + offset);
-            sprintf(addr_mode_str, "DBR:(%02x):[D(%04x) + offset(%02x)]=(%04x) + Y(%04x)",  cpu_state.regs[REG_DBR].byte[0],
-                                                                                            cpu_state.regs[REG_D].word, offset,
-                                                                                            address, cpu_state.regs[REG_Y].word);
-        }
-        break;
-
-        case ADDRESS_MODE_DIRECT_INDIRECT_LONG_INDEXED:
-            strcpy(addr_mode_str, "direct indirect long indexed - [d],y");
-        break;
-
-        case ADDRESS_MODE_DIRECT_INDIRECT_LONG:
-            strcpy(addr_mode_str, "direct indirect long - [d]");
-        break;
-
-        case ADDRESS_MODE_DIRECT_INDIRECT:
-        {
-            uint8_t offset = peek_byte(effective_address + 1);
-            uint16_t address = peek_word(cpu_state.regs[REG_D].word + offset);
-            sprintf(addr_mode_str, "[D(%04x) + offset(%02x)](%04x) => DBR(%02x):%04x", address, cpu_state.regs[REG_D].word, offset,
-                                                                                        cpu_state.regs[REG_DBR].word, address);
-        }
-        break;
-
-        case ADDRESS_MODE_DIRECT:
-        {
-            uint8_t offset = peek_byte(effective_address + 1);
-            sprintf(addr_mode_str, "D(%04x) + offset(%02x) => 00:%04x", cpu_state.regs[REG_D].word, offset, cpu_state.regs[REG_D].word + offset);
-        }
-        break;
-
-        case ADDRESS_MODE_IMMEDIATE:
-            strcpy(addr_mode_str, "immediate (");
-
-            for(int32_t index = width - 1; index > 0; index--)
-            {
-                sprintf(temp_str, "%02x", peek_byte(effective_address + index));
-                strcat(addr_mode_str, temp_str);
-            }
-            strcat(addr_mode_str, ")");
-        break;
-
-        case ADDRESS_MODE_IMPLIED:
-            strcpy(addr_mode_str, "");
-        break;
-
-        case ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE_LONG:
-            strcpy(addr_mode_str, "program counter relative long - rl");
-        break;
-
-        case ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE:
-        {
-            uint16_t offset = peek_byte(effective_address + 1);
-            if(offset & 0x80)
-            {
-                offset |= 0xff00;
-            }
-            sprintf(addr_mode_str, "PC(%04x) + offset(%02x) => PBR(%02x):%04x", cpu_state.regs[REG_PC].word + 2, (uint8_t)offset, cpu_state.regs[REG_PBR].byte[0],
-                                                                                (uint16_t)((cpu_state.regs[REG_PC].word + 2) + offset));
-        }
-        break;
-
-        case ADDRESS_MODE_STACK:
-            addr_mode_str[0] = '\0';
-            if(opcode.opcode == OPCODE_PEA)
-            {
-                sprintf(temp_str, "immediate (%04x)", peek_word(effective_address + 1));
-                strcat(addr_mode_str, temp_str);
-            }
-        break;
-
-        case ADDRESS_MODE_STACK_RELATIVE:
-            sprintf(addr_mode_str, "S(%04x) + offset(%02x)", cpu_state.regs[REG_S].word, peek_byte(effective_address + 1));
-        break;
-
-        case ADDRESS_MODE_STACK_RELATIVE_INDIRECT_INDEXED:
-        {
-            uint8_t offset = peek_byte(effective_address + 1);
-            uint16_t pointer = peek_word(cpu_state.regs[REG_S].word + offset) + cpu_state.regs[REG_Y].word;
-            sprintf(addr_mode_str, "[S(%04x) + offset(%02x)]=(%04x) + Y(%04x)", cpu_state.regs[REG_S].word, offset, pointer, cpu_state.regs[REG_Y].word);
-        }
-//            strcpy(addr_mode_str, "stack relative indirect indexed - (d,s),y");
-        break;
-
-        default:
-        case ADDRESS_MODE_UNKNOWN:
-            strcpy(addr_mode_str, "unknown");
-        break;
-    }
-
-    opcode_str = opcode_strs[opcode.opcode];
-
-    sprintf(instruction_str_buffer, "[%02x:%04x]: ", (effective_address >> 16) & 0xff, effective_address & 0xffff);
-    uint32_t index;
-    for(index = 0; index < width; index++)
-    {
-        sprintf(temp_str, "%02x ", peek_byte(effective_address + index));
-        strcat(instruction_str_buffer, temp_str);
-    }
-
-    for(; index < 4; index++)
-    {
-        strcat(instruction_str_buffer, "   ");
-    }
-//    uint32_t instruction_bytes = 0;
-//    for(int32_t i = 0; i < width; i++)
-//    {
-//        instruction_bytes <<= 8;
-//        instruction_bytes |= peek_byte(effective_address + i);
-//    }
-//    sprintf(temp_str, "%-8x", instruction_bytes);
-//    strcat(instruction_str_buffer, temp_str);
-
-    strcat(instruction_str_buffer, "| ");
-    strcat(instruction_str_buffer, opcode_str);
-
-    if(addr_mode_str[0])
-    {
-        strcat(instruction_str_buffer, " ");
-        strcat(instruction_str_buffer, addr_mode_str);
-    }
-
-    return instruction_str_buffer;
-}
-
-char *instruction_str2(uint32_t effective_address)
-{
-    //    char *opcode_str;
-//     char opcode_str[16];
-//     char addr_mode_str[32] = "";
-//     char flags_str[32] = "";
-//     char temp_str[32] = "";
-//     char regs_str[64] = "";
+// char *instruction_str(uint32_t effective_address)
+// {
+// //    char *opcode_str;
+//     const char *opcode_str;
+//     char addr_mode_str[128];
+// //    char flags_str[32];
+//     char temp_str[64];
 //     int32_t width = 0;
 //     struct opcode_t opcode;
-//     uint32_t show_computed_address = 0;
-//     uint32_t computed_effective_address = 0;
 
 //     opcode = opcode_matrix[peek_byte(effective_address)];
 //     width = opcode_width(&opcode);
@@ -6183,178 +5898,195 @@ char *instruction_str2(uint32_t effective_address)
 //     switch(opcode.address_mode)
 //     {
 //         case ADDRESS_MODE_ABSOLUTE:
-//         {
-//             uint16_t address = peek_word(effective_address + 1);
-//             sprintf(addr_mode_str, "$%04x", address);
-//             computed_effective_address = ((uint32_t)cpu_state.regs[REG_DBR].byte[0] << 16) | address;
-//             show_computed_address = 1;
-//         }
+// //            strcpy(addr_mode_str, "absolute addr (");
+//             sprintf(addr_mode_str, "DBR(%02x):addr(%04x)", cpu_state.regs[REG_DBR].word, peek_word(effective_address + 1));
+// //            strcat(addr_mode_str, temp_str);
+//             // for(int32_t index = width - 1; index > 0; index--)
+//             // {
+// //            sprintf(temp_str, "%04x", peek_word(effective_address + 1));
+// //            strcat(addr_mode_str, temp_str);
+//             // }
+// //            strcat(addr_mode_str, ")");
 //         break;
 
 //         case ADDRESS_MODE_ABSOLUTE_INDEXED_INDIRECT:
 //         {
-// //            uint16_t address = peek_word(effective_address + 1);
-// //            uint16_t target = peek_word(address + cpu_state.regs[REG_X].word);
-// //            if(opcode.opcode == OPCODE_JMP)
-// //            {
-// //
-// //                sprintf(addr_mode_str, "[addr(%04x) + X(%04x)] => PBR(%02x):%04x", address, cpu_state.regs[REG_X].word,
-// //                                                                            cpu_state.regs[REG_PBR].byte[0], target);
-// //            }
+// //            strcpy(addr_mode_str, "absolute addr ( pointer (");
+// //            strcat(addr_mode_str, "00:");
+// //            uint32_t pointer = peek_word(effective_address + 1);
+// //            sprintf(temp_str, "%04x", pointer);
+// //            strcat(addr_mode_str, temp_str);
+// //            strcat(addr_mode_str, ") + ");
+// //            sprintf(temp_str, "X(%04x) ) = ", cpu_state.regs[REG_X].word);
+// //            strcat(addr_mode_str, temp_str);
+// //            sprintf(temp_str, "(%04x)", peek_word(pointer));
+// //            strcat(addr_mode_str, temp_str);
+//             uint16_t address = peek_word(effective_address + 1);
+//             uint16_t target = peek_word(address + cpu_state.regs[REG_X].word);
+//             if(opcode.opcode == CPU_OPCODE_JMP || opcode.opcode == CPU_OPCODE_JSR)
+//             {
+//                 sprintf(addr_mode_str, "[addr(%04x) + X(%04x)] => PBR(%02x):%04x", address, cpu_state.regs[REG_X].word,
+//                                                                             cpu_state.regs[REG_PBR].byte[0], target);
+//             }
 //         }
 //         break;
 
 //         case ADDRESS_MODE_ABSOLUTE_INDEXED_X:
 //         {
-//             show_computed_address = 1;
 //             uint16_t address = peek_word(effective_address + 1);
-//             sprintf(addr_mode_str, "$%04x,x", address);
-//             computed_effective_address = (((uint32_t)cpu_state.regs[REG_DBR].byte[0] << 16) | address) + cpu_state.regs[REG_X].word;
+//             sprintf(addr_mode_str, "addr(%04x) + X(%04x) => DBR(%02x):%04x", address, cpu_state.regs[REG_X].word,
+//                                                         cpu_state.regs[REG_DBR].byte[0], cpu_state.regs[REG_X].word + address);
 //         }
+// //            strcpy(addr_mode_str, "absolute addr (");
+// //            sprintf(temp_str, "DBR(%02x):", cpu_state.regs[REG_DBR].word);
+// //            strcat(addr_mode_str, temp_str);
+// //            sprintf(temp_str, "%04x", peek_word(effective_address + 1));
+// //            strcat(addr_mode_str, temp_str);
+// //            strcat(addr_mode_str, ") + ");
+// //            sprintf(temp_str, "X(%04x) )", cpu_state.regs[REG_X].word);
+// //            strcat(addr_mode_str, temp_str);
 //         break;
 
 //         case ADDRESS_MODE_ABSOLUTE_INDEXED_Y:
 //         {
-//             show_computed_address = 1;
 //             uint16_t address = peek_word(effective_address + 1);
-//             sprintf(addr_mode_str, "$%04x,y", address);
-//             computed_effective_address = (((uint32_t)cpu_state.regs[REG_DBR].byte[0] << 16) | address) + cpu_state.regs[REG_Y].word;
+//             sprintf(addr_mode_str, "addr(%04x) + Y(%04x) => DBR(%02x):%04x", address, cpu_state.regs[REG_Y].word,
+//                                                         cpu_state.regs[REG_DBR].byte[0], cpu_state.regs[REG_Y].word + address);
 //         }
+// //            strcpy(addr_mode_str, "absolute addr (");
+// //            sprintf(temp_str, "DBR(%02x):", cpu_state.regs[REG_DBR].word);
+// //            strcat(addr_mode_str, temp_str);
+// //            sprintf(temp_str, "%04x", peek_word(effective_address + 1));
+// //            strcat(addr_mode_str, temp_str);
+// //            strcat(addr_mode_str, ") + ");
+// //            sprintf(temp_str, "Y(%04x)", cpu_state.regs[REG_Y].word);
+// //            strcat(addr_mode_str, temp_str);
 //         break;
 
 //         case ADDRESS_MODE_ABSOLUTE_INDIRECT:
 //         {
-// //            strcpy(addr_mode_str, "absolute addr ( pointer (");
-// //            uint32_t pointer = peek_word(effective_address + 1);
-// //            // for(int32_t index = width - 1; index > 0; index--)
-// //            // {
-// //            sprintf(temp_str, "%04x", pointer);
-// //            strcat(addr_mode_str, temp_str);
-// //            // }
-// //            strcat(addr_mode_str, ") ) = ");
-// //            sprintf(temp_str, "(%04x)", peek_word(pointer));
-// //            strcat(addr_mode_str, temp_str);
+//             strcpy(addr_mode_str, "absolute addr ( pointer (");
+//             uint32_t pointer = peek_word(effective_address + 1);
+//             // for(int32_t index = width - 1; index > 0; index--)
+//             // {
+//             sprintf(temp_str, "%04x", pointer);
+//             strcat(addr_mode_str, temp_str);
+//             // }
+//             strcat(addr_mode_str, ") ) = ");
+//             sprintf(temp_str, "(%04x)", peek_word(pointer));
+//             strcat(addr_mode_str, temp_str);
 //         }
 //         break;
 
 //         case ADDRESS_MODE_ABSOLUTE_LONG_INDEXED_X:
 //         {
-//             show_computed_address = 1;
-//             uint32_t address = peek_word(effective_address + 1);
-//             address |= (uint32_t)peek_byte(effective_address + 3) << 16;
-//             sprintf(addr_mode_str, "$%06x,x", address);
-//             computed_effective_address = (((uint32_t)cpu_state.regs[REG_DBR].byte[0] << 16) | address) + cpu_state.regs[REG_X].word;
+//             strcpy(addr_mode_str, "absolute long addr (");
+//             uint32_t pointer = peek_word(effective_address + 1);
+//             pointer |= (uint32_t)peek_byte(effective_address + 3) << 16;
+//             // for(int32_t index = width - 1; index > 0; index--)
+//             // {
+//             sprintf(temp_str, "%06x", pointer);
+//             strcat(addr_mode_str, temp_str);
+//             // }
+
+//             strcat(addr_mode_str, ") + ");
+//             sprintf(temp_str, "X(%04x)", cpu_state.regs[REG_X].word);
+//             strcat(addr_mode_str, temp_str);
 //         }
 //         break;
 
 //         case ADDRESS_MODE_ABSOLUTE_LONG:
 //         {
-//             show_computed_address = 1;
 //             uint32_t address = peek_word(effective_address + 1);
 //             address |= (uint32_t)peek_byte(effective_address + 3) << 16;
-//             sprintf(addr_mode_str, "$%06x", address);
-//             computed_effective_address = ((uint32_t)cpu_state.regs[REG_DBR].byte[0] << 16) | address;
+//             sprintf(addr_mode_str, "addrl(%06x)", address);
+// //            strcpy(addr_mode_str, "absolute long addr (");
+// //            uint32_t pointer = peek_word(effective_address + 1);
+// //            pointer |= (uint32_t)peek_byte(effective_address + 3) << 16;
+// //            sprintf(temp_str, "%06x", pointer);
+// //            strcat(addr_mode_str, temp_str);
+// //            strcat(addr_mode_str, ")");
 //         }
 //         break;
 
 //         case ADDRESS_MODE_ACCUMULATOR:
-//             // addr_mode_str[0] = '\0';
-//             if(opcode.opcode != OPCODE_XCE && opcode.opcode != OPCODE_TXS && opcode.opcode != OPCODE_WDM && opcode.opcode != OPCODE_WAI)
+//             addr_mode_str[0] = '\0';
+//             if(opcode.opcode != CPU_OPCODE_XCE && opcode.opcode != CPU_OPCODE_TXS && opcode.opcode != CPU_OPCODE_WDM && opcode.opcode != CPU_OPCODE_WAI)
 //             {
-//                 // sprintf(addr_mode_str, "accumulator(%04x)", cpu_state.regs[REG_ACCUM].word);
-//                 strcpy(addr_mode_str, "a");
+//                 sprintf(addr_mode_str, "accumulator(%04x)", cpu_state.regs[REG_ACCUM].word);
 //             }
 //         break;
 
 //         case ADDRESS_MODE_BLOCK_MOVE:
-//             // sprintf(addr_mode_str, "dst addr(%02x:%04x), src addr(%02x:%04x)", peek_byte(effective_address + 1), cpu_state.regs[REG_Y].word,
-//             //                                                                    peek_byte(effective_address + 2), cpu_state.regs[REG_X].word);
+//             sprintf(addr_mode_str, "dst addr(%02x:%04x), src addr(%02x:%04x)", peek_byte(effective_address + 1), cpu_state.regs[REG_Y].word,
+//                                                                                peek_byte(effective_address + 2), cpu_state.regs[REG_X].word);
 //         break;
 
 //         case ADDRESS_MODE_DIRECT_INDEXED_INDIRECT:
-//             // strcpy(addr_mode_str, "direct indexed indirect - (d,x)");
+//             strcpy(addr_mode_str, "direct indexed indirect - (d,x)");
 //         break;
 
 //         case ADDRESS_MODE_DIRECT_INDEXED_X:
-//         {
-//             uint8_t offset = peek_byte(effective_address + 1);
-//             sprintf(addr_mode_str, "$%02x,x", offset);
-//             computed_effective_address = (cpu_state.regs[REG_D].word + offset) + cpu_state.regs[REG_X].word;
-//             show_computed_address = 1;
-//         }
+//             sprintf(addr_mode_str, "D(%04x) + X(%04x) => 00:%04x", cpu_state.regs[REG_D].word, cpu_state.regs[REG_X].word,
+//                                                                    cpu_state.regs[REG_D].word + cpu_state.regs[REG_X].word);
 //         break;
 
 //         case ADDRESS_MODE_DIRECT_INDEXED_Y:
-//         {
-//             uint8_t offset = peek_byte(effective_address + 1);
-//             sprintf(addr_mode_str, "$%02x,y", offset);
-//             computed_effective_address = (cpu_state.regs[REG_D].word + offset) + cpu_state.regs[REG_Y].word;
-//             show_computed_address = 1;
-//         }
+//             sprintf(addr_mode_str, "D(%04x) + Y(%04x) => 00:%04x", cpu_state.regs[REG_D].word, cpu_state.regs[REG_Y].word,
+//                                                                    cpu_state.regs[REG_D].word + cpu_state.regs[REG_Y].word);
 //         break;
 
 //         case ADDRESS_MODE_DIRECT_INDIRECT_INDEXED:
-//         // {
-//         //     uint8_t offset = peek_byte(effective_address + 1);
-//         //     uint16_t address = peek_word(cpu_state.regs[REG_D].word + offset);
-//         //     sprintf(addr_mode_str, "DBR:(%02x):[D(%04x) + offset(%02x)]=(%04x) + Y(%04x)",  cpu_state.regs[REG_DBR].byte[0],
-//         //                                                                                     cpu_state.regs[REG_D].word, offset,
-//         //                                                                                     address, cpu_state.regs[REG_Y].word);
-//         // }
+//         {
+//             uint8_t offset = peek_byte(effective_address + 1);
+//             uint16_t address = peek_word(cpu_state.regs[REG_D].word + offset);
+//             sprintf(addr_mode_str, "DBR:(%02x):[D(%04x) + offset(%02x)]=(%04x) + Y(%04x)",  cpu_state.regs[REG_DBR].byte[0],
+//                                                                                             cpu_state.regs[REG_D].word, offset,
+//                                                                                             address, cpu_state.regs[REG_Y].word);
+//         }
 //         break;
 
 //         case ADDRESS_MODE_DIRECT_INDIRECT_LONG_INDEXED:
-//             // strcpy(addr_mode_str, "direct indirect long indexed - [d],y");
+//             strcpy(addr_mode_str, "direct indirect long indexed - [d],y");
 //         break;
 
 //         case ADDRESS_MODE_DIRECT_INDIRECT_LONG:
-//             // strcpy(addr_mode_str, "direct indirect long - [d]");
+//             strcpy(addr_mode_str, "direct indirect long - [d]");
 //         break;
 
 //         case ADDRESS_MODE_DIRECT_INDIRECT:
-//         // {
-//         //     uint8_t offset = peek_byte(effective_address + 1);
-//         //     uint16_t address = peek_word(cpu_state.regs[REG_D].word + offset);
-//         //     sprintf(addr_mode_str, "[D(%04x) + offset(%02x)](%04x) => DBR(%02x):%04x", address, cpu_state.regs[REG_D].word, offset,
-//         //                                                                                 cpu_state.regs[REG_DBR].word, address);
-//         // }
+//         {
+//             uint8_t offset = peek_byte(effective_address + 1);
+//             uint16_t address = peek_word(cpu_state.regs[REG_D].word + offset);
+//             sprintf(addr_mode_str, "[D(%04x) + offset(%02x)](%04x) => DBR(%02x):%04x", address, cpu_state.regs[REG_D].word, offset,
+//                                                                                         cpu_state.regs[REG_DBR].word, address);
+//         }
 //         break;
 
 //         case ADDRESS_MODE_DIRECT:
 //         {
 //             uint8_t offset = peek_byte(effective_address + 1);
-//             sprintf(addr_mode_str, "$%02x", offset);
-//             computed_effective_address = cpu_state.regs[REG_D].word + offset;
-//             show_computed_address = 1;
+//             sprintf(addr_mode_str, "D(%04x) + offset(%02x) => 00:%04x", cpu_state.regs[REG_D].word, offset, cpu_state.regs[REG_D].word + offset);
 //         }
-//         // {
-//         //     uint8_t offset = peek_byte(effective_address + 1);
-//         //     sprintf(addr_mode_str, "D(%04x) + offset(%02x) => 00:%04x", cpu_state.regs[REG_D].word, offset, cpu_state.regs[REG_D].word + offset);
-//         // }
 //         break;
 
 //         case ADDRESS_MODE_IMMEDIATE:
-//         {
-//             strcpy(addr_mode_str, "#$");
-// //            uint32_t immediate = 0;
+//             strcpy(addr_mode_str, "immediate (");
+
 //             for(int32_t index = width - 1; index > 0; index--)
 //             {
 //                 sprintf(temp_str, "%02x", peek_byte(effective_address + index));
 //                 strcat(addr_mode_str, temp_str);
-// //                immediate <<= 8;
-// //                immediate |= peek_byte(effective_address + index);
 //             }
-
-// //            sprintf(addr_mode_str, "#$%04x", immediate);
-//         }
+//             strcat(addr_mode_str, ")");
 //         break;
 
 //         case ADDRESS_MODE_IMPLIED:
-//             // strcpy(addr_mode_str, "");
+//             strcpy(addr_mode_str, "");
 //         break;
 
 //         case ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE_LONG:
-//             // strcpy(addr_mode_str, "program counter relative long - rl");
+//             strcpy(addr_mode_str, "program counter relative long - rl");
 //         break;
 
 //         case ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE:
@@ -6364,190 +6096,458 @@ char *instruction_str2(uint32_t effective_address)
 //             {
 //                 offset |= 0xff00;
 //             }
-
-//             computed_effective_address = ((uint32_t)cpu_state.regs[REG_PBR].word << 16) | ((cpu_state.regs[REG_PC].word + offset + 2) & 0xffff);
-//             show_computed_address = 1;
-//             sprintf(addr_mode_str, "$%04x", computed_effective_address & 0xffff);
-//         //     sprintf(addr_mode_str, "PC(%04x) + offset(%02x) => PBR(%02x):%04x", cpu_state.regs[REG_PC].word + 2, (uint8_t)offset, cpu_state.regs[REG_PBR].byte[0],
-//         //                                                                         (uint16_t)((cpu_state.regs[REG_PC].word + 2) + offset));
+//             sprintf(addr_mode_str, "PC(%04x) + offset(%02x) => PBR(%02x):%04x", cpu_state.regs[REG_PC].word + 2, (uint8_t)offset, cpu_state.regs[REG_PBR].byte[0],
+//                                                                                 (uint16_t)((cpu_state.regs[REG_PC].word + 2) + offset));
 //         }
 //         break;
 
 //         case ADDRESS_MODE_STACK:
-//             // addr_mode_str[0] = '\0';
-//             // if(opcode.opcode == OPCODE_PEA)
-//             // {
-//             //     sprintf(temp_str, "immediate (%04x)", peek_word(effective_address + 1));
-//             //     strcat(addr_mode_str, temp_str);
-//             // }
+//             addr_mode_str[0] = '\0';
+//             if(opcode.opcode == CPU_OPCODE_PEA)
+//             {
+//                 sprintf(temp_str, "immediate (%04x)", peek_word(effective_address + 1));
+//                 strcat(addr_mode_str, temp_str);
+//             }
 //         break;
 
 //         case ADDRESS_MODE_STACK_RELATIVE:
-//         {
-//             uint16_t offset = peek_byte(effective_address + 1);
-//             if(offset & 0x80)
-//             {
-//                 offset |= 0xff00;
-//             }
-//             computed_effective_address = cpu_state.regs[REG_S].word + offset;
-//             show_computed_address = 1;
-//             sprintf(addr_mode_str, "$%02x,s", offset);
-//         }
-//             // sprintf(addr_mode_str, "S(%04x) + offset(%02x)", cpu_state.regs[REG_S].word, peek_byte(effective_address + 1));
+//             sprintf(addr_mode_str, "S(%04x) + offset(%02x)", cpu_state.regs[REG_S].word, peek_byte(effective_address + 1));
 //         break;
 
 //         case ADDRESS_MODE_STACK_RELATIVE_INDIRECT_INDEXED:
-//         // {
-//         //     uint8_t offset = peek_byte(effective_address + 1);
-//         //     uint16_t pointer = peek_word(cpu_state.regs[REG_S].word + offset) + cpu_state.regs[REG_Y].word;
-//         //     sprintf(addr_mode_str, "[S(%04x) + offset(%02x)]=(%04x) + Y(%04x)", cpu_state.regs[REG_S].word, offset, pointer, cpu_state.regs[REG_Y].word);
-//         // }
+//         {
+//             uint8_t offset = peek_byte(effective_address + 1);
+//             uint16_t pointer = peek_word(cpu_state.regs[REG_S].word + offset) + cpu_state.regs[REG_Y].word;
+//             sprintf(addr_mode_str, "[S(%04x) + offset(%02x)]=(%04x) + Y(%04x)", cpu_state.regs[REG_S].word, offset, pointer, cpu_state.regs[REG_Y].word);
+//         }
 // //            strcpy(addr_mode_str, "stack relative indirect indexed - (d,s),y");
 //         break;
 
 //         default:
-//         // case ADDRESS_MODE_UNKNOWN:
-//         //     strcpy(addr_mode_str, "unknown");
-//         // break;
+//         case ADDRESS_MODE_UNKNOWN:
+//             strcpy(addr_mode_str, "unknown");
+//         break;
 //     }
 
-//     uint32_t addr_mode_str_len = strlen(addr_mode_str);
-//     while(addr_mode_str_len < 18)
+//     opcode_str = opcode_strs[opcode.opcode];
+
+//     sprintf(instruction_str_buffer, "[%02x:%04x]: ", (effective_address >> 16) & 0xff, effective_address & 0xffff);
+//     uint32_t index;
+//     for(index = 0; index < width; index++)
 //     {
-//         addr_mode_str[addr_mode_str_len] = ' ';
-//         addr_mode_str_len++;
+//         sprintf(temp_str, "%02x ", peek_byte(effective_address + index));
+//         strcat(instruction_str_buffer, temp_str);
 //     }
 
-//     addr_mode_str[addr_mode_str_len] = '\0';
-
-//     // opcode_str = opcode_strs[opcode.opcode];
-
-//     uint32_t index = 0;
-//     while(opcode_strs[opcode.opcode][index])
+//     for(; index < 4; index++)
 //     {
-//         opcode_str[index] = tolower(opcode_strs[opcode.opcode][index]);
-//         index++;
+//         strcat(instruction_str_buffer, "   ");
 //     }
-//     opcode_str[index] = '\0';
+// //    uint32_t instruction_bytes = 0;
+// //    for(int32_t i = 0; i < width; i++)
+// //    {
+// //        instruction_bytes <<= 8;
+// //        instruction_bytes |= peek_byte(effective_address + i);
+// //    }
+// //    sprintf(temp_str, "%-8x", instruction_bytes);
+// //    strcat(instruction_str_buffer, temp_str);
 
-//     if(show_computed_address)
+//     strcat(instruction_str_buffer, "| ");
+//     strcat(instruction_str_buffer, opcode_str);
+
+//     if(addr_mode_str[0])
 //     {
-//         sprintf(addr_mode_str + 10, "[%06x]", computed_effective_address);
+//         strcat(instruction_str_buffer, " ");
+//         strcat(instruction_str_buffer, addr_mode_str);
 //     }
 
-//     if(cpu_state.reg_p.e)
+//     return instruction_str_buffer;
+// }
+
+// char *instruction_str2(uint32_t effective_address)
+// {
+//     //    char *opcode_str;
+// //     char opcode_str[16];
+// //     char addr_mode_str[32] = "";
+// //     char flags_str[32] = "";
+// //     char temp_str[32] = "";
+// //     char regs_str[64] = "";
+// //     int32_t width = 0;
+// //     struct opcode_t opcode;
+// //     uint32_t show_computed_address = 0;
+// //     uint32_t computed_effective_address = 0;
+
+// //     opcode = opcode_matrix[peek_byte(effective_address)];
+// //     width = opcode_width(&opcode);
+
+// //     switch(opcode.address_mode)
+// //     {
+// //         case ADDRESS_MODE_ABSOLUTE:
+// //         {
+// //             uint16_t address = peek_word(effective_address + 1);
+// //             sprintf(addr_mode_str, "$%04x", address);
+// //             computed_effective_address = ((uint32_t)cpu_state.regs[REG_DBR].byte[0] << 16) | address;
+// //             show_computed_address = 1;
+// //         }
+// //         break;
+
+// //         case ADDRESS_MODE_ABSOLUTE_INDEXED_INDIRECT:
+// //         {
+// // //            uint16_t address = peek_word(effective_address + 1);
+// // //            uint16_t target = peek_word(address + cpu_state.regs[REG_X].word);
+// // //            if(opcode.opcode == OPCODE_JMP)
+// // //            {
+// // //
+// // //                sprintf(addr_mode_str, "[addr(%04x) + X(%04x)] => PBR(%02x):%04x", address, cpu_state.regs[REG_X].word,
+// // //                                                                            cpu_state.regs[REG_PBR].byte[0], target);
+// // //            }
+// //         }
+// //         break;
+
+// //         case ADDRESS_MODE_ABSOLUTE_INDEXED_X:
+// //         {
+// //             show_computed_address = 1;
+// //             uint16_t address = peek_word(effective_address + 1);
+// //             sprintf(addr_mode_str, "$%04x,x", address);
+// //             computed_effective_address = (((uint32_t)cpu_state.regs[REG_DBR].byte[0] << 16) | address) + cpu_state.regs[REG_X].word;
+// //         }
+// //         break;
+
+// //         case ADDRESS_MODE_ABSOLUTE_INDEXED_Y:
+// //         {
+// //             show_computed_address = 1;
+// //             uint16_t address = peek_word(effective_address + 1);
+// //             sprintf(addr_mode_str, "$%04x,y", address);
+// //             computed_effective_address = (((uint32_t)cpu_state.regs[REG_DBR].byte[0] << 16) | address) + cpu_state.regs[REG_Y].word;
+// //         }
+// //         break;
+
+// //         case ADDRESS_MODE_ABSOLUTE_INDIRECT:
+// //         {
+// // //            strcpy(addr_mode_str, "absolute addr ( pointer (");
+// // //            uint32_t pointer = peek_word(effective_address + 1);
+// // //            // for(int32_t index = width - 1; index > 0; index--)
+// // //            // {
+// // //            sprintf(temp_str, "%04x", pointer);
+// // //            strcat(addr_mode_str, temp_str);
+// // //            // }
+// // //            strcat(addr_mode_str, ") ) = ");
+// // //            sprintf(temp_str, "(%04x)", peek_word(pointer));
+// // //            strcat(addr_mode_str, temp_str);
+// //         }
+// //         break;
+
+// //         case ADDRESS_MODE_ABSOLUTE_LONG_INDEXED_X:
+// //         {
+// //             show_computed_address = 1;
+// //             uint32_t address = peek_word(effective_address + 1);
+// //             address |= (uint32_t)peek_byte(effective_address + 3) << 16;
+// //             sprintf(addr_mode_str, "$%06x,x", address);
+// //             computed_effective_address = (((uint32_t)cpu_state.regs[REG_DBR].byte[0] << 16) | address) + cpu_state.regs[REG_X].word;
+// //         }
+// //         break;
+
+// //         case ADDRESS_MODE_ABSOLUTE_LONG:
+// //         {
+// //             show_computed_address = 1;
+// //             uint32_t address = peek_word(effective_address + 1);
+// //             address |= (uint32_t)peek_byte(effective_address + 3) << 16;
+// //             sprintf(addr_mode_str, "$%06x", address);
+// //             computed_effective_address = ((uint32_t)cpu_state.regs[REG_DBR].byte[0] << 16) | address;
+// //         }
+// //         break;
+
+// //         case ADDRESS_MODE_ACCUMULATOR:
+// //             // addr_mode_str[0] = '\0';
+// //             if(opcode.opcode != OPCODE_XCE && opcode.opcode != OPCODE_TXS && opcode.opcode != OPCODE_WDM && opcode.opcode != OPCODE_WAI)
+// //             {
+// //                 // sprintf(addr_mode_str, "accumulator(%04x)", cpu_state.regs[REG_ACCUM].word);
+// //                 strcpy(addr_mode_str, "a");
+// //             }
+// //         break;
+
+// //         case ADDRESS_MODE_BLOCK_MOVE:
+// //             // sprintf(addr_mode_str, "dst addr(%02x:%04x), src addr(%02x:%04x)", peek_byte(effective_address + 1), cpu_state.regs[REG_Y].word,
+// //             //                                                                    peek_byte(effective_address + 2), cpu_state.regs[REG_X].word);
+// //         break;
+
+// //         case ADDRESS_MODE_DIRECT_INDEXED_INDIRECT:
+// //             // strcpy(addr_mode_str, "direct indexed indirect - (d,x)");
+// //         break;
+
+// //         case ADDRESS_MODE_DIRECT_INDEXED_X:
+// //         {
+// //             uint8_t offset = peek_byte(effective_address + 1);
+// //             sprintf(addr_mode_str, "$%02x,x", offset);
+// //             computed_effective_address = (cpu_state.regs[REG_D].word + offset) + cpu_state.regs[REG_X].word;
+// //             show_computed_address = 1;
+// //         }
+// //         break;
+
+// //         case ADDRESS_MODE_DIRECT_INDEXED_Y:
+// //         {
+// //             uint8_t offset = peek_byte(effective_address + 1);
+// //             sprintf(addr_mode_str, "$%02x,y", offset);
+// //             computed_effective_address = (cpu_state.regs[REG_D].word + offset) + cpu_state.regs[REG_Y].word;
+// //             show_computed_address = 1;
+// //         }
+// //         break;
+
+// //         case ADDRESS_MODE_DIRECT_INDIRECT_INDEXED:
+// //         // {
+// //         //     uint8_t offset = peek_byte(effective_address + 1);
+// //         //     uint16_t address = peek_word(cpu_state.regs[REG_D].word + offset);
+// //         //     sprintf(addr_mode_str, "DBR:(%02x):[D(%04x) + offset(%02x)]=(%04x) + Y(%04x)",  cpu_state.regs[REG_DBR].byte[0],
+// //         //                                                                                     cpu_state.regs[REG_D].word, offset,
+// //         //                                                                                     address, cpu_state.regs[REG_Y].word);
+// //         // }
+// //         break;
+
+// //         case ADDRESS_MODE_DIRECT_INDIRECT_LONG_INDEXED:
+// //             // strcpy(addr_mode_str, "direct indirect long indexed - [d],y");
+// //         break;
+
+// //         case ADDRESS_MODE_DIRECT_INDIRECT_LONG:
+// //             // strcpy(addr_mode_str, "direct indirect long - [d]");
+// //         break;
+
+// //         case ADDRESS_MODE_DIRECT_INDIRECT:
+// //         // {
+// //         //     uint8_t offset = peek_byte(effective_address + 1);
+// //         //     uint16_t address = peek_word(cpu_state.regs[REG_D].word + offset);
+// //         //     sprintf(addr_mode_str, "[D(%04x) + offset(%02x)](%04x) => DBR(%02x):%04x", address, cpu_state.regs[REG_D].word, offset,
+// //         //                                                                                 cpu_state.regs[REG_DBR].word, address);
+// //         // }
+// //         break;
+
+// //         case ADDRESS_MODE_DIRECT:
+// //         {
+// //             uint8_t offset = peek_byte(effective_address + 1);
+// //             sprintf(addr_mode_str, "$%02x", offset);
+// //             computed_effective_address = cpu_state.regs[REG_D].word + offset;
+// //             show_computed_address = 1;
+// //         }
+// //         // {
+// //         //     uint8_t offset = peek_byte(effective_address + 1);
+// //         //     sprintf(addr_mode_str, "D(%04x) + offset(%02x) => 00:%04x", cpu_state.regs[REG_D].word, offset, cpu_state.regs[REG_D].word + offset);
+// //         // }
+// //         break;
+
+// //         case ADDRESS_MODE_IMMEDIATE:
+// //         {
+// //             strcpy(addr_mode_str, "#$");
+// // //            uint32_t immediate = 0;
+// //             for(int32_t index = width - 1; index > 0; index--)
+// //             {
+// //                 sprintf(temp_str, "%02x", peek_byte(effective_address + index));
+// //                 strcat(addr_mode_str, temp_str);
+// // //                immediate <<= 8;
+// // //                immediate |= peek_byte(effective_address + index);
+// //             }
+
+// // //            sprintf(addr_mode_str, "#$%04x", immediate);
+// //         }
+// //         break;
+
+// //         case ADDRESS_MODE_IMPLIED:
+// //             // strcpy(addr_mode_str, "");
+// //         break;
+
+// //         case ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE_LONG:
+// //             // strcpy(addr_mode_str, "program counter relative long - rl");
+// //         break;
+
+// //         case ADDRESS_MODE_PROGRAM_COUNTER_RELATIVE:
+// //         {
+// //             uint16_t offset = peek_byte(effective_address + 1);
+// //             if(offset & 0x80)
+// //             {
+// //                 offset |= 0xff00;
+// //             }
+
+// //             computed_effective_address = ((uint32_t)cpu_state.regs[REG_PBR].word << 16) | ((cpu_state.regs[REG_PC].word + offset + 2) & 0xffff);
+// //             show_computed_address = 1;
+// //             sprintf(addr_mode_str, "$%04x", computed_effective_address & 0xffff);
+// //         //     sprintf(addr_mode_str, "PC(%04x) + offset(%02x) => PBR(%02x):%04x", cpu_state.regs[REG_PC].word + 2, (uint8_t)offset, cpu_state.regs[REG_PBR].byte[0],
+// //         //                                                                         (uint16_t)((cpu_state.regs[REG_PC].word + 2) + offset));
+// //         }
+// //         break;
+
+// //         case ADDRESS_MODE_STACK:
+// //             // addr_mode_str[0] = '\0';
+// //             // if(opcode.opcode == OPCODE_PEA)
+// //             // {
+// //             //     sprintf(temp_str, "immediate (%04x)", peek_word(effective_address + 1));
+// //             //     strcat(addr_mode_str, temp_str);
+// //             // }
+// //         break;
+
+// //         case ADDRESS_MODE_STACK_RELATIVE:
+// //         {
+// //             uint16_t offset = peek_byte(effective_address + 1);
+// //             if(offset & 0x80)
+// //             {
+// //                 offset |= 0xff00;
+// //             }
+// //             computed_effective_address = cpu_state.regs[REG_S].word + offset;
+// //             show_computed_address = 1;
+// //             sprintf(addr_mode_str, "$%02x,s", offset);
+// //         }
+// //             // sprintf(addr_mode_str, "S(%04x) + offset(%02x)", cpu_state.regs[REG_S].word, peek_byte(effective_address + 1));
+// //         break;
+
+// //         case ADDRESS_MODE_STACK_RELATIVE_INDIRECT_INDEXED:
+// //         // {
+// //         //     uint8_t offset = peek_byte(effective_address + 1);
+// //         //     uint16_t pointer = peek_word(cpu_state.regs[REG_S].word + offset) + cpu_state.regs[REG_Y].word;
+// //         //     sprintf(addr_mode_str, "[S(%04x) + offset(%02x)]=(%04x) + Y(%04x)", cpu_state.regs[REG_S].word, offset, pointer, cpu_state.regs[REG_Y].word);
+// //         // }
+// // //            strcpy(addr_mode_str, "stack relative indirect indexed - (d,s),y");
+// //         break;
+
+// //         default:
+// //         // case ADDRESS_MODE_UNKNOWN:
+// //         //     strcpy(addr_mode_str, "unknown");
+// //         // break;
+// //     }
+
+// //     uint32_t addr_mode_str_len = strlen(addr_mode_str);
+// //     while(addr_mode_str_len < 18)
+// //     {
+// //         addr_mode_str[addr_mode_str_len] = ' ';
+// //         addr_mode_str_len++;
+// //     }
+
+// //     addr_mode_str[addr_mode_str_len] = '\0';
+
+// //     // opcode_str = opcode_strs[opcode.opcode];
+
+// //     uint32_t index = 0;
+// //     while(opcode_strs[opcode.opcode][index])
+// //     {
+// //         opcode_str[index] = tolower(opcode_strs[opcode.opcode][index]);
+// //         index++;
+// //     }
+// //     opcode_str[index] = '\0';
+
+// //     if(show_computed_address)
+// //     {
+// //         sprintf(addr_mode_str + 10, "[%06x]", computed_effective_address);
+// //     }
+
+// //     if(cpu_state.reg_p.e)
+// //     {
+// //         sprintf(flags_str, "%c%c1%c%c%c%c%c", cpu_state.reg_p.n ? 'N' : 'n',
+// //                                                cpu_state.reg_p.v ? 'V' : 'v',
+// //                                                cpu_state.reg_p.b ? 'B' : 'b',
+// //                                                cpu_state.reg_p.d ? 'D' : 'd',
+// //                                                cpu_state.reg_p.i ? 'I' : 'i',
+// //                                                cpu_state.reg_p.z ? 'Z' : 'z',
+// //                                                cpu_state.reg_p.c ? 'C' : 'c');
+// //     }
+// //     else
+// //     {
+// //         sprintf(flags_str, "%c%c%c%c%c%c%c%c", cpu_state.reg_p.n ? 'N' : 'n',
+// //                                                cpu_state.reg_p.v ? 'V' : 'v',
+// //                                                cpu_state.reg_p.m ? 'M' : 'm',
+// //                                                cpu_state.reg_p.x ? 'X' : 'x',
+// //                                                cpu_state.reg_p.d ? 'D' : 'd',
+// //                                                cpu_state.reg_p.i ? 'I' : 'i',
+// //                                                cpu_state.reg_p.z ? 'Z' : 'z',
+// //                                                cpu_state.reg_p.c ? 'C' : 'c');
+// //     }
+
+// //     sprintf(regs_str, "A:%04x X:%04x Y:%04x S:%04x D:%04x DB:%02x %s", cpu_state.regs[REG_ACCUM].word,
+// //                                                                         cpu_state.regs[REG_X].word,
+// //                                                                         cpu_state.regs[REG_Y].word,
+// //                                                                         cpu_state.regs[REG_S].word,
+// //                                                                         cpu_state.regs[REG_D].word,
+// //                                                                         cpu_state.regs[REG_DBR].byte[0], flags_str);
+
+// //     sprintf(instruction_str_buffer, "%06x %s %s %s V:%3d H:%4d", effective_address, opcode_str, addr_mode_str, regs_str, vcounter, scanline_cycles);
+
+//     return instruction_str_buffer;
+// }
+
+// int dump_cpu(int show_registers)
+// {
+//     uint32_t address;
+//     int opcode_offset;
+//     struct opcode_t opcode;
+//     char *op_str;
+//     unsigned char *opcode_address;
+//     address = cpu_state.instruction_address;
+
+// //    op_str = instruction_str(address);
+//     op_str = instruction_str(address);
+
+//     printf("===================== CPU ========================\n");
+
+//     if(show_registers)
 //     {
-//         sprintf(flags_str, "%c%c1%c%c%c%c%c", cpu_state.reg_p.n ? 'N' : 'n',
-//                                                cpu_state.reg_p.v ? 'V' : 'v',
-//                                                cpu_state.reg_p.b ? 'B' : 'b',
-//                                                cpu_state.reg_p.d ? 'D' : 'd',
-//                                                cpu_state.reg_p.i ? 'I' : 'i',
-//                                                cpu_state.reg_p.z ? 'Z' : 'z',
-//                                                cpu_state.reg_p.c ? 'C' : 'c');
+//         // printf("=========== REGISTERS ===========\n");
+//         printf("[A: %04x] | ", cpu_state.regs[REG_ACCUM].word);
+//         printf("[X: %04x] | ", cpu_state.regs[REG_X].word);
+//         printf("[Y: %04x] | ", cpu_state.regs[REG_Y].word);
+//         printf("[S: %04x] | ", cpu_state.regs[REG_S].word);
+//         printf("[D: %04x]\n", cpu_state.regs[REG_D].word);
+//         printf("[DBR: %02x] | ", cpu_state.regs[REG_DBR].byte[0]);
+//         printf("[PBR: %02x] | ", cpu_state.regs[REG_PBR].byte[0]);
+
+//         printf("[P: N:%d V:%d ", cpu_state.reg_p.n, cpu_state.reg_p.v);
+
+//         if(cpu_state.reg_p.e)
+//         {
+//             printf("B:%d ", cpu_state.reg_p.b);
+//         }
+//         else
+//         {
+//             printf("M:%d X:%d ", cpu_state.reg_p.m, cpu_state.reg_p.x);
+//         }
+
+//         printf("D:%d Z:%d I:%d C:%d]\n", cpu_state.reg_p.d, cpu_state.reg_p.z, cpu_state.reg_p.i, cpu_state.reg_p.c);
+//         printf("  [E: %02x] | [PC: %04x]", cpu_state.reg_p.e, cpu_state.regs[REG_PC].word);
+
+//         if(cpu_state.regs[REG_INST].word == CPU_BRK_S || cpu_state.regs[REG_INST].word == CPU_INT_HW)
+//         {
+//             char *interrupt_str = "";
+//             switch(cpu_state.cur_interrupt)
+//             {
+//                 case CPU_INT_BRK:
+//                     interrupt_str = "BRK";
+//                 break;
+
+//                 case CPU_INT_IRQ:
+//                     interrupt_str = "IRQ";
+//                 break;
+
+//                 case CPU_INT_NMI:
+//                     interrupt_str = "NMI";
+//                 break;
+
+//                 case CPU_INT_COP:
+//                     interrupt_str = "COP";
+//                 break;
+
+//                 case CPU_INT_RES:
+//                     interrupt_str = "RES";
+//                 break;
+//             }
+
+//             printf(" | handling %s", interrupt_str);
+//         }
+//         printf("\n");
+
+//         // printf("=========== REGISTERS ===========\n");
+//         printf("-------------------------------------\n");
 //     }
-//     else
-//     {
-//         sprintf(flags_str, "%c%c%c%c%c%c%c%c", cpu_state.reg_p.n ? 'N' : 'n',
-//                                                cpu_state.reg_p.v ? 'V' : 'v',
-//                                                cpu_state.reg_p.m ? 'M' : 'm',
-//                                                cpu_state.reg_p.x ? 'X' : 'x',
-//                                                cpu_state.reg_p.d ? 'D' : 'd',
-//                                                cpu_state.reg_p.i ? 'I' : 'i',
-//                                                cpu_state.reg_p.z ? 'Z' : 'z',
-//                                                cpu_state.reg_p.c ? 'C' : 'c');
-//     }
 
-//     sprintf(regs_str, "A:%04x X:%04x Y:%04x S:%04x D:%04x DB:%02x %s", cpu_state.regs[REG_ACCUM].word,
-//                                                                         cpu_state.regs[REG_X].word,
-//                                                                         cpu_state.regs[REG_Y].word,
-//                                                                         cpu_state.regs[REG_S].word,
-//                                                                         cpu_state.regs[REG_D].word,
-//                                                                         cpu_state.regs[REG_DBR].byte[0], flags_str);
+//     printf("%s\n", op_str);
 
-//     sprintf(instruction_str_buffer, "%06x %s %s %s V:%3d H:%4d", effective_address, opcode_str, addr_mode_str, regs_str, vcounter, scanline_cycles);
+//     printf("\n");
 
-    return instruction_str_buffer;
-}
-
-int dump_cpu(int show_registers)
-{
-    uint32_t address;
-    int opcode_offset;
-    struct opcode_t opcode;
-    char *op_str;
-    unsigned char *opcode_address;
-    address = cpu_state.instruction_address;
-
-//    op_str = instruction_str(address);
-    op_str = instruction_str(address);
-
-    printf("===================== CPU ========================\n");
-
-    if(show_registers)
-    {
-        // printf("=========== REGISTERS ===========\n");
-        printf("[A: %04x] | ", cpu_state.regs[REG_ACCUM].word);
-        printf("[X: %04x] | ", cpu_state.regs[REG_X].word);
-        printf("[Y: %04x] | ", cpu_state.regs[REG_Y].word);
-        printf("[S: %04x] | ", cpu_state.regs[REG_S].word);
-        printf("[D: %04x]\n", cpu_state.regs[REG_D].word);
-        printf("[DBR: %02x] | ", cpu_state.regs[REG_DBR].byte[0]);
-        printf("[PBR: %02x] | ", cpu_state.regs[REG_PBR].byte[0]);
-
-        printf("[P: N:%d V:%d ", cpu_state.reg_p.n, cpu_state.reg_p.v);
-
-        if(cpu_state.reg_p.e)
-        {
-            printf("B:%d ", cpu_state.reg_p.b);
-        }
-        else
-        {
-            printf("M:%d X:%d ", cpu_state.reg_p.m, cpu_state.reg_p.x);
-        }
-
-        printf("D:%d Z:%d I:%d C:%d]\n", cpu_state.reg_p.d, cpu_state.reg_p.z, cpu_state.reg_p.i, cpu_state.reg_p.c);
-        printf("  [E: %02x] | [PC: %04x]", cpu_state.reg_p.e, cpu_state.regs[REG_PC].word);
-
-        if(cpu_state.regs[REG_INST].word == BRK_S || cpu_state.regs[REG_INST].word == INT_HW)
-        {
-            char *interrupt_str = "";
-            switch(cpu_state.cur_interrupt)
-            {
-                case CPU_INT_BRK:
-                    interrupt_str = "BRK";
-                break;
-
-                case CPU_INT_IRQ:
-                    interrupt_str = "IRQ";
-                break;
-
-                case CPU_INT_NMI:
-                    interrupt_str = "NMI";
-                break;
-
-                case CPU_INT_COP:
-                    interrupt_str = "COP";
-                break;
-
-                case CPU_INT_RES:
-                    interrupt_str = "RES";
-                break;
-            }
-
-            printf(" | handling %s", interrupt_str);
-        }
-        printf("\n");
-
-        // printf("=========== REGISTERS ===========\n");
-        printf("-------------------------------------\n");
-    }
-
-    printf("%s\n", op_str);
-
-    printf("\n");
-
-    return 0;
-}
+//     return 0;
+// }
 
 int view_hardware_registers()
 {
@@ -6576,9 +6576,9 @@ uint32_t cpu_mem_cycles(uint32_t effective_address)
         index += offset < 0x4000;
         index += offset < 0x2000;
 
-        return mem_speed_map[index][bank_region2 && (ram1_regs[CPU_REG_MEMSEL] & 1)];
+        return mem_speed_map[index][bank_region2 && (ram1_regs[CPU_MEM_REG_MEMSEL] & 1)];
     }
-    else if(ram1_regs[CPU_REG_MEMSEL] & 1)
+    else if(ram1_regs[CPU_MEM_REG_MEMSEL] & 1)
     {
         return MEM_SPEED_FAST_CYCLES;
     }
@@ -6665,26 +6665,26 @@ void reset_cpu()
     knew why this is needed... */
     cpu_state.uop_cycles = -22 * CPU_MASTER_CYCLES;
 
-    ram1_regs[CPU_REG_MEMSEL] = 0;
-    ram1_regs[CPU_REG_TIMEUP] = 0;
-    ram1_regs[CPU_REG_HTIMEL] = 0xff;
-    ram1_regs[CPU_REG_HTIMEH] = 0x01;
-    ram1_regs[CPU_REG_VTIMEL] = 0xff;
-    ram1_regs[CPU_REG_VTIMEH] = 0x01;
-    ram1_regs[CPU_REG_MDMAEN] = 0;
-    ram1_regs[CPU_REG_HDMAEN] = 0;
+    ram1_regs[CPU_MEM_REG_MEMSEL] = 0;
+    ram1_regs[CPU_MEM_REG_TIMEUP] = 0;
+    ram1_regs[CPU_MEM_REG_HTIMEL] = 0xff;
+    ram1_regs[CPU_MEM_REG_HTIMEH] = 0x01;
+    ram1_regs[CPU_MEM_REG_VTIMEL] = 0xff;
+    ram1_regs[CPU_MEM_REG_VTIMEH] = 0x01;
+    ram1_regs[CPU_MEM_REG_MDMAEN] = 0;
+    ram1_regs[CPU_MEM_REG_HDMAEN] = 0;
 }
 
 void reset_core()
 {
-    cpu_state.regs[REG_PC].word = 0xfffc;
-    cpu_state.regs[REG_DBR].byte[0] = 0;
-    cpu_state.regs[REG_PBR].byte[0] = 0;
-    cpu_state.regs[REG_D].word = 0;
-    cpu_state.regs[REG_X].byte[1] = 0;
-    cpu_state.regs[REG_Y].byte[1] = 0;
-    cpu_state.regs[REG_S].byte[1] = 0x01;
-    cpu_state.regs[REG_ZERO].word = 0;
+    cpu_state.regs[CPU_REG_PC].word = 0xfffc;
+    cpu_state.regs[CPU_REG_DBR].byte[0] = 0;
+    cpu_state.regs[CPU_REG_PBR].byte[0] = 0;
+    cpu_state.regs[CPU_REG_D].word = 0;
+    cpu_state.regs[CPU_REG_X].byte[1] = 0;
+    cpu_state.regs[CPU_REG_Y].byte[1] = 0;
+    cpu_state.regs[CPU_REG_S].byte[1] = 0x01;
+    cpu_state.regs[CPU_REG_ZERO].word = 0;
     cpu_state.reg_p.e = 1;
     cpu_state.reg_p.i = 1;
     cpu_state.reg_p.d = 0;
@@ -6703,8 +6703,8 @@ void reset_core()
 
     cpu_state.cur_interrupt = CPU_INT_RES;
     cpu_state.interrupts[cpu_state.cur_interrupt] = 1;
-    cpu_state.instruction_address = EFFECTIVE_ADDRESS(cpu_state.regs[REG_PBR].byte[0], cpu_state.regs[REG_PC].word);
-    cpu_state.regs[REG_INST].word = INT_HW;
+    cpu_state.instruction_address = EFFECTIVE_ADDRESS(cpu_state.regs[CPU_REG_PBR].byte[0], cpu_state.regs[CPU_REG_PC].word);
+    cpu_state.regs[CPU_REG_INST].word = CPU_OPCODE_INT_HW;
     load_instruction();
 }
 
@@ -6736,7 +6736,7 @@ void reset_core()
 
 void load_instruction()
 {
-    cpu_state.instruction = instructions + cpu_state.regs[REG_INST].word;
+    cpu_state.instruction = instructions + cpu_state.regs[CPU_REG_INST].word;
     cpu_state.uop_index = 0;
     load_uop();
 
@@ -6794,9 +6794,9 @@ uint32_t step_cpu(int32_t *cycle_count)
                 if(cpu_state.run_mul)
                 {
                     cpu_state.mul_cycles--;
-                    uint16_t current_product = (uint16_t)ram1_regs[CPU_REG_RDMPYL] | ((uint16_t)ram1_regs[CPU_REG_RDMPYH] << 8);
+                    uint16_t current_product = (uint16_t)ram1_regs[CPU_MEM_REG_RDMPYL] | ((uint16_t)ram1_regs[CPU_MEM_REG_RDMPYH] << 8);
                     uint32_t shift = CPU_MUL_MACHINE_CYCLES - cpu_state.mul_cycles;
-                    uint16_t quotient = (uint16_t)ram1_regs[CPU_REG_RDDIVL] | ((uint16_t)ram1_regs[CPU_REG_RDDIVH] << 8);
+                    uint16_t quotient = (uint16_t)ram1_regs[CPU_MEM_REG_RDDIVL] | ((uint16_t)ram1_regs[CPU_MEM_REG_RDDIVH] << 8);
 
                     if(quotient & 0x01)
                     {
@@ -6806,17 +6806,17 @@ uint32_t step_cpu(int32_t *cycle_count)
                     quotient >>= 1;
                     cpu_state.shifter <<= 1;
 
-                    ram1_regs[CPU_REG_RDMPYL] = current_product & 0xff;
-                    ram1_regs[CPU_REG_RDMPYH] = (current_product >> 8) & 0xff;
-                    ram1_regs[CPU_REG_RDDIVL] = quotient & 0xff;
-                    ram1_regs[CPU_REG_RDDIVH] = (quotient >> 8) & 0xff;
+                    ram1_regs[CPU_MEM_REG_RDMPYL] = current_product & 0xff;
+                    ram1_regs[CPU_MEM_REG_RDMPYH] = (current_product >> 8) & 0xff;
+                    ram1_regs[CPU_MEM_REG_RDDIVL] = quotient & 0xff;
+                    ram1_regs[CPU_MEM_REG_RDDIVH] = (quotient >> 8) & 0xff;
                 }
 
                 if(cpu_state.run_div)
                 {
                     cpu_state.div_cycles--;
-                    uint16_t current_quotient = (uint16_t)ram1_regs[CPU_REG_RDDIVL] | ((uint16_t)ram1_regs[CPU_REG_RDDIVH] << 8);
-                    uint16_t product = (uint16_t)ram1_regs[CPU_REG_RDMPYL] | ((uint16_t)ram1_regs[CPU_REG_RDMPYH] << 8);
+                    uint16_t current_quotient = (uint16_t)ram1_regs[CPU_MEM_REG_RDDIVL] | ((uint16_t)ram1_regs[CPU_MEM_REG_RDDIVH] << 8);
+                    uint16_t product = (uint16_t)ram1_regs[CPU_MEM_REG_RDMPYL] | ((uint16_t)ram1_regs[CPU_MEM_REG_RDMPYH] << 8);
                     current_quotient <<= 1;
                     cpu_state.shifter >>= 1;
                     if(product >= cpu_state.shifter)
@@ -6825,15 +6825,15 @@ uint32_t step_cpu(int32_t *cycle_count)
                         current_quotient |= 1;
                     }
 
-                    ram1_regs[CPU_REG_RDDIVL] = current_quotient & 0xff;
-                    ram1_regs[CPU_REG_RDDIVH] = (current_quotient >> 8) & 0xff;
-                    ram1_regs[CPU_REG_RDMPYL] = product & 0xff;
-                    ram1_regs[CPU_REG_RDMPYH] = (product >> 8) & 0xff;
+                    ram1_regs[CPU_MEM_REG_RDDIVL] = current_quotient & 0xff;
+                    ram1_regs[CPU_MEM_REG_RDDIVH] = (current_quotient >> 8) & 0xff;
+                    ram1_regs[CPU_MEM_REG_RDMPYL] = product & 0xff;
+                    ram1_regs[CPU_MEM_REG_RDMPYH] = (product >> 8) & 0xff;
                 }
             }
 
-            cpu_state.reg_p.dl = cpu_state.regs[REG_D].byte[0] != 0;
-            cpu_state.reg_p.am = cpu_state.regs[REG_ACCUM].word == 0xffff;
+            cpu_state.reg_p.dl = cpu_state.regs[CPU_REG_D].byte[0] != 0;
+            cpu_state.reg_p.am = cpu_state.regs[CPU_REG_ACCUM].word == 0xffff;
             next_uop();
         }
     }
@@ -6848,7 +6848,7 @@ uint32_t step_cpu(int32_t *cycle_count)
         {
             cpu_state.rdy = 1;
             cpu_state.wai = 0;
-            cpu_state.regs[REG_INST].word = INT_HW;
+            cpu_state.regs[CPU_REG_INST].word = CPU_OPCODE_INT_HW;
             cpu_state.cur_interrupt = CPU_INT_NMI;
             cpu_state.interrupts[CPU_INT_NMI] = 0;
         }
@@ -6856,12 +6856,12 @@ uint32_t step_cpu(int32_t *cycle_count)
         {
             if(cpu_state.reg_p.i)
             {
-                cpu_state.regs[REG_INST].word = FETCH;
+                cpu_state.regs[CPU_REG_INST].word = CPU_OPCODE_FETCH;
                 cpu_state.cur_interrupt = CPU_INT_BRK;
             }
             else
             {
-                cpu_state.regs[REG_INST].word = INT_HW;
+                cpu_state.regs[CPU_REG_INST].word = CPU_OPCODE_INT_HW;
                 cpu_state.cur_interrupt = CPU_INT_IRQ;
             }
 
@@ -6871,7 +6871,7 @@ uint32_t step_cpu(int32_t *cycle_count)
         }
         else
         {
-            cpu_state.regs[REG_INST].word = FETCH;
+            cpu_state.regs[CPU_REG_INST].word = CPU_OPCODE_FETCH;
             cpu_state.cur_interrupt = CPU_INT_BRK;
         }
 
@@ -6881,7 +6881,7 @@ uint32_t step_cpu(int32_t *cycle_count)
             cpu_state.uop_cycles = 0;
             // cpu_state.interrupts[cpu_state.cur_interrupt] = 0;
             cpu_state.instruction_cycles = cpu_state.uop_cycles;
-            cpu_state.instruction_address = EFFECTIVE_ADDRESS(cpu_state.regs[REG_PBR].byte[0], cpu_state.regs[REG_PC].word);
+            cpu_state.instruction_address = EFFECTIVE_ADDRESS(cpu_state.regs[CPU_REG_PBR].byte[0], cpu_state.regs[CPU_REG_PC].word);
             cpu_state.uop_index = 0;
             load_instruction();
         }
@@ -6898,9 +6898,9 @@ void init_disasm(struct disasm_state_t *disasm_state, struct cpu_state_t *cpu_st
     // disasm_state->reg_pbr = cpu_state->regs[REG_PBR].byte[0];
     disasm_state->reg_pc = cpu_state->instruction_address & 0xffff;
     disasm_state->reg_pbr = (cpu_state->instruction_address >> 16) & 0xff;
-    disasm_state->reg_p = (((uint32_t)cpu_state->reg_p.m) << STATUS_FLAG_M) | 
-                          (((uint32_t)cpu_state->reg_p.x) << STATUS_FLAG_X) | 
-                          (((uint32_t)cpu_state->reg_p.e) << STATUS_FLAG_E);
+    disasm_state->reg_p = (((uint32_t)cpu_state->reg_p.m) << CPU_STATUS_FLAG_M) | 
+                          (((uint32_t)cpu_state->reg_p.x) << CPU_STATUS_FLAG_X) | 
+                          (((uint32_t)cpu_state->reg_p.e) << CPU_STATUS_FLAG_E);
 }
 
 uint32_t disasm(struct disasm_state_t *disasm_state, struct disasm_inst_t *instruction)
@@ -6949,7 +6949,7 @@ void io_write(uint32_t effective_address, uint8_t value)
 
 void nmitimen_write(uint32_t effective_address, uint8_t value)
 {
-    ram1_regs[CPU_REG_NMITIMEN] = value;
+    ram1_regs[CPU_MEM_REG_NMITIMEN] = value;
 
     if(value & (CPU_NMITIMEN_FLAG_HTIMER_EN | CPU_NMITIMEN_FLAG_VTIMER_EN))
     {
@@ -6957,29 +6957,29 @@ void nmitimen_write(uint32_t effective_address, uint8_t value)
     }
     else
     {
-        ram1_regs[CPU_REG_TIMEUP] = 0;
+        ram1_regs[CPU_MEM_REG_TIMEUP] = 0;
     }
 }
 
 uint8_t timeup_read(uint32_t effective_address)
 {
-    uint8_t value = ram1_regs[CPU_REG_TIMEUP];
-    ram1_regs[CPU_REG_TIMEUP] = 0;
+    uint8_t value = ram1_regs[CPU_MEM_REG_TIMEUP];
+    ram1_regs[CPU_MEM_REG_TIMEUP] = 0;
     /* bits 6-0 are open bus, so we put the last thing that was on the data bus in them */
     return value | (last_bus_value & 0x7f);
 }
 
 uint8_t rdnmi_read(uint32_t effective_address)
 {
-    uint8_t value = ram1_regs[CPU_REG_RDNMI];
-    ram1_regs[CPU_REG_RDNMI] &= ~CPU_RDNMI_BLANK_NMI;
+    uint8_t value = ram1_regs[CPU_MEM_REG_RDNMI];
+    ram1_regs[CPU_MEM_REG_RDNMI] &= ~CPU_RDNMI_BLANK_NMI;
     /* bits 6-4 are open bus, so we put the last thing that was on the data bus in them */
     return value | (last_bus_value & 0x70);
 }
 
 uint8_t hvbjoy_read(uint32_t effective_address)
 {
-    uint8_t value = ram1_regs[CPU_REG_HVBJOY];
+    uint8_t value = ram1_regs[CPU_MEM_REG_HVBJOY];
     /* bits 5-1 are open bus, so we put the last thing that was on the data bus in them */
     return value | (last_bus_value & 0x3e);
 }
@@ -6988,50 +6988,50 @@ void wrmpyb_write(uint32_t effective_address, uint8_t value)
 {
     if(cpu_state.mul_cycles == 0)
     {
-        ram1_regs[CPU_REG_WRMPYB] = value;
-        cpu_state.shifter = ram1_regs[CPU_REG_WRMPYB];
-        ram1_regs[CPU_REG_RDDIVL] = ram1_regs[CPU_REG_WRMPYA];
-        ram1_regs[CPU_REG_RDDIVH] = ram1_regs[CPU_REG_WRMPYB];
+        ram1_regs[CPU_MEM_REG_WRMPYB] = value;
+        cpu_state.shifter = ram1_regs[CPU_MEM_REG_WRMPYB];
+        ram1_regs[CPU_MEM_REG_RDDIVL] = ram1_regs[CPU_MEM_REG_WRMPYA];
+        ram1_regs[CPU_MEM_REG_RDDIVH] = ram1_regs[CPU_MEM_REG_WRMPYB];
         cpu_state.mul_cycles = CPU_MUL_MACHINE_CYCLES;
         /* setting this to zero here guarantees there will be a delay of a single
         machine cycle before the multiplication begins, which is necessary for timing */
         cpu_state.run_mul = 0;
     }
 
-    ram1_regs[CPU_REG_RDMPYL] = 0;
-    ram1_regs[CPU_REG_RDMPYH] = 0;
+    ram1_regs[CPU_MEM_REG_RDMPYL] = 0;
+    ram1_regs[CPU_MEM_REG_RDMPYH] = 0;
 }
 
 void wrdivb_write(uint32_t effective_address, uint8_t value)
 {
     if(cpu_state.div_cycles == 0)
     {
-        ram1_regs[CPU_REG_WRDIVB] = value;
-        cpu_state.shifter = (uint32_t)ram1_regs[CPU_REG_WRDIVB] << 16;
+        ram1_regs[CPU_MEM_REG_WRDIVB] = value;
+        cpu_state.shifter = (uint32_t)ram1_regs[CPU_MEM_REG_WRDIVB] << 16;
         cpu_state.div_cycles = CPU_DIV_MACHINE_CYCLES;
         /* setting this to zero here guarantees there will be a delay of a single
         machine cycle before the division begins, which is necessary for timing */
         cpu_state.run_div = 0;
-//        cpu_state.latched_dividend = (uint16_t)ram1_regs[CPU_REG_WRDIVL] | ((uint16_t)ram1_regs[CPU_REG_WRDIVH] << 8);
+//        cpu_state.latched_dividend = (uint16_t)ram1_regs[CPU_MEM_REG_WRDIVL] | ((uint16_t)ram1_regs[CPU_MEM_REG_WRDIVH] << 8);
     }
 
-    ram1_regs[CPU_REG_RDMPYL] = ram1_regs[CPU_REG_WRDIVL];
-    ram1_regs[CPU_REG_RDMPYH] = ram1_regs[CPU_REG_WRDIVH];
-//    ram1_regs[CPU_REG_RDMPYL] = cpu_state.latched_dividend & 0xff;
-//    ram1_regs[CPU_REG_RDMPYH] = (cpu_state.latched_dividend >> 8) & 0xff;
+    ram1_regs[CPU_MEM_REG_RDMPYL] = ram1_regs[CPU_MEM_REG_WRDIVL];
+    ram1_regs[CPU_MEM_REG_RDMPYH] = ram1_regs[CPU_MEM_REG_WRDIVH];
+//    ram1_regs[CPU_MEM_REG_RDMPYL] = cpu_state.latched_dividend & 0xff;
+//    ram1_regs[CPU_MEM_REG_RDMPYH] = (cpu_state.latched_dividend >> 8) & 0xff;
 }
 
 
 
 uint32_t inc_pc(uint32_t arg)
 {
-    cpu_state.regs[REG_PC].word += arg;
+    cpu_state.regs[CPU_REG_PC].word += arg;
     return 1;
 }
 
 uint32_t decode(uint32_t arg)
 {
-    cpu_state.regs[REG_INST].byte[1] = 0;
+    cpu_state.regs[CPU_REG_INST].byte[1] = 0;
     load_instruction();
     cpu_state.uop_index--;
     return 1;
@@ -7039,9 +7039,9 @@ uint32_t decode(uint32_t arg)
 
 uint32_t mov_lpc(uint32_t arg)
 {
-    arg |= ((uint32_t)REG_PBR << 16) | ((uint32_t)REG_PC << 8);
+    arg |= ((uint32_t)CPU_REG_PBR << 16) | ((uint32_t)CPU_REG_PC << 8);
     uint32_t done = mov_l(arg);
-    cpu_state.regs[REG_PC].word += done;
+    cpu_state.regs[CPU_REG_PC].word += done;
     return done;
 }
 
@@ -7118,45 +7118,45 @@ uint32_t mov_p(uint32_t arg)
     uint32_t src = (arg >> 8) & 0xff;
     uint32_t dst = arg & 0xff;
 
-    if(src == REG_P)
+    if(src == CPU_REG_P)
     {
         struct reg_t *dst_reg = cpu_state.regs + dst;
-        dst_reg->byte[0]  = cpu_state.reg_p.c << STATUS_FLAG_C;
-        dst_reg->byte[0] |= cpu_state.reg_p.z << STATUS_FLAG_Z;
-        dst_reg->byte[0] |= cpu_state.reg_p.i << STATUS_FLAG_I;
-        dst_reg->byte[0] |= cpu_state.reg_p.d << STATUS_FLAG_D;
-        dst_reg->byte[0] |= cpu_state.reg_p.v << STATUS_FLAG_V;
-        dst_reg->byte[0] |= cpu_state.reg_p.n << STATUS_FLAG_N;
+        dst_reg->byte[0]  = cpu_state.reg_p.c << CPU_STATUS_FLAG_C;
+        dst_reg->byte[0] |= cpu_state.reg_p.z << CPU_STATUS_FLAG_Z;
+        dst_reg->byte[0] |= cpu_state.reg_p.i << CPU_STATUS_FLAG_I;
+        dst_reg->byte[0] |= cpu_state.reg_p.d << CPU_STATUS_FLAG_D;
+        dst_reg->byte[0] |= cpu_state.reg_p.v << CPU_STATUS_FLAG_V;
+        dst_reg->byte[0] |= cpu_state.reg_p.n << CPU_STATUS_FLAG_N;
 
         if(cpu_state.reg_p.e)
         {
-            dst_reg->byte[0] |= cpu_state.reg_p.b << STATUS_FLAG_X;
-            dst_reg->byte[0] |= 1 << STATUS_FLAG_M;
+            dst_reg->byte[0] |= cpu_state.reg_p.b << CPU_STATUS_FLAG_X;
+            dst_reg->byte[0] |= 1 << CPU_STATUS_FLAG_M;
         }
         else
         {
-            dst_reg->byte[0] |= cpu_state.reg_p.x << STATUS_FLAG_X;
-            dst_reg->byte[0] |= cpu_state.reg_p.m << STATUS_FLAG_M;
+            dst_reg->byte[0] |= cpu_state.reg_p.x << CPU_STATUS_FLAG_X;
+            dst_reg->byte[0] |= cpu_state.reg_p.m << CPU_STATUS_FLAG_M;
         }
     }
     else
     {
         struct reg_t *src_reg = cpu_state.regs + src;
-        cpu_state.reg_p.c = (src_reg->byte[0] >> STATUS_FLAG_C) & 1;
-        cpu_state.reg_p.z = (src_reg->byte[0] >> STATUS_FLAG_Z) & 1;
-        cpu_state.reg_p.i = (src_reg->byte[0] >> STATUS_FLAG_I) & 1;
-        cpu_state.reg_p.d = (src_reg->byte[0] >> STATUS_FLAG_D) & 1;
-        cpu_state.reg_p.v = (src_reg->byte[0] >> STATUS_FLAG_V) & 1;
-        cpu_state.reg_p.n = (src_reg->byte[0] >> STATUS_FLAG_N) & 1;
+        cpu_state.reg_p.c = (src_reg->byte[0] >> CPU_STATUS_FLAG_C) & 1;
+        cpu_state.reg_p.z = (src_reg->byte[0] >> CPU_STATUS_FLAG_Z) & 1;
+        cpu_state.reg_p.i = (src_reg->byte[0] >> CPU_STATUS_FLAG_I) & 1;
+        cpu_state.reg_p.d = (src_reg->byte[0] >> CPU_STATUS_FLAG_D) & 1;
+        cpu_state.reg_p.v = (src_reg->byte[0] >> CPU_STATUS_FLAG_V) & 1;
+        cpu_state.reg_p.n = (src_reg->byte[0] >> CPU_STATUS_FLAG_N) & 1;
 
         if(cpu_state.reg_p.e)
         {
-            cpu_state.reg_p.b = (src_reg->byte[0] >> STATUS_FLAG_X) & 1;
+            cpu_state.reg_p.b = (src_reg->byte[0] >> CPU_STATUS_FLAG_X) & 1;
         }
         else
         {
-            cpu_state.reg_p.x = (src_reg->byte[0] >> STATUS_FLAG_X) & 1;
-            cpu_state.reg_p.m = (src_reg->byte[0] >> STATUS_FLAG_M) & 1;
+            cpu_state.reg_p.x = (src_reg->byte[0] >> CPU_STATUS_FLAG_X) & 1;
+            cpu_state.reg_p.m = (src_reg->byte[0] >> CPU_STATUS_FLAG_M) & 1;
         }
     }
 
@@ -7168,11 +7168,11 @@ uint32_t decs(uint32_t arg)
 
     if(cpu_state.reg_p.e)
     {
-        cpu_state.regs[REG_S].byte[0]--;
+        cpu_state.regs[CPU_REG_S].byte[0]--;
     }
     else
     {
-        cpu_state.regs[REG_S].word--;
+        cpu_state.regs[CPU_REG_S].word--;
     }
 
     return 1;
@@ -7194,11 +7194,11 @@ uint32_t incs(uint32_t arg)
 {
     if(cpu_state.reg_p.e)
     {
-        cpu_state.regs[REG_S].byte[0]++;
+        cpu_state.regs[CPU_REG_S].byte[0]++;
     }
     else
     {
-        cpu_state.regs[REG_S].word++;
+        cpu_state.regs[CPU_REG_S].word++;
     }
 
     return 1;
@@ -7232,28 +7232,28 @@ uint32_t sext(uint32_t arg)
 
 uint32_t set_p(uint32_t arg)
 {
-    if(arg < STATUS_FLAG_LAST)
+    if(arg < CPU_STATUS_FLAG_LAST)
     {
         cpu_state.reg_p.flags[arg] = 1;
     }
     else
     {
-        uint32_t flags = cpu_state.regs[REG_TEMP].byte[0];
+        uint32_t flags = cpu_state.regs[CPU_REG_TEMP].byte[0];
 
-        cpu_state.reg_p.c = cpu_state.reg_p.c || (flags & (1 << STATUS_FLAG_C));
-        cpu_state.reg_p.z = cpu_state.reg_p.z || (flags & (1 << STATUS_FLAG_Z));
-        cpu_state.reg_p.i = cpu_state.reg_p.i || (flags & (1 << STATUS_FLAG_I));
-        cpu_state.reg_p.d = cpu_state.reg_p.d || (flags & (1 << STATUS_FLAG_D));
-        cpu_state.reg_p.v = cpu_state.reg_p.v || (flags & (1 << STATUS_FLAG_V));
-        cpu_state.reg_p.n = cpu_state.reg_p.n || (flags & (1 << STATUS_FLAG_N));
-        cpu_state.reg_p.x = cpu_state.reg_p.x || (flags & (1 << STATUS_FLAG_X));
-        cpu_state.reg_p.m = cpu_state.reg_p.m || (flags & (1 << STATUS_FLAG_M));
+        cpu_state.reg_p.c = cpu_state.reg_p.c || (flags & (1 << CPU_STATUS_FLAG_C));
+        cpu_state.reg_p.z = cpu_state.reg_p.z || (flags & (1 << CPU_STATUS_FLAG_Z));
+        cpu_state.reg_p.i = cpu_state.reg_p.i || (flags & (1 << CPU_STATUS_FLAG_I));
+        cpu_state.reg_p.d = cpu_state.reg_p.d || (flags & (1 << CPU_STATUS_FLAG_D));
+        cpu_state.reg_p.v = cpu_state.reg_p.v || (flags & (1 << CPU_STATUS_FLAG_V));
+        cpu_state.reg_p.n = cpu_state.reg_p.n || (flags & (1 << CPU_STATUS_FLAG_N));
+        cpu_state.reg_p.x = cpu_state.reg_p.x || (flags & (1 << CPU_STATUS_FLAG_X));
+        cpu_state.reg_p.m = cpu_state.reg_p.m || (flags & (1 << CPU_STATUS_FLAG_M));
     }
 
     if(cpu_state.reg_p.x)
     {
-        cpu_state.regs[REG_X].byte[1] = 0;
-        cpu_state.regs[REG_Y].byte[1] = 0;
+        cpu_state.regs[CPU_REG_X].byte[1] = 0;
+        cpu_state.regs[CPU_REG_Y].byte[1] = 0;
     }
 
     return 1;
@@ -7261,22 +7261,22 @@ uint32_t set_p(uint32_t arg)
 
 uint32_t clr_p(uint32_t arg)
 {
-    if(arg < STATUS_FLAG_LAST)
+    if(arg < CPU_STATUS_FLAG_LAST)
     {
         cpu_state.reg_p.flags[arg] = 0;
     }
     else
     {
-        uint32_t flags = ~cpu_state.regs[REG_TEMP].byte[0];
+        uint32_t flags = ~cpu_state.regs[CPU_REG_TEMP].byte[0];
 
-        cpu_state.reg_p.c = cpu_state.reg_p.c && (flags & (1 << STATUS_FLAG_C));
-        cpu_state.reg_p.z = cpu_state.reg_p.z && (flags & (1 << STATUS_FLAG_Z));
-        cpu_state.reg_p.i = cpu_state.reg_p.i && (flags & (1 << STATUS_FLAG_I));
-        cpu_state.reg_p.d = cpu_state.reg_p.d && (flags & (1 << STATUS_FLAG_D));
-        cpu_state.reg_p.x = cpu_state.reg_p.x && (flags & (1 << STATUS_FLAG_X));
-        cpu_state.reg_p.m = cpu_state.reg_p.m && (flags & (1 << STATUS_FLAG_M));
-        cpu_state.reg_p.v = cpu_state.reg_p.v && (flags & (1 << STATUS_FLAG_V));
-        cpu_state.reg_p.n = cpu_state.reg_p.n && (flags & (1 << STATUS_FLAG_N));
+        cpu_state.reg_p.c = cpu_state.reg_p.c && (flags & (1 << CPU_STATUS_FLAG_C));
+        cpu_state.reg_p.z = cpu_state.reg_p.z && (flags & (1 << CPU_STATUS_FLAG_Z));
+        cpu_state.reg_p.i = cpu_state.reg_p.i && (flags & (1 << CPU_STATUS_FLAG_I));
+        cpu_state.reg_p.d = cpu_state.reg_p.d && (flags & (1 << CPU_STATUS_FLAG_D));
+        cpu_state.reg_p.x = cpu_state.reg_p.x && (flags & (1 << CPU_STATUS_FLAG_X));
+        cpu_state.reg_p.m = cpu_state.reg_p.m && (flags & (1 << CPU_STATUS_FLAG_M));
+        cpu_state.reg_p.v = cpu_state.reg_p.v && (flags & (1 << CPU_STATUS_FLAG_V));
+        cpu_state.reg_p.n = cpu_state.reg_p.n && (flags & (1 << CPU_STATUS_FLAG_N));
     }
 
     if(cpu_state.reg_p.e)
@@ -7286,7 +7286,7 @@ uint32_t clr_p(uint32_t arg)
     }
 
     return 1;
-}
+} 
 
 uint32_t xce(uint32_t arg)
 {
@@ -7300,10 +7300,10 @@ uint32_t xce(uint32_t arg)
             cpu_state.reg_p.m = 1;
             cpu_state.reg_p.x = 1;
             /* the upper byte of the stack pointer is forced to 1 when in emulation mode */
-            cpu_state.regs[REG_S].byte[1] = 0x01;
+            cpu_state.regs[CPU_REG_S].byte[1] = 0x01;
             /* the upper byte of the index registers are forced to 0 when in emulation mode */
-            cpu_state.regs[REG_X].byte[1] = 0x00;
-            cpu_state.regs[REG_Y].byte[1] = 0x00;
+            cpu_state.regs[CPU_REG_X].byte[1] = 0x00;
+            cpu_state.regs[CPU_REG_Y].byte[1] = 0x00;
         }
 
         cpu_state.reg_p.c = cpu_state.reg_p.e;
@@ -7315,9 +7315,9 @@ uint32_t xce(uint32_t arg)
 
 uint32_t xba(uint32_t arg)
 {
-    uint8_t msb = cpu_state.regs[REG_ACCUM].byte[1];
-    cpu_state.regs[REG_ACCUM].byte[1] = cpu_state.regs[REG_ACCUM].byte[0];
-    cpu_state.regs[REG_ACCUM].byte[0] = msb;
+    uint8_t msb = cpu_state.regs[CPU_REG_ACCUM].byte[1];
+    cpu_state.regs[CPU_REG_ACCUM].byte[1] = cpu_state.regs[CPU_REG_ACCUM].byte[0];
+    cpu_state.regs[CPU_REG_ACCUM].byte[0] = msb;
     return 1;
 }
 
@@ -7345,7 +7345,7 @@ uint32_t addr_offr(uint32_t arg)
     uint32_t bank_wrap = (arg >> 8) & 0xff;
     uint32_t addr_reg = arg & 0xff;
     uint32_t offset = (uint32_t)cpu_state.regs[addr_reg].word;
-    uint32_t prev_addr = EFFECTIVE_ADDRESS(cpu_state.regs[REG_BANK].byte[0], cpu_state.regs[REG_ADDR].word);
+    uint32_t prev_addr = EFFECTIVE_ADDRESS(cpu_state.regs[CPU_REG_BANK].byte[0], cpu_state.regs[CPU_REG_ADDR].word);
 
     if(signed_offset && (offset & 0x8000))
     {
@@ -7353,11 +7353,11 @@ uint32_t addr_offr(uint32_t arg)
     }
 
     uint32_t addr = prev_addr + offset;
-    cpu_state.regs[REG_ADDR].word = addr & 0xffff;
+    cpu_state.regs[CPU_REG_ADDR].word = addr & 0xffff;
 
     if(!bank_wrap)
     {
-        cpu_state.regs[REG_BANK].byte[0] = (addr >> 16) & 0xff;
+        cpu_state.regs[CPU_REG_BANK].byte[0] = (addr >> 16) & 0xff;
     }
 
     /* crossed page boundary */
@@ -7372,7 +7372,7 @@ uint32_t addr_offi(uint32_t arg)
     uint32_t signed_offset = (arg >> 24) & 0xff;
     uint32_t bank_wrap = (arg >> 16) & 0xff;
     uint16_t offset = arg & 0xffff;
-    uint32_t prev_addr = EFFECTIVE_ADDRESS(cpu_state.regs[REG_BANK].byte[0], cpu_state.regs[REG_ADDR].word);
+    uint32_t prev_addr = EFFECTIVE_ADDRESS(cpu_state.regs[CPU_REG_BANK].byte[0], cpu_state.regs[CPU_REG_ADDR].word);
 
     if(signed_offset && (offset & 0x8000))
     {
@@ -7380,11 +7380,11 @@ uint32_t addr_offi(uint32_t arg)
     }
 
     uint32_t addr = prev_addr + (uint32_t)offset;
-    cpu_state.regs[REG_ADDR].word = addr & 0xffff;
+    cpu_state.regs[CPU_REG_ADDR].word = addr & 0xffff;
 
     if(!bank_wrap)
     {
-        cpu_state.regs[REG_BANK].byte[0] = (addr >> 16) & 0xff;
+        cpu_state.regs[CPU_REG_BANK].byte[0] = (addr >> 16) & 0xff;
     }
 
     /* crossed page boundary */
@@ -7448,7 +7448,7 @@ uint32_t alu_op(uint32_t arg)
     uint32_t operation = (arg >> 8) & 0xff;
     uint32_t width_flag = arg & 0xff;
     uint32_t width = cpu_state.reg_p.flags[width_flag];
-//    uint8_t flags = cpu_state.regs[REG_P].byte[cpu_state.reg_e];
+//    uint8_t flags = cpu_state.regs[CPU_REG_P].byte[cpu_state.reg_e];
 
     uint32_t sign_mask = alu_sign_masks[width];
     uint32_t carry_mask = alu_carry_masks[width];
@@ -7526,14 +7526,14 @@ uint32_t alu_op(uint32_t arg)
         break;
 
         case ALU_OP_TRB:
-            cpu_state.regs[REG_TEMP].word = (uint32_t)((~cpu_state.regs[REG_ACCUM].word) & zero_mask) & operand0;
-            cpu_state.reg_p.z = !((cpu_state.regs[REG_ACCUM].word & operand0) & zero_mask);
+            cpu_state.regs[CPU_REG_TEMP].word = (uint32_t)((~cpu_state.regs[CPU_REG_ACCUM].word) & zero_mask) & operand0;
+            cpu_state.reg_p.z = !((cpu_state.regs[CPU_REG_ACCUM].word & operand0) & zero_mask);
             return 1;
         break;
 
         case ALU_OP_TSB:
-            cpu_state.regs[REG_TEMP].word = (uint32_t)(cpu_state.regs[REG_ACCUM].word & zero_mask) | operand0;
-            cpu_state.reg_p.z = !((cpu_state.regs[REG_ACCUM].word & operand0) & zero_mask);
+            cpu_state.regs[CPU_REG_TEMP].word = (uint32_t)(cpu_state.regs[CPU_REG_ACCUM].word & zero_mask) | operand0;
+            cpu_state.reg_p.z = !((cpu_state.regs[CPU_REG_ACCUM].word & operand0) & zero_mask);
             return 1;
         break;
 
@@ -7541,7 +7541,7 @@ uint32_t alu_op(uint32_t arg)
             cpu_state.reg_p.n = (operand0 & sign_mask) && 1;
             cpu_state.reg_p.v = (operand0 & (sign_mask >> 1)) && 1;
         case ALU_OP_BIT_IMM:
-            cpu_state.reg_p.z = !((cpu_state.regs[REG_ACCUM].word & operand0) & zero_mask);
+            cpu_state.reg_p.z = !((cpu_state.regs[CPU_REG_ACCUM].word & operand0) & zero_mask);
             return 1;
         break;
     }
@@ -7553,25 +7553,25 @@ uint32_t alu_op(uint32_t arg)
 
 //    cpu_state.reg_p.c = (result & carry_mask) && 1;
     cpu_state.reg_p.c = result > zero_mask;
-    cpu_state.regs[REG_TEMP].word = result & zero_mask;
-    chk_znw((width << 8) | REG_TEMP);
-//    CHK_ZNW(REG_TEMP, width);
+    cpu_state.regs[CPU_REG_TEMP].word = result & zero_mask;
+    chk_znw((width << 8) | CPU_REG_TEMP);
+//    CHK_ZNW(CPU_REG_TEMP, width);
 
     return 1;
 }
 
-uint32_t brk(uint32_t arg)
+uint32_t brk(uint32_t arg) 
 {
-    cpu_state.regs[REG_ADDR].word = interrupt_vectors[cpu_state.cur_interrupt][cpu_state.reg_p.e];
+    cpu_state.regs[CPU_REG_ADDR].word = interrupt_vectors[cpu_state.cur_interrupt][cpu_state.reg_p.e];
     /* adjust PC back one byte in case this is a hardware interrupt */
-    cpu_state.regs[REG_PC].word -= cpu_state.cur_interrupt == CPU_INT_IRQ || cpu_state.cur_interrupt == CPU_INT_NMI;
+    cpu_state.regs[CPU_REG_PC].word -= cpu_state.cur_interrupt == CPU_INT_IRQ || cpu_state.cur_interrupt == CPU_INT_NMI;
     cpu_state.reg_p.b = cpu_state.reg_p.e && cpu_state.cur_interrupt == CPU_INT_BRK;
     return 1;
 }
 
 uint32_t cop(uint32_t arg)
 {
-    cpu_state.regs[REG_INST].word = BRK_S;
+    cpu_state.regs[CPU_REG_INST].word = CPU_OPCODE_BRK_S;
     cpu_state.cur_interrupt = CPU_INT_COP;
     cpu_state.interrupts[CPU_INT_COP] = 1;
     decode(0);
@@ -7589,7 +7589,7 @@ uint32_t stp(uint32_t arg)
 
 uint32_t unimplemented(uint32_t arg)
 {
-    printf("Unimplemented opcode %x at %02x:%04x\n", cpu_state.regs[REG_INST].byte[0], cpu_state.regs[REG_PBR].byte[0], cpu_state.regs[REG_PC].word);
+    printf("Unimplemented opcode %x at %02x:%04x\n", cpu_state.regs[CPU_REG_INST].byte[0], cpu_state.regs[CPU_REG_PBR].byte[0], cpu_state.regs[CPU_REG_PC].word);
     while(1);
     return 0;
 }
