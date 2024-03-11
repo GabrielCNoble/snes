@@ -2,6 +2,7 @@
 #include "ppu.h"
 #include "cart.h"
 #include "mem.h"
+#include <xmmintrin.h>
 // #include "uop.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -95,6 +96,19 @@ uint32_t alu_carry_shifts[] = {
 };
 
 /* cpu uops */
+
+typedef uint32_t (*uop_func_t)(uint32_t arg);
+
+struct uop_t
+{
+    uop_func_t      func;
+    uint32_t        arg;
+};
+
+struct inst_t
+{
+    struct uop_t    uops[24];
+};
 
 #define UOP(fn, arg) ((struct uop_t){(fn), (arg)})
 
@@ -197,6 +211,9 @@ uint32_t wai(uint32_t);
 uint32_t io(uint32_t arg);
 /* arbitrary internal operation (idles the cpu) */
 #define IO UOP(io, 0)
+
+uint32_t prefetch(uint32_t arg);
+#define PREFETCH UOP(prefetch, 0)
 
 
 enum ADDR_OFF_BANK
@@ -6660,23 +6677,6 @@ void deassert_rdy(uint8_t bit)
 
 void reset_cpu()
 {
-    reset_core();
-    /* elusive CPU delay at startup. Ripped off from bsnes. Wish I
-    knew why this is needed... */
-    cpu_state.uop_cycles = -22 * CPU_MASTER_CYCLES;
-
-    ram1_regs[CPU_MEM_REG_MEMSEL] = 0;
-    ram1_regs[CPU_MEM_REG_TIMEUP] = 0;
-    ram1_regs[CPU_MEM_REG_HTIMEL] = 0xff;
-    ram1_regs[CPU_MEM_REG_HTIMEH] = 0x01;
-    ram1_regs[CPU_MEM_REG_VTIMEL] = 0xff;
-    ram1_regs[CPU_MEM_REG_VTIMEH] = 0x01;
-    ram1_regs[CPU_MEM_REG_MDMAEN] = 0;
-    ram1_regs[CPU_MEM_REG_HDMAEN] = 0;
-}
-
-void reset_core()
-{
     cpu_state.regs[CPU_REG_PC].word = 0xfffc;
     cpu_state.regs[CPU_REG_DBR].byte[0] = 0;
     cpu_state.regs[CPU_REG_PBR].byte[0] = 0;
@@ -6706,7 +6706,25 @@ void reset_core()
     cpu_state.instruction_address = EFFECTIVE_ADDRESS(cpu_state.regs[CPU_REG_PBR].byte[0], cpu_state.regs[CPU_REG_PC].word);
     cpu_state.regs[CPU_REG_INST].word = CPU_OPCODE_INT_HW;
     load_instruction();
+
+    /* elusive CPU delay at startup. Ripped off from bsnes. Wish I
+    knew why this is needed... */
+    cpu_state.uop_cycles = -22 * CPU_MASTER_CYCLES;
+
+    ram1_regs[CPU_MEM_REG_MEMSEL] = 0;
+    ram1_regs[CPU_MEM_REG_TIMEUP] = 0;
+    ram1_regs[CPU_MEM_REG_HTIMEL] = 0xff;
+    ram1_regs[CPU_MEM_REG_HTIMEH] = 0x01;
+    ram1_regs[CPU_MEM_REG_VTIMEL] = 0xff;
+    ram1_regs[CPU_MEM_REG_VTIMEH] = 0x01;
+    ram1_regs[CPU_MEM_REG_MDMAEN] = 0;
+    ram1_regs[CPU_MEM_REG_HDMAEN] = 0;
 }
+
+// void reset_core()
+// {
+    
+// }
 
 // void assert_pin(uint32_t pin)
 // {
@@ -7337,6 +7355,14 @@ uint32_t io(uint32_t arg)
         return 1;
     }
     return 0;
+}
+
+uint32_t prefetch(uint32_t arg)
+{
+    uint32_t effective_address = EFFECTIVE_ADDRESS(cpu_state.regs[CPU_REG_PBR].byte[0], cpu_state.regs[CPU_REG_PC].word);
+    void *prefetch_address = memory_pointer(effective_address);
+    _mm_prefetch(prefetch_address, _MM_HINT_T0);
+    return 1;
 }
 
 uint32_t addr_offr(uint32_t arg)

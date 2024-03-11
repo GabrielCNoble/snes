@@ -847,19 +847,6 @@ struct reg_t
     uint16_t flag;
 };
 
-typedef uint32_t (*uop_func_t)(uint32_t arg);
-
-struct uop_t
-{
-    uop_func_t      func;
-    uint32_t        arg;
-};
-
-struct inst_t
-{
-    struct uop_t    uops[24];
-};
-
 #define MEM_SPEED_FAST_CYCLES   6
 #define MEM_SPEED_MED_CYCLES    8
 #define MEM_SPEED_SLOW_CYCLES   12

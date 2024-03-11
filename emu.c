@@ -366,7 +366,7 @@ void init_emu()
     // counter_frequency = SDL_GetPerformanceFrequency();
     // prev_count = SDL_GetPerformanceCounter();
     ui_Init();
-    init_apu();
+    apu_Init();
     init_ppu();
     init_mem();
     init_dma();
@@ -388,7 +388,7 @@ void reset_emu()
     master_cycles = 0;
     reset_cpu();
     reset_ppu();
-    reset_apu();
+    apu_Reset();
 
     if(emu_emulation_thread)
     {
@@ -426,7 +426,7 @@ void emu_EmulationThread(struct thrd_t *thread)
 
         step_dma(data->step_cycles);
         step_hdma(data->step_cycles);
-        step_apu(data->step_cycles);
+        apu_Step(data->step_cycles);
         step_ctrl(data->step_cycles);
 
         if(step_ppu(data->step_cycles))

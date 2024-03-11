@@ -1,5 +1,5 @@
-C_FLAGS 	:= -std=c2x -g -masm=intel -msse3 -mavx
-CPP_FLAGS 	:= -std=c++11 -g -masm=intel -fno-threadsafe-statics -fno-exceptions -msse3 -mavx
+C_FLAGS 	:= -std=c2x -g -masm=intel -msse3 -mavx -mavx2
+CPP_FLAGS 	:= -std=c++11 -g -masm=intel -fno-threadsafe-statics -fno-exceptions -msse3 -mavx -mavx2
 
 C_SRC := $(wildcard *.c) $(wildcard */*.c)
 ASM_SRC := $(wildcard *.asm)

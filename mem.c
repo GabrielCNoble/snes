@@ -20,12 +20,15 @@
 // };
 uint8_t *               ram1_regs;
 uint8_t *               ram2;
+uint8_t *               mem_apu_ram;
 uint8_t                 last_bus_value;
 // uint8_t *               vram;
 // struct mem_write_t *    reg_writes;
 // struct mem_read_t *     reg_reads;
 
 struct mem_reg_funcs_t* mem_reg_funcs;
+
+extern void *(*cart_pointer)(uint32_t effective_address, uint32_t write);
 
 // extern struct breakpoint_t  emu_wram_read_breakpoints[];
 // extern uint32_t             emu_wram_read_breakpoint_count;
@@ -244,10 +247,10 @@ void init_mem()
     mem_reg_funcs[CPU_MEM_REG_RDNMI].read = rdnmi_read;
     mem_reg_funcs[CPU_MEM_REG_HVBJOY].read = hvbjoy_read;
 
-    mem_reg_funcs[APU_REG_IO0].write = apuio_write;
-    mem_reg_funcs[APU_REG_IO1].write = apuio_write;
-    mem_reg_funcs[APU_REG_IO2].write = apuio_write;
-    mem_reg_funcs[APU_REG_IO3].write = apuio_write;
+    mem_reg_funcs[APU_MEM_REG_IO0].write = apuio_write;
+    mem_reg_funcs[APU_MEM_REG_IO1].write = apuio_write;
+    mem_reg_funcs[APU_MEM_REG_IO2].write = apuio_write;
+    mem_reg_funcs[APU_MEM_REG_IO3].write = apuio_write;
 
     mem_reg_funcs[PPU_REG_WMADDL].write = wmadd_write;
     mem_reg_funcs[PPU_REG_WMADDM].write = wmadd_write;
@@ -268,10 +271,10 @@ void init_mem()
     mem_reg_funcs[PPU_REG_MPYM].read = mpy_read;
     mem_reg_funcs[PPU_REG_MPYH].read = mpy_read;
 
-    mem_reg_funcs[APU_REG_IO0].read = apuio_read;
-    mem_reg_funcs[APU_REG_IO1].read = apuio_read;
-    mem_reg_funcs[APU_REG_IO2].read = apuio_read;
-    mem_reg_funcs[APU_REG_IO3].read = apuio_read;
+    mem_reg_funcs[APU_MEM_REG_IO0].read = apuio_read;
+    mem_reg_funcs[APU_MEM_REG_IO1].read = apuio_read;
+    mem_reg_funcs[APU_MEM_REG_IO2].read = apuio_read;
+    mem_reg_funcs[APU_MEM_REG_IO3].read = apuio_read;
 }
 
 void shutdown_mem()
@@ -315,6 +318,29 @@ uint32_t access_location(uint32_t effective_address)
     }
 
     return ACCESS_CART;
+}
+
+void *memory_pointer(uint32_t effective_address)
+{
+    uint32_t access = access_location(effective_address);
+    void *pointer = NULL;
+
+    if(access == ACCESS_RAM2)
+    {
+        uint32_t offset = effective_address - RAM2_START;
+        pointer = ram2 + offset;
+    }
+    else if(access == ACCESS_REGS || access == ACCESS_RAM1)
+    {
+        uint32_t offset = (effective_address & 0xffff) - RAM1_REGS_START;
+        pointer = ram1_regs + offset;
+    }
+    else if(access == ACCESS_CART)
+    {
+        pointer = cart_pointer(effective_address, 0);
+    }
+
+    return pointer;
 }
 
 void write_byte(uint32_t effective_address, uint8_t data)

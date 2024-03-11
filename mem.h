@@ -30,15 +30,15 @@ enum ACCESS
 #define RAM2_START      0x007e2000
 #define RAM2_END        0x007fffff
 
-struct mem_write_t
-{
-    void (*write)(uint32_t effective_address, uint8_t value);
-};
+// struct mem_write_t
+// {
+//     void (*write)(uint32_t effective_address, uint8_t value);
+// };
 
-struct mem_read_t
-{
-    uint8_t (*read)(uint32_t effective_address);
-};
+// struct mem_read_t
+// {
+//     uint8_t (*read)(uint32_t effective_address);
+// };
 
 struct mem_reg_funcs_t
 {
@@ -57,7 +57,7 @@ void shutdown_mem();
 
 uint32_t access_location(uint32_t effective_address);
 
-// void *memory_pointer(uint32_t effective_address);
+void *memory_pointer(uint32_t effective_address);
 
 void write_byte(uint32_t effective_address, uint8_t data);
 
