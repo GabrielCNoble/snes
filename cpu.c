@@ -284,16 +284,14 @@ uint32_t stp(uint32_t arg);
 uint32_t unimplemented(uint32_t arg);
 #define UNIMPLEMENTED UOP(unimplemented, 0);
 
-
-
 #define OPCODE(op, cat, addr_mod) {.opcode = op, .address_mode = addr_mod, .opcode_class = cat}
 
-struct inst_t fetch_inst = {
-    .uops = {
-        MOV_LPC         (MOV_LSB, CPU_REG_INST),
-        DECODE
-    }
-};
+// struct inst_t fetch_inst = {
+//     .uops = {
+//         MOV_LPC         (MOV_LSB, CPU_REG_INST),
+//         DECODE
+//     }
+// };
 
 struct inst_t instructions[] = {
 
@@ -6776,14 +6774,14 @@ void next_uop()
     load_uop();
 }
 
-uint32_t step_cpu(int32_t *cycle_count)
+uint32_t cpu_Step(int32_t *master_cycle_count)
 {
     uint32_t end_of_instruction = 0;
     uint32_t run_step = cpu_state.rdy & (!cpu_state.stp);
     if(run_step)
     {
-        cpu_state.uop_cycles += *cycle_count;
-        cpu_state.instruction_cycles += *cycle_count;
+        cpu_state.uop_cycles += *master_cycle_count;
+        // cpu_state.instruction_cycles += *cycle_count;
 
         while(cpu_state.uop->func)
         {
@@ -6895,10 +6893,11 @@ uint32_t step_cpu(int32_t *cycle_count)
 
         if(!cpu_state.wai)
         {
-            *cycle_count -= cpu_state.uop_cycles;
+            /* update cycle count to how many cycles were used in this step */
+            *master_cycle_count -= cpu_state.uop_cycles;
             cpu_state.uop_cycles = 0;
             // cpu_state.interrupts[cpu_state.cur_interrupt] = 0;
-            cpu_state.instruction_cycles = cpu_state.uop_cycles;
+            // cpu_state.instruction_cycles = cpu_state.uop_cycles;
             cpu_state.instruction_address = EFFECTIVE_ADDRESS(cpu_state.regs[CPU_REG_PBR].byte[0], cpu_state.regs[CPU_REG_PC].word);
             cpu_state.uop_index = 0;
             load_instruction();
@@ -6935,7 +6934,7 @@ uint32_t disasm(struct disasm_state_t *disasm_state, struct disasm_inst_t *instr
     for(uint32_t index = 1; index < instruction->width; index++)
     {
         effective_address = EFFECTIVE_ADDRESS(disasm_state->reg_pbr, disasm_state->reg_pc + index);
-        instruction->bytes[index] = peek_byte(effective_address);;
+        instruction->bytes[index] = peek_byte(effective_address);
     }
 
     disasm_state->reg_pc += instruction->width;
@@ -7511,16 +7510,18 @@ uint32_t alu_op(uint32_t arg)
             cpu_state.reg_p.v = (((~(operand0 ^ operand1)) & (operand1 ^ result)) & sign_mask) && 1;
         break;
 
+        /* AND/OR/XOR/INC/DEC doesn't affect the carry flag, so we just copy it to the final result to 
+        reuse the code that tests for carries */
         case ALU_OP_AND:
-            result = (operand0 & operand1) /* | (carry << carry_shift) */;
+            result = (operand0 & operand1) | (carry << carry_shift);
         break;
 
         case ALU_OP_OR:
-            result = (operand0 | operand1) /* | (carry << carry_shift) */;
+            result = (operand0 | operand1) | (carry << carry_shift);
         break;
 
         case ALU_OP_XOR:
-            result = (operand0 ^ operand1) /* | (carry << carry_shift) */;
+            result = (operand0 ^ operand1) | (carry << carry_shift);
         break;
 
         case ALU_OP_INC:

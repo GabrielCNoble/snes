@@ -946,12 +946,18 @@ struct cpu_state_t
         uint8_t     flags[CPU_STATUS_FLAG_LAST];
     }reg_p;
 
+
+    /* current instruction being executed */
+    struct inst_t *     instruction;
+    /* current uop of the current instruction being executed */
     struct uop_t *      uop;
+    /* whether the cpu is in the last uop of the current instruction */
     uint32_t            last_uop;
     uint32_t            uop_index;
+    /* how many master cycles are still available */
     int32_t             uop_cycles;
-    struct inst_t *     instruction;
-    int32_t             instruction_cycles;
+    
+    // int32_t             instruction_cycles;
     uint32_t            instruction_address;
 
     uint32_t            shifter;
@@ -1008,7 +1014,7 @@ uint32_t check_int();
 
 void reset_cpu();
 
-void reset_core();
+// void reset_core();
 
 void assert_nmi(uint8_t bit);
 
@@ -1036,7 +1042,7 @@ void load_uop();
 
 void next_uop();
 
-uint32_t step_cpu(int32_t *cycle_count);
+uint32_t cpu_Step(int32_t *master_cycle_count);
 
 void init_disasm(struct disasm_state_t *disasm_state, struct cpu_state_t *cpu_state);
 

@@ -37,6 +37,10 @@
     The ppu also generates its own clock. That's (master clock / 4). So, for
     NTSC that's 5.369317 MHz (186.243427 ns). For PAL, it's 5.320342 MHz
     (187.957841 ns).
+
+    The APU runs off a separate 24.576MHz crystal. It's clocked at 1.024MHz (24.576MHz / 24).
+    The DSP sample rate is 32KHz (1.024MHz / 32). So, it generates a sample every 32 APU cycles.
+    Each APU cycle is around 20.973896484 master cycles.
 */
 
 #define ADDRESS_BUFFER_SIZE 64
@@ -124,7 +128,7 @@ struct emu_thread_data_t
 {
     uint32_t                status;
     struct breakpoint_t *   breakpoint;
-    int32_t                 step_cycles;
+    int32_t                 step_master_cycles;
     uint32_t                breakpoint_type;
     union
     {
@@ -183,7 +187,7 @@ void reset_emu();
 
 void emu_EmulationThread(struct thrd_t *thread);
 
-uint32_t emu_Step(int32_t step_cycles);
+uint32_t emu_Step(int32_t master_cycle_count);
 
 void emu_Log(const char *fmt, ...);
 

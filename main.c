@@ -20,8 +20,12 @@ extern struct emu_log_t *           emu_log_entries;
 extern uint32_t                     emu_log_entry_count;
 extern uint32_t                     emu_last_log_entry;
 
+/* from cpu.c */
 extern struct cpu_state_t           cpu_state;
 extern const char *                 opcode_strs[];
+
+/* from apu.c */
+extern struct apu_state_t           apu_state;
 
 extern uint8_t *                    vram;
 extern uint8_t *                    ppu_cgram;
@@ -358,6 +362,129 @@ int main(int argc, char *argv[])
                         }
                         igEndChild();
                         
+                        igEndTabItem();
+                    }
+
+                    if(igBeginTabItem("APU", NULL, 0))
+                    {
+                        if(igBeginTable("##registers0", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_NoKeepColumnsVisible, (ImVec2){0, 0}, 0))
+                        {
+                            igTableNextRow(ImGuiTableRowFlags_Headers, 0);
+                            igTableNextColumn();
+                            igText("A");
+                            igTableNextColumn();
+                            igText("X");
+                            igTableNextColumn();
+                            igText("Y");
+                            igTableNextColumn();
+                            igText("SP");
+                            igTableNextColumn();
+                            igText("PC");
+                
+
+                            igTableNextRow(0, 0);
+                            igTableNextColumn();
+                            igText("%02x", apu_state.regs[APU_REG_A].byte[0]);
+                            igTableNextColumn();
+                            igText("%02x", apu_state.regs[APU_REG_X].byte[0]);
+                            igTableNextColumn();
+                            igText("%02x", apu_state.regs[APU_REG_Y].byte[0]);
+                            igTableNextColumn();
+                            igText("%02x", apu_state.regs[APU_REG_SP].byte[0]);
+                            igTableNextColumn();
+                            igText("%04x", apu_state.instruction_address & 0xffff);
+                            igText("(%04x)", apu_state.regs[CPU_REG_PC].word);
+
+                            igEndTable();
+                        }
+
+                        if(igBeginTable("##registers1", 8, ImGuiTableFlags_Borders | ImGuiTableFlags_NoKeepColumnsVisible, (ImVec2){0, 0}, 0))
+                        {
+                            igTableNextRow(ImGuiTableRowFlags_Headers, 0);
+                            igTableNextColumn();
+                            igText("N");
+                            igTableNextColumn();
+                            igText("V");
+                            igTableNextColumn();
+                            igText("P");
+                            igTableNextColumn();
+                            igText("B");
+                            igTableNextColumn();
+                            igText("H");
+                            igTableNextColumn();
+                            igText("I");
+                            igTableNextColumn();
+                            igText("Z");
+                            igTableNextColumn();
+                            igText("C");
+                            
+                            igTableNextRow(0, 0);
+                            igTableNextColumn();
+                            igText("%d", apu_state.reg_psw.n);
+                            igTableNextColumn();
+                            igText("%d", apu_state.reg_psw.v);
+                            igTableNextColumn();
+                            igText("%d", apu_state.reg_psw.p);
+                            igTableNextColumn();
+                            igText("%d", apu_state.reg_psw.b);
+                            igTableNextColumn();
+                            igText("%d", apu_state.reg_psw.h);
+                            igTableNextColumn();
+                            igText("%d", apu_state.reg_psw.i);
+                            igTableNextColumn();
+                            igText("%d", apu_state.reg_psw.z);
+                            igTableNextColumn();
+                            igText("%d", apu_state.reg_psw.c);
+                            
+                            igEndTable();
+                        }
+
+                        if(igBeginChild_Str("##disasm", (ImVec2){0, 0}, 1, 0))
+                        {
+                            struct apu_disasm_state_t disasm_state;
+                            apu_InitDisasm(&disasm_state);
+
+                            igPushStyleColor_Vec4(ImGuiCol_TableRowBgAlt, (ImVec4){0.2, 0.2, 0.2, 1.0});
+
+                            if(igBeginTable("##disasm", 3, ImGuiTableFlags_SizingFixedSame | ImGuiTableFlags_RowBg, (ImVec2){0, 0}, 0.0))
+                            {
+                                igTableNextRow(ImGuiTableRowFlags_Headers, 0);
+                                igTableNextColumn();
+                                igText("Addr");
+                                igTableNextColumn();
+                                igText("Bytes");
+                                igTableNextColumn();
+                                igText("Instruction");
+
+                                for(uint32_t index = 0; index < 20; index++)
+                                {   
+                                    uint16_t pc = disasm_state.reg_pc;
+                                    // uint8_t pbr = disasm_state.reg_pbr;
+                                    struct apu_disasm_inst_t instruction;
+                                    apu_Disasm(&disasm_state, &instruction);
+
+                                    igTableNextRow(0, 0);
+                                    igTableNextColumn();
+                                    igText("[0x%04x]", pc);
+
+                                    igTableNextColumn();
+                                    for(uint32_t index = 0; index < instruction.width; index++)
+                                    {
+                                        igText("%02x", instruction.bytes[index]);
+                                        igSameLine(0, -1);
+                                    }
+                                    
+                                    igTableNextColumn();
+                                    // igText("%s %s", instruction.opcode_str, instruction.addr_mode_str);
+                                    igText("%s", instruction.opcode_str);
+                                }
+                                igEndTable();
+
+                                igPopStyleColor(1);
+                            }
+                        }
+                        igEndChild();
+
                         igEndTabItem();
                     }
 

@@ -414,7 +414,7 @@ void emu_EmulationThread(struct thrd_t *thread)
 
         if(!ram1_regs[CPU_MEM_REG_MDMAEN])
         {
-            if(step_cpu(&data->step_cycles))
+            if(cpu_Step(&data->step_master_cycles))
             {
                 data->status |= EMU_STATUS_END_OF_INSTRUCTION;
             }
@@ -424,12 +424,12 @@ void emu_EmulationThread(struct thrd_t *thread)
             data->status |= EMU_STATUS_END_OF_INSTRUCTION;
         }
 
-        step_dma(data->step_cycles);
-        step_hdma(data->step_cycles);
-        apu_Step(data->step_cycles);
-        step_ctrl(data->step_cycles);
+        step_dma(data->step_master_cycles);
+        step_hdma(data->step_master_cycles);
+        apu_Step(data->step_master_cycles);
+        step_ctrl(data->step_master_cycles);
 
-        if(step_ppu(data->step_cycles))
+        if(step_ppu(data->step_master_cycles))
         {
             data->status |= EMU_STATUS_END_OF_FRAME;
         }
@@ -457,12 +457,12 @@ void emu_EmulationThread(struct thrd_t *thread)
     }
 }
 
-uint32_t emu_Step(int32_t step_cycles)
+uint32_t emu_Step(int32_t master_cycle_count)
 {
     if(!(emu_emulation_data.status & EMU_STATUS_BREAKPOINT))
     {
         /* only modify the amount of cycles to step if we're not handling a breakpoint */
-        emu_emulation_data.step_cycles = step_cycles;
+        emu_emulation_data.step_master_cycles = master_cycle_count;
         emu_emulation_data.status = 0;
         emu_emulation_data.breakpoint = NULL;
     }
@@ -578,7 +578,7 @@ uint32_t emu_Step(int32_t step_cycles)
     }
     else
     {
-        master_cycles += emu_emulation_data.step_cycles;
+        master_cycle_count += emu_emulation_data.step_master_cycles;
     }
 
     return emu_emulation_data.status;
