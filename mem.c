@@ -18,10 +18,17 @@
 // struct mem_write_t ppu_reg_writes[PPU_REGS_END - PPU_REGS_START] = {
 
 // };
-uint8_t *               ram1_regs;
-uint8_t *               ram2;
+// uint8_t *               ram1_regs;
+// uint8_t *               ram2;
+uint8_t *               mem_ram;
+uint8_t *               mem_regs;
 uint8_t *               mem_apu_ram;
 uint8_t                 last_bus_value;
+
+uint32_t mem_ram_address_masks[] = {
+    0xffff,
+    0x1ffff,
+};
 // uint8_t *               vram;
 // struct mem_write_t *    reg_writes;
 // struct mem_read_t *     reg_reads;
@@ -44,9 +51,16 @@ extern struct thrd_t *      emu_emulation_thread;
 void init_mem()
 {
     /* 8KB of wram1 + cpu,ppu,etc regs */
-    ram1_regs = calloc(RAM1_REGS_END - RAM1_REGS_START, 1);
+    // ram1_regs = calloc(RAM1_REGS_END - RAM1_REGS_START, 1);
     /* 120K of wram2 */
-    ram2 = calloc(0x1000000, 1);
+    // ram2 = calloc(0x1000000, 1);
+
+    // mem_regs = calloc(RAM1_REGS_END - RAM1_REGS_START, 1);
+    // mem_ram = calloc(0x1000000, 1);
+
+    mem_ram = calloc(1, MEM_RAM_SIZE);
+    mem_regs = calloc(1, RAM1_REGS_END);
+
     /* 64K of vram */
     // vram = calloc(0xffff, 1);
     /* write behavior for all mem mapped registers */
@@ -279,77 +293,129 @@ void init_mem()
 
 void shutdown_mem()
 {
-    free(ram1_regs);
-    free(ram2);
+    free(mem_ram);
+    free(mem_regs);
     free(mem_reg_funcs);
 }
 
-uint32_t access_location(uint32_t effective_address)
+uint32_t mem_AccessLocation(uint32_t effective_address)
 {
-    uint32_t offset;
-    uint32_t bank;
+    uint32_t offset = effective_address & 0xffff;
 
-    offset = effective_address & 0xffff;
-    bank = (effective_address >> 16) & 0xff;
-
-    if(((bank >= RAM1_REGS_BANK_RANGE0_START && bank <= RAM1_REGS_BANK_RANGE0_END) ||
-        (bank >= RAM1_REGS_BANK_RANGE1_START && bank <= RAM1_REGS_BANK_RANGE1_END)) && offset < RAM1_REGS_END)
+    if(((effective_address >= MEM_RAM_8K_MIRROR_BANK_START0 && 
+         effective_address <= MEM_RAM_8K_MIRROR_BANK_END0) ||
+        (effective_address >= MEM_RAM_8K_MIRROR_BANK_START1 && 
+         effective_address <= MEM_RAM_8K_MIRROR_BANK_END1)) && 
+        offset < MEM_RAM_8K_MIRROR_REGS_END)
     {
-        if(offset < RAM1_END)
+        if(offset < MEM_RAM_8K_MIRROR_OFFSET_END)
         {
             return ACCESS_RAM1;
         }
-        else if(offset < PPU_REGS_START)
+        else if(offset < MEM_PPU_REGS_START)
         {
             return ACCESS_OPEN;
         }
 
         return ACCESS_REGS;
-    }
+    } 
 
-    if(bank == RAM1_EXTRA_BANK && offset < RAM1_END)
-    {
-        return ACCESS_RAM1;
-    }
-
-    if(effective_address >= RAM2_START && effective_address <= RAM2_END)
+    if(effective_address >= MEM_RAM_START && effective_address <= MEM_RAM_END)
     {
         return ACCESS_RAM2;
     }
+
+    // if(((bank >= RAM1_REGS_BANK_RANGE0_START && bank <= RAM1_REGS_BANK_RANGE0_END) ||
+    //     (bank >= RAM1_REGS_BANK_RANGE1_START && bank <= RAM1_REGS_BANK_RANGE1_END)) && offset < RAM1_REGS_END)
+    // {
+    //     if(offset < RAM1_END)
+    //     {
+    //         old_location = ACCESS_RAM1;
+    //     }
+    //     else if(offset < PPU_REGS_START)
+    //     {
+    //         old_location = ACCESS_OPEN;
+    //     }
+
+    //     old_location = ACCESS_REGS;
+    // } 
+
+    // if(bank == RAM1_EXTRA_BANK && offset < RAM1_END)
+    // {
+    //     old_location = ACCESS_RAM1;
+    // }
+
+    // if(effective_address >= RAM2_START && effective_address <= RAM2_END)
+    // {
+    //     old_location = ACCESS_RAM2;
+    // }
+
+    // if(new_location == ACCESS_RAM && (old_location != ACCESS_RAM1 && old_location != ACCESS_RAM2))
+    // {
+    //     emu_Log("access locations don't match!");
+    // }
 
     return ACCESS_CART;
 }
 
 void *memory_pointer(uint32_t effective_address)
 {
-    uint32_t access = access_location(effective_address);
-    void *pointer = NULL;
+    uint32_t access_location = mem_AccessLocation(effective_address);
+    // void *pointer = NULL;
 
-    if(access == ACCESS_RAM2)
+    // if(access == ACCESS_RAM)
+    // {
+    //     // uint32_t offset = effective_address - RAM2_START;
+    //     // pointer = ram2 + offset;
+
+    //     uint32_t offset = effective_address - RAM2_START;
+    //     pointer = mem_ram + offset;
+
+    //     // uint32_t offset = effective_address & (MEM_RAM_SIZE - 1);
+    //     // pointer = mem_ram + offset;
+    // }
+    // else if(access == ACCESS_REGS)
+    // {
+    //     // uint32_t offset = (effective_address & 0xffff) - RAM1_REGS_START;
+    //     // pointer = ram1_regs + offset;
+
+    //     uint32_t offset = (effective_address & 0xffff) - RAM1_REGS_START;
+    //     pointer = mem_regs + offset;
+
+    //     // uint32_t offset = (effective_address & 0xffff);
+    //     // pointer = mem_regs + offset;
+    // }
+    // else if(access == ACCESS_CART)
+    // {
+    //     pointer = cart_pointer(effective_address, 0);
+    // }
+
+    if(access_location > ACCESS_RAM)
     {
-        uint32_t offset = effective_address - RAM2_START;
-        pointer = ram2 + offset;
+        uint32_t address_mask = 0x0000ffff | ((access_location == ACCESS_RAM2) << 16);
+        uint32_t offset = effective_address & address_mask;
+        return mem_ram + offset;
     }
-    else if(access == ACCESS_REGS || access == ACCESS_RAM1)
+    else if(access_location == ACCESS_REGS)
     {
         uint32_t offset = (effective_address & 0xffff) - RAM1_REGS_START;
-        pointer = ram1_regs + offset;
+        return mem_regs + offset;
     }
-    else if(access == ACCESS_CART)
+    else if(access_location == ACCESS_CART)
     {
-        pointer = cart_pointer(effective_address, 0);
+        return cart_pointer(effective_address, 0);
     }
 
-    return pointer;
+    return NULL;
 }
 
 void write_byte(uint32_t effective_address, uint8_t data)
 {
-    uint32_t access = access_location(effective_address);
+    uint32_t access_location = mem_AccessLocation(effective_address);
 
     struct breakpoint_list_t *mem_write_breakpoints = &emu_breakpoints[BREAKPOINT_TYPE_MEM_WRITE];
 
-    if(access == ACCESS_REGS)
+    if(access_location == ACCESS_REGS)
     {
         effective_address &= 0xffff;
     }
@@ -357,14 +423,14 @@ void write_byte(uint32_t effective_address, uint8_t data)
     for(uint32_t breakpoint_index = 0; breakpoint_index < mem_write_breakpoints->count; breakpoint_index++)
     {
         struct breakpoint_t *breakpoint = mem_write_breakpoints->breakpoints + breakpoint_index;
-        if(breakpoint->start_address <= effective_address && effective_address <= breakpoint->end_address)
+        if(breakpoint->start_address <= effective_address && effective_address <= breakpoint->end_address && !breakpoint->disabled)
         {
             struct emu_thread_data_t *thread_data = emu_emulation_thread->data;
             thread_data->breakpoint = breakpoint;
             thread_data->status |= EMU_STATUS_BREAKPOINT;
             thread_data->breakpoint_type = BREAKPOINT_TYPE_MEM_WRITE;
             thread_data->breakpoint_data.mem.address = effective_address;
-            thread_data->breakpoint_data.mem.location = access;
+            thread_data->breakpoint_data.mem.location = access_location;
             thread_data->breakpoint_data.mem.data = data;
             thrd_Switch(emu_emulation_thread, &emu_main_thread);
             break;
@@ -372,12 +438,14 @@ void write_byte(uint32_t effective_address, uint8_t data)
     }
 
     last_bus_value = data;
-    if(access == ACCESS_RAM2)
+
+    if(access_location > ACCESS_RAM)
     {
-        uint32_t offset = effective_address - RAM2_START;
-        ram2[offset] = data;
+        uint32_t address_mask = 0x0000ffff | ((access_location == ACCESS_RAM2) << 16);
+        uint32_t offset = effective_address & address_mask;
+        mem_ram[offset] = data;
     }
-    else if(access == ACCESS_REGS)
+    else if(access_location == ACCESS_REGS)
     {
         uint32_t offset = (effective_address & 0xffff) - RAM1_REGS_START;
 
@@ -387,37 +455,87 @@ void write_byte(uint32_t effective_address, uint8_t data)
         }
         else
         {
-            ram1_regs[offset] = data;
+            mem_regs[offset] = data;
         }
     }
-    else if(access == ACCESS_RAM1)
-    {
-        uint32_t offset = (effective_address & 0xffff) - RAM1_REGS_START;
-        ram1_regs[offset] = data;
-    }
-    else if(access == ACCESS_CART)
+    else if(access_location == ACCESS_CART)
     {
         cart_write(effective_address, data);
     }
 
-//    write_address_buffer[write_address_count] = effective_address;
-//    write_address_count++;
-}
+    // if(access == ACCESS_RAM2)
+    // {
+    //     uint32_t offset = effective_address - RAM2_START;
+    //     ram2[offset] = data;
+    // }
+    // else if(access == ACCESS_REGS)
+    // {
+    //     uint32_t offset = (effective_address & 0xffff) - RAM1_REGS_START;
+
+    //     if(mem_reg_funcs[offset].write != NULL)
+    //     {
+    //         mem_reg_funcs[offset].write(effective_address, data);
+    //     }
+    //     else
+    //     {
+    //         ram1_regs[offset] = data;
+    //     }
+    // }
+    // else if(access == ACCESS_RAM1)
+    // {
+    //     uint32_t offset = (effective_address & 0xffff) - RAM1_REGS_START;
+    //     ram1_regs[offset] = data;
+    // }
+    // else if(access == ACCESS_CART)
+    // {
+    //     cart_write(effective_address, data);
+    // }
+} 
 
 uint8_t read_byte(uint32_t effective_address)
 {
-    uint32_t access = access_location(effective_address);
+    uint32_t access_location = mem_AccessLocation(effective_address);
     uint8_t data = 0;
 
-//    read_address_buffer[read_address_count] = effective_address;
-//    read_address_count++;
+    // if(access == ACCESS_RAM2)
+    // {
+    //     uint32_t offset = effective_address - RAM2_START;
+    //     data = ram2[offset];
+    // }
+    // else if(access == ACCESS_REGS)
+    // {
+    //     uint32_t offset = (effective_address & 0xffff) - RAM1_REGS_START;
 
-    if(access == ACCESS_RAM2)
+    //     if(mem_reg_funcs[offset].read != NULL)
+    //     {
+    //         data = mem_reg_funcs[offset].read(effective_address);
+    //     }
+    //     else
+    //     {
+    //         data = ram1_regs[offset];
+    //     }
+    // }
+    // else if(access == ACCESS_RAM1)
+    // {
+    //     uint32_t offset = (effective_address & 0xffff) - RAM1_REGS_START;
+    //     data = ram1_regs[offset];
+    // }
+    // else if(access == ACCESS_CART)
+    // {
+    //     data = cart_read(effective_address);
+    // }
+    // else
+    // {
+    //     data = last_bus_value;
+    // }
+
+    if(access_location > ACCESS_RAM)
     {
-        uint32_t offset = effective_address - RAM2_START;
-        data = ram2[offset];
+        uint32_t address_mask = 0x0000ffff | ((access_location == ACCESS_RAM2) << 16);
+        uint32_t offset = effective_address & address_mask;
+        data = mem_ram[offset];
     }
-    else if(access == ACCESS_REGS)
+    else if(access_location == ACCESS_REGS)
     {
         uint32_t offset = (effective_address & 0xffff) - RAM1_REGS_START;
 
@@ -427,15 +545,10 @@ uint8_t read_byte(uint32_t effective_address)
         }
         else
         {
-            data = ram1_regs[offset];
+            data = mem_regs[offset];
         }
     }
-    else if(access == ACCESS_RAM1)
-    {
-        uint32_t offset = (effective_address & 0xffff) - RAM1_REGS_START;
-        data = ram1_regs[offset];
-    }
-    else if(access == ACCESS_CART)
+    else if(access_location == ACCESS_CART)
     {
         data = cart_read(effective_address);
     }
@@ -444,6 +557,33 @@ uint8_t read_byte(uint32_t effective_address)
         data = last_bus_value;
     }
 
+    // if(access == ACCESS_RAM)
+    // {
+    //     uint32_t offset = effective_address & (MEM_RAM_SIZE - 1);
+    //     data = mem_ram[offset];
+    // }
+    // else if(access == ACCESS_REGS)
+    // {
+    //     uint32_t offset = (effective_address & 0xffff);
+
+    //     if(mem_reg_funcs[offset].read != NULL)
+    //     {
+    //         data = mem_reg_funcs[offset].read(effective_address);
+    //     }
+    //     else
+    //     {
+    //         data = mem_regs[offset];
+    //     }
+    // }
+    // else if(access == ACCESS_CART)
+    // {
+    //     data = cart_read(effective_address);
+    // }
+    // else
+    // {
+    //     data = last_bus_value;
+    // }
+
     last_bus_value = data;
 
     struct breakpoint_list_t *mem_read_breakpoints = &emu_breakpoints[BREAKPOINT_TYPE_MEM_READ];
@@ -451,7 +591,7 @@ uint8_t read_byte(uint32_t effective_address)
     for(uint32_t breakpoint_index = 0; breakpoint_index < mem_read_breakpoints->count; breakpoint_index++)
     {
         struct breakpoint_t *breakpoint = mem_read_breakpoints->breakpoints + breakpoint_index;
-        if(breakpoint->start_address <= effective_address && effective_address <= breakpoint->end_address)
+        if(breakpoint->start_address <= effective_address && effective_address <= breakpoint->end_address && !breakpoint->disabled)
         {
             struct emu_thread_data_t *thread_data = emu_emulation_thread->data;
             // breakpoint->address = effective_address;
@@ -459,7 +599,7 @@ uint8_t read_byte(uint32_t effective_address)
             thread_data->status |= EMU_STATUS_BREAKPOINT;
             thread_data->breakpoint_type = BREAKPOINT_TYPE_MEM_READ;
             thread_data->breakpoint_data.mem.address = effective_address;
-            thread_data->breakpoint_data.mem.location = access;
+            thread_data->breakpoint_data.mem.location = access_location;
             thread_data->breakpoint_data.mem.data = data;
             thrd_Switch(emu_emulation_thread, &emu_main_thread);
             break;
@@ -471,28 +611,49 @@ uint8_t read_byte(uint32_t effective_address)
 
 uint8_t peek_byte(uint32_t effective_address)
 {
-    uint32_t access = access_location(effective_address);
+    uint32_t access_location = mem_AccessLocation(effective_address);
     uint8_t data = 0;
 
-    if(access == ACCESS_RAM2)
+    if(access_location > ACCESS_RAM)
     {
-        uint32_t offset = effective_address - RAM2_START;
-        data = ram2[offset];
+        uint32_t address_mask = 0x0000ffff | ((access_location == ACCESS_RAM2) << 16);
+        uint32_t offset = effective_address & address_mask;
+        data = mem_ram[offset];
     }
-    else if(access == ACCESS_REGS)
-    {
-        uint32_t offset = (effective_address & 0xffff) - RAM1_REGS_START;
-        data = ram1_regs[offset];
-    }
-    else if(access == ACCESS_RAM1)
+    else if(access_location == ACCESS_REGS)
     {
         uint32_t offset = (effective_address & 0xffff) - RAM1_REGS_START;
-        data = ram1_regs[offset];
+        data = mem_regs[offset];
     }
-    else if(access == ACCESS_CART)
+    else if(access_location == ACCESS_RAM1)
+    {
+        uint32_t offset = (effective_address & 0xffff) - RAM1_REGS_START;
+        data = mem_regs[offset];
+    }
+    else if(access_location == ACCESS_CART)
     {
         data = cart_read(effective_address);
     }
+
+    // if(access == ACCESS_RAM2)
+    // {
+    //     uint32_t offset = effective_address - RAM2_START;
+    //     data = ram2[offset];
+    // }
+    // else if(access == ACCESS_REGS)
+    // {
+    //     uint32_t offset = (effective_address & 0xffff) - RAM1_REGS_START;
+    //     data = ram1_regs[offset];
+    // }
+    // else if(access == ACCESS_RAM1)
+    // {
+    //     uint32_t offset = (effective_address & 0xffff) - RAM1_REGS_START;
+    //     data = ram1_regs[offset];
+    // }
+    // else if(access == ACCESS_CART)
+    // {
+    //     data = cart_read(effective_address);
+    // }
 
     return data;
 }
@@ -511,64 +672,64 @@ uint16_t peek_word(uint32_t effective_address)
     return data;
 }
 
-void poke(uint32_t effective_address, uint32_t *value)
-{
-    // unsigned char *memory;
+// void poke(uint32_t effective_address, uint32_t *value)
+// {
+//     // unsigned char *memory;
 
-    // memory = memory_pointer(effective_address);
+//     // memory = memory_pointer(effective_address);
 
-    // if(memory)
-    {
-        uint8_t byte0 = peek_byte(effective_address);
-        uint8_t byte1 = peek_byte(effective_address + 1);
-        uint8_t byte2 = peek_byte(effective_address + 2);
-        uint8_t byte3 = peek_byte(effective_address + 3);
+//     // if(memory)
+//     {
+//         uint8_t byte0 = peek_byte(effective_address);
+//         uint8_t byte1 = peek_byte(effective_address + 1);
+//         uint8_t byte2 = peek_byte(effective_address + 2);
+//         uint8_t byte3 = peek_byte(effective_address + 3);
 
-        printf("[%02x:%04x] %02x %02x %02x %02x ", (effective_address >> 16) & 0xff, effective_address & 0xffff, byte0, byte1, byte2, byte3);
+//         printf("[%02x:%04x] %02x %02x %02x %02x ", (effective_address >> 16) & 0xff, effective_address & 0xffff, byte0, byte1, byte2, byte3);
 
-         if(value)
-         {
-             uint32_t write_value = *value;
-             if(write_value & 0xff000000)
-             {
-                 write_byte(effective_address, write_value);
-                 write_value >>= 8;
-                 write_byte(effective_address + 1, write_value);
-                 write_value >>= 8;
-                 write_byte(effective_address + 2, write_value);
-                 write_value >>= 8;
-                 write_byte(effective_address + 3, write_value);
-             }
-             else if(write_value & 0x00ff0000)
-             {
-                 write_byte(effective_address, write_value);
-                 write_value >>= 8;
-                 write_byte(effective_address + 1, write_value);
-                 write_value >>= 8;
-                 write_byte(effective_address + 2, write_value);
-             }
-             else if(write_value & 0x0000ff00)
-             {
-                 write_byte(effective_address, write_value);
-                 write_value >>= 8;
-                 write_byte(effective_address + 1, write_value);
-             }
-             else
-             {
-                 write_byte(effective_address, write_value);
-             }
+//          if(value)
+//          {
+//              uint32_t write_value = *value;
+//              if(write_value & 0xff000000)
+//              {
+//                  write_byte(effective_address, write_value);
+//                  write_value >>= 8;
+//                  write_byte(effective_address + 1, write_value);
+//                  write_value >>= 8;
+//                  write_byte(effective_address + 2, write_value);
+//                  write_value >>= 8;
+//                  write_byte(effective_address + 3, write_value);
+//              }
+//              else if(write_value & 0x00ff0000)
+//              {
+//                  write_byte(effective_address, write_value);
+//                  write_value >>= 8;
+//                  write_byte(effective_address + 1, write_value);
+//                  write_value >>= 8;
+//                  write_byte(effective_address + 2, write_value);
+//              }
+//              else if(write_value & 0x0000ff00)
+//              {
+//                  write_byte(effective_address, write_value);
+//                  write_value >>= 8;
+//                  write_byte(effective_address + 1, write_value);
+//              }
+//              else
+//              {
+//                  write_byte(effective_address, write_value);
+//              }
 
-             byte0 = peek_byte(effective_address);
-             byte1 = peek_byte(effective_address + 1);
-             byte2 = peek_byte(effective_address + 2);
-             byte3 = peek_byte(effective_address + 3);
+//              byte0 = peek_byte(effective_address);
+//              byte1 = peek_byte(effective_address + 1);
+//              byte2 = peek_byte(effective_address + 2);
+//              byte3 = peek_byte(effective_address + 3);
 
-             printf("-> %02x %02x %02x %02x ", byte0, byte1, byte2, byte3);
-         }
+//              printf("-> %02x %02x %02x %02x ", byte0, byte1, byte2, byte3);
+//          }
 
-        printf("\n");
-    }
-}
+//         printf("\n");
+//     }
+// }
 
 
 

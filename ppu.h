@@ -14,14 +14,14 @@
 //};
 
 // #define OBJ_ATTR1_HPOS_MASK     0x01
-#define PPU_OBJ_ATTR1_POS_MASK      0x0f
-#define PPU_OBJ_ATTR1_VPOS_SHIFT    8
-#define PPU_OBJ_ATTR1_PAL_SHIFT         0x09
+#define PPU_OBJ_ATTR1_POS_MASK          0x0f
+#define PPU_OBJ_ATTR1_VPOS_SHIFT        8
+#define PPU_OBJ_ATTR1_PAL_SHIFT         9
 #define PPU_OBJ_ATTR1_PAL_MASK          0x07
 #define PPU_OBJ_ATTR1_NAME_MASK         0x1ff
 #define PPU_OBJ_ATTR1_HFLIP             0x4000
 #define PPU_OBJ_ATTR1_VFLIP             0x8000
-#define PPU_OBJ_ATTR1_PRI_SHIFT         0x0c
+#define PPU_OBJ_ATTR1_PRI_SHIFT         12
 #define PPU_OBJ_ATTR1_PRI_MASK          0x03
 union obj_attr1_t 
 {
@@ -156,6 +156,12 @@ struct line_pixel_t
     uint8_t priority: 2;
 };
 
+struct dot_color_t
+{
+    uint16_t    color;
+    uint8_t     priority;
+};
+
 //struct draw_tile_list_t
 //{
 //    uint16_t *              tiles;
@@ -220,12 +226,17 @@ struct bg_offset_t
     uint8_t     lsb_written[2];
 };
 
-#define BG_SC_DATA_NAME_MASK    0x3ff
-#define BG_SC_DATA_PAL_SHIFT    10
-#define BG_SC_DATA_PAL_MASK     0x07
-#define BG_SC_DATA_H_FLIP_SHIFT 14
-#define BG_SC_DATA_V_FLIP_SHIFT 15
-#define BG_SC_DATA_FLIP_MASK    0x01
+#define BG_SC_DATA_NAME_MASK        0x3ff
+
+#define BG_SC_DATA_PAL_SHIFT        10
+#define BG_SC_DATA_PAL_MASK         0x07
+
+#define BG_SC_DATA_H_FLIP_SHIFT     14
+#define BG_SC_DATA_V_FLIP_SHIFT     15
+#define BG_SC_DATA_FLIP_MASK        0x01
+
+#define BG_SC_DATA_PRIORITY_SHIFT   13
+#define BG_SC_DATA_PRIORITY_MASK    0x1
 
 struct bg_sc_data_t
 {
@@ -245,12 +256,16 @@ struct background_t
     void *                  chr_base;
     void *                  pal_base;
     uint16_t                chr_size;
+    uint16_t                disabled;
+
+    // uint8_t              (*color_index_func)(uint32_t dot_h, uint32_t )
 
     uint16_t           (*   color_func)(uint32_t dot_h, uint32_t dot_v, struct background_t *background);
 };
 
 enum PPU_REGS
 {
+    PPU_REG_FIRST           = 0x2100,
     /*  */
     PPU_REG_INIDISP         = 0x2100,
     PPU_REG_OBJSEL          = 0x2101,
@@ -333,6 +348,7 @@ enum PPU_REGS
     PPU_REG_WMADDL          = 0x2181,
     PPU_REG_WMADDM          = 0x2182,
     PPU_REG_WMADDH          = 0x2183,
+    PPU_REG_LAST,
 };
 
 #define PPU_WMDATA_BASE 0x7e0000
@@ -515,12 +531,14 @@ struct pal256_t
 
 struct bg_tile_t
 {
-    uint16_t    chr_index;
-    uint16_t    pal_index;
+    uint16_t    chr_index   : 10;
+    uint16_t    pal_index   : 3;
+    uint16_t    hflip       : 1;
+    uint16_t    vflip       : 1;
+    uint16_t    priority    : 1;
+
     int16_t     tile_dot_x;
     int16_t     tile_dot_y;
-    uint16_t    hflip : 1;
-    uint16_t    vflip : 1;
 };
 
 struct bg7_tile_t
@@ -642,6 +660,11 @@ union counters_t
     uint32_t     counters;
 };
 
+struct ppu_state_t
+{
+
+};
+
 void init_ppu();
 
 void shutdown_ppu();
@@ -706,7 +729,7 @@ void ppu_LoadTilesSpriteStep();
 
 void ppu_NoneSpriteStep();
 
-uint32_t step_ppu(int32_t cycle_count);
+uint32_t ppu_Step(int32_t cycle_count);
 
 // void dump_ppu();
 

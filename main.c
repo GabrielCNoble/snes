@@ -11,14 +11,18 @@
 // extern uint32_t             animated_mode;
 
 extern FILE *               trace_file;
-extern GLuint                       emu_framebuffer_texture;
-extern uint32_t                     emu_window_width;
-extern uint32_t                     emu_window_height;
-extern struct breakpoint_list_t     emu_breakpoints[];
-extern struct emu_thread_data_t     emu_emulation_data;
-extern struct emu_log_t *           emu_log_entries;
-extern uint32_t                     emu_log_entry_count;
-extern uint32_t                     emu_last_log_entry;
+/* from emu.c */
+extern GLuint                           emu_framebuffer_texture;
+extern uint32_t                         emu_window_width;
+extern uint32_t                         emu_window_height;
+extern struct breakpoint_list_t         emu_breakpoints[];
+extern uint32_t                         emu_breakpoint_flag_lut[];
+extern struct emu_thread_data_t         emu_emulation_data;
+extern struct emu_log_t *               emu_log_entries;
+extern uint32_t                         emu_log_entry_count;
+extern uint32_t                         emu_last_log_entry;
+extern uint32_t                         emu_cpu_stack_frame_top;
+extern struct emu_cpu_stack_frame_t *   emu_cpu_stack_frames;
 
 /* from cpu.c */
 extern struct cpu_state_t           cpu_state;
@@ -27,9 +31,12 @@ extern const char *                 opcode_strs[];
 /* from apu.c */
 extern struct apu_state_t           apu_state;
 
+/* from ppu.c */
 extern uint8_t *                    vram;
 extern uint8_t *                    ppu_cgram;
-extern uint8_t *                    ram1_regs;
+// extern uint8_t *                    ram1_regs;
+extern uint8_t *                    mem_ram;
+extern uint8_t *                    mem_regs;
 extern struct background_t          backgrounds[4];
 extern const char *                 ppu_reg_strs[];
 extern uint16_t                     vcounter;
@@ -40,6 +47,12 @@ extern uint8_t                      ppu_oam_lsb_latch;
 extern uint8_t                      ppu_oam_lsb_toggle;
 extern uint16_t                     ppu_reg_oam_addr;
 extern union oam_t                  oam;
+
+/* from dma.c */
+extern struct dma_t                 dma_channels[8];
+
+/* from mem.c */
+extern struct mem_reg_funcs_t*      mem_reg_funcs;
 
 const char *m_breakpoint_type_names[] = {
     [BREAKPOINT_TYPE_EXECUTION]     = "Execution",
@@ -317,51 +330,159 @@ int main(int argc, char *argv[])
                             igEndTable();
                         }
 
+                        igPushStyleVar_Vec2(ImGuiStyleVar_WindowPadding, (ImVec2){});
                         if(igBeginChild_Str("##disasm", (ImVec2){0, 0}, 1, 0))
                         {
                             struct disasm_state_t disasm_state;
                             init_disasm(&disasm_state, &cpu_state);
 
                             igPushStyleColor_Vec4(ImGuiCol_TableRowBgAlt, (ImVec4){0.2, 0.2, 0.2, 1.0});
+                            ImVec2 content_region;
+                            igGetContentRegionAvail(&content_region);
 
-                            if(igBeginTable("##disasm", 3, ImGuiTableFlags_SizingFixedSame | ImGuiTableFlags_RowBg, (ImVec2){0, 0}, 0.0))
+                            if(igBeginChild_Str("##disasm_child", (ImVec2){content_region.x * 0.65f, content_region.y}, 1, 0))
                             {
-                                igTableNextRow(ImGuiTableRowFlags_Headers, 0);
-                                igTableNextColumn();
-                                igText("Addr");
-                                igTableNextColumn();
-                                igText("Bytes");
-                                igTableNextColumn();
-                                igText("Instruction");
-
-                                for(uint32_t index = 0; index < 20; index++)
-                                {   
-                                    uint16_t pc = disasm_state.reg_pc;
-                                    uint8_t pbr = disasm_state.reg_pbr;
-                                    struct disasm_inst_t instruction;
-                                    disasm(&disasm_state, &instruction);
-
-                                    igTableNextRow(0, 0);
+                                if(igBeginTable("##disasm", 3, ImGuiTableFlags_SizingFixedSame | ImGuiTableFlags_RowBg, (ImVec2){0, 0}, 0.0))
+                                {
+                                    igTableNextRow(ImGuiTableRowFlags_Headers, 0);
                                     igTableNextColumn();
-                                    igText("[0x%02x:0x%04x]", pbr, pc);
-
+                                    igText("Addr");
                                     igTableNextColumn();
-                                    for(uint32_t index = 0; index < instruction.width; index++)
-                                    {
-                                        igText("%02x", instruction.bytes[index]);
-                                        igSameLine(0, -1);
+                                    igText("Bytes");
+                                    igTableNextColumn();
+                                    igText("Instruction");
+
+                                    for(uint32_t index = 0; index < 20; index++)
+                                    {   
+                                        uint16_t pc = disasm_state.reg_pc;
+                                        uint8_t pbr = disasm_state.reg_pbr;
+                                        struct disasm_inst_t instruction;
+                                        disasm(&disasm_state, &instruction);
+
+                                        igTableNextRow(0, 0);
+                                        igTableNextColumn();
+                                        igText("[0x%02x:0x%04x]", pbr, pc);
+
+                                        igTableNextColumn();
+                                        for(uint32_t index = 0; index < instruction.width; index++)
+                                        {
+                                            igText("%02x", instruction.bytes[index]);
+                                            igSameLine(0, -1);
+                                        }
+                                        
+                                        igTableNextColumn();
+                                        igText("%s %s", instruction.opcode_str, instruction.addr_mode_str);
                                     }
-                                    
-                                    igTableNextColumn();
-                                    igText("%s %s", instruction.opcode_str, instruction.addr_mode_str);
+                                    igEndTable();
                                 }
-                                igEndTable();
-
-                                igPopStyleColor(1);
                             }
+                            igEndChild();
+
+                            igSameLine(0, 0);
+
+                            igPushStyleVar_Vec2(ImGuiStyleVar_WindowPadding, (ImVec2){4, 4});
+                            if(igBeginChild_Str("##call_stack", (ImVec2){}, 1, 0))
+                            {
+                                igLabelText("##callstack", "Callstack");
+                                igSeparator();
+                                if(igBeginTable("##call_stack", 3, ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg, (ImVec2){0, 0}, 0.0))
+                                {
+                                    for(uint32_t frame_index = emu_cpu_stack_frame_top; frame_index != 0xffffffff; frame_index--)
+                                    {
+                                        struct emu_cpu_stack_frame_t *frame = emu_cpu_stack_frames + frame_index;
+                                        igTableNextRow(0, 0);
+                                        igTableNextColumn();
+                                        igNewLine();
+                                        igText("%d", emu_cpu_stack_frame_top - frame_index);
+                                        igSameLine(0, -1);
+                                        igSeparatorEx(ImGuiSeparatorFlags_Vertical | ImGuiSeparatorFlags_SpanAllColumns, 1.0f);
+
+                                        igTableNextColumn();
+                                        igText("Call addr:");
+                                        igText("Return addr:");
+                                        igText("Target addr:");
+
+                                        igTableNextColumn();
+                                        igText("%02x:%04x", frame->call_pbr, frame->call_pc);
+                                        igText("%02x:%04x", frame->return_pbr, frame->return_pc);
+                                        igText("%02x:%04x", frame->target_pbr, frame->target_pc);
+                                        // igText("%d: %02x:%04x", emu_cpu_stack_frame_top - frame_index, frame->return_pbr, frame->return_pc);
+                                    }
+                                    // for(uint32_t index = 0; index < 20; index++)
+                                    // {   
+                                    //     uint16_t pc = disasm_state.reg_pc;
+                                    //     uint8_t pbr = disasm_state.reg_pbr;
+                                    //     struct disasm_inst_t instruction;
+                                    //     disasm(&disasm_state, &instruction);
+
+                                    //     igTableNextRow(0, 0);
+                                    //     igTableNextColumn();
+                                    //     igText("[0x%02x:0x%04x]", pbr, pc);
+
+                                    //     igTableNextColumn();
+                                    //     for(uint32_t index = 0; index < instruction.width; index++)
+                                    //     {
+                                    //         igText("%02x", instruction.bytes[index]);
+                                    //         igSameLine(0, -1);
+                                    //     }
+                                        
+                                    //     igTableNextColumn();
+                                    //     igText("%s %s", instruction.opcode_str, instruction.addr_mode_str);
+                                    // }
+                                    igEndTable();
+
+                                    // igPopStyleColor(1);
+                                }
+                            }
+                            igEndChild();
+                            igPopStyleVar(1);
+
+                            igPopStyleColor(1);
                         }
                         igEndChild();
+                        igPopStyleVar(1);
                         
+                        igEndTabItem();
+                    }
+
+                    if(igBeginTabItem("DMA", NULL, 0))
+                    {
+                        for(uint32_t channel_index = 0; channel_index < 8; channel_index++)
+                        {
+                            if(mem_regs[CPU_MEM_REG_MDMAEN] & (1 << channel_index))
+                            {
+                                igPushID_Int(channel_index);
+                                if(igBeginChild_Str("##dma_channel", (ImVec2){0, 128}, 1, 0))
+                                {    
+                                    struct dma_t *channel = dma_channels + channel_index;
+                                    igText("Channel: %d", channel_index);
+                                    igText("Direction: %s", channel->direction ? "PPU -> CPU" : "CPU -> PPU");
+                                    if(channel->direction)
+                                    {
+                                        igText("Source: %04x", channel->regs[channel->cur_reg]);
+                                        igText("Destination: %06x", channel->addr);
+                                    }
+                                    else
+                                    {
+                                        igText("Source: %06x", channel->addr);
+                                        igText("Destination: %04x", channel->regs[channel->cur_reg]);
+                                    }
+                                    igText("Count: %d bytes", channel->count);
+                                    // igText("Address: %04x", channel->addr);
+
+                                    // igText("Register")
+                                    // igText("X: %d, Y: %d", background->offset.offsets[0], background->offset.offsets[1]);
+                                    // igText("Screen size: %d", screen_size);
+                                    // igText("Chr size: %s", (chr_size & PPU_BGMODE_BG_CHR_SIZE_MASK) ? "16x16" : "8x8");
+                                    // uintptr_t name_base_address = (uintptr_t)background->chr_base - (uintptr_t)vram;
+                                    // igText("Name base address: 0x%04x (0x%04x)", name_base_address, name_base_address >> 1);
+                                    // uintptr_t screen_data_base_address = ((uintptr_t)background->data_base[0]) - (uintptr_t)vram;
+                                    // igText("Screen data base address: 0x%04x (0x%04x)", screen_data_base_address, screen_data_base_address >> 1);
+                                }
+                                igEndChild();
+                                igPopID();
+                            }
+                        }
                         igEndTabItem();
                     }
 
@@ -445,8 +566,7 @@ int main(int argc, char *argv[])
                             apu_InitDisasm(&disasm_state);
 
                             igPushStyleColor_Vec4(ImGuiCol_TableRowBgAlt, (ImVec4){0.2, 0.2, 0.2, 1.0});
-
-                            if(igBeginTable("##disasm", 3, ImGuiTableFlags_SizingFixedSame | ImGuiTableFlags_RowBg, (ImVec2){0, 0}, 0.0))
+                            if(igBeginTable("##disasm", 3, ImGuiTableFlags_RowBg, (ImVec2){0, 0}, 0.0))
                             {
                                 igTableNextRow(ImGuiTableRowFlags_Headers, 0);
                                 igTableNextColumn();
@@ -477,6 +597,18 @@ int main(int argc, char *argv[])
                                     igTableNextColumn();
                                     // igText("%s %s", instruction.opcode_str, instruction.addr_mode_str);
                                     igText("%s", instruction.opcode_str);
+
+                                    if(instruction.operand_str[0][0] != '\0')
+                                    {
+                                        igSameLine(0, -1);
+                                        igText(" %s", instruction.operand_str[0]);
+
+                                        if(instruction.operand_str[1][0] != '\0')
+                                        {
+                                            igSameLine(0, -1);
+                                            igText(", %s", instruction.operand_str[1]);
+                                        }
+                                    }
                                 }
                                 igEndTable();
 
@@ -669,24 +801,45 @@ int main(int argc, char *argv[])
 
                                 if(igBeginTabItem("Backgrounds", NULL, 0))
                                 {
-                                    uint8_t bg_mode = ram1_regs[PPU_REG_BGMODE] & PPU_BGMODE_MODE_MASK;
-                                    uint8_t chr_size = ram1_regs[PPU_REG_BGMODE] >> PPU_BGMODE_BG1_CHR_SIZE_SHIFT;
+                                    uint8_t bg_mode = mem_regs[PPU_REG_BGMODE] & PPU_BGMODE_MODE_MASK;
+                                    uint8_t chr_size = mem_regs[PPU_REG_BGMODE] >> PPU_BGMODE_BG1_CHR_SIZE_SHIFT;
 
                                     igText("BG mode: %d", bg_mode);
+
+                                    bool disabled = backgrounds[0].disabled;
+                                    igCheckbox("Disable BG1", &disabled);
+                                    backgrounds[0].disabled = disabled;
+                                    igSameLine(0, -1);
+
+                                    disabled = backgrounds[1].disabled;
+                                    igCheckbox("Disable BG2", &disabled);
+                                    backgrounds[1].disabled = disabled;
+                                    igSameLine(0, -1);
+
+                                    disabled = backgrounds[2].disabled;
+                                    igCheckbox("Disable BG3", &disabled);
+                                    backgrounds[2].disabled = disabled;
+                                    igSameLine(0, -1);
+
+                                    disabled = backgrounds[3].disabled;
+                                    igCheckbox("Disable BG4", &disabled);
+                                    backgrounds[3].disabled = disabled;                                    
                                     // char label[64];
                                     for(uint32_t background_index = 0; background_index < 4; background_index++)
                                     {
                                         // sprintf(label, "BG %d", background_index);
                                         struct background_t *background = backgrounds + background_index;
-                                        uint32_t screen_size = ram1_regs[PPU_REG_BG1SC + background_index] & 0x3;
+                                        uint32_t screen_size = mem_regs[PPU_REG_BG1SC + background_index] & 0x3;
                                         igPushID_Int(background_index);
                                         if(igBeginChild_Str("Background", (ImVec2){0, 128}, 1, 0))
                                         {    
                                             igText("X: %d, Y: %d", background->offset.offsets[0], background->offset.offsets[1]);
                                             igText("Screen size: %d", screen_size);
                                             igText("Chr size: %s", (chr_size & PPU_BGMODE_BG_CHR_SIZE_MASK) ? "16x16" : "8x8");
-                                            igText("Name base address: 0x%04x", (uintptr_t)background->chr_base - (uintptr_t)vram);
-                                            igText("Screen data base address: 0x%04x", ((uintptr_t)background->data_base[0]) - (uintptr_t)vram);
+                                            uintptr_t name_base_address = (uintptr_t)background->chr_base - (uintptr_t)vram;
+                                            igText("Name base address: 0x%04x (0x%04x)", name_base_address, name_base_address >> 1);
+                                            uintptr_t screen_data_base_address = ((uintptr_t)background->data_base[0]) - (uintptr_t)vram;
+                                            igText("Screen data base address: 0x%04x (0x%04x)", screen_data_base_address, screen_data_base_address >> 1);
                                         }
                                         igEndChild();
                                         igPopID();
@@ -786,12 +939,71 @@ int main(int argc, char *argv[])
 
                                 if(igBeginTabItem("Regs", NULL, 0))
                                 {
-                                    for(uint32_t reg = PPU_REG_INIDISP; reg < PPU_REG_WMADDH; reg++)
+                                    if(igBeginTable("##ppu_regs", 2, 0, (ImVec2){}, ImGuiTableFlags_Borders | ImGuiTableFlags_SizingFixedFit))
                                     {
-                                        if(ppu_reg_strs[reg - PPU_REG_INIDISP] != NULL)
+                                        for(uint32_t reg = PPU_REG_INIDISP; reg <= PPU_REG_WMADDH; reg++)
                                         {
-                                            igText("%04x(%s): %02x", reg, ppu_reg_strs[reg - PPU_REG_INIDISP], ram1_regs[reg]);
+                                            if(ppu_reg_strs[reg - PPU_REG_INIDISP] != NULL)
+                                            {
+                                                igPushID_Int(reg);
+                                                igTableNextRow(0, 0);
+                                                igTableNextColumn();
+
+                                                int value = mem_regs[reg];
+                                                ImVec4 text_color = (ImVec4){1, 1, 1, 1};
+                                                if(emu_IsPPURegOverriden(reg))
+                                                {
+                                                    text_color = (ImVec4){1, 1, 0, 1};
+                                                }
+
+                                                igTextColored(text_color, "%s", ppu_reg_strs[reg - PPU_REG_INIDISP]);
+
+                                                igTableNextColumn();
+                                                igSetNextItemWidth(120.0f);
+                                                igInputInt("##reg_value", &value, 0, 0, ImGuiInputTextFlags_CharsHexadecimal);
+                                                igSameLine(0, -1);
+                                                if(igButton("+", (ImVec2){}))
+                                                {
+                                                    value++;
+                                                    if(value > 0xff)
+                                                    {
+                                                        value = 0xff;
+                                                    }    
+                                                }
+
+                                                igSameLine(0, -1);
+
+                                                if(igButton("-", (ImVec2){}))
+                                                {
+                                                    value--;
+                                                    if(value < 0)
+                                                    {
+                                                        value = 0;
+                                                    }    
+                                                }
+
+                                                igSameLine(0, -1);
+
+                                                if(igButton("C", (ImVec2){}))
+                                                {
+                                                    value = mem_regs[reg];
+                                                    emu_ClearPPURegOverride(reg);
+                                                }
+
+
+
+                                                if(value != mem_regs[reg])
+                                                {
+                                                    emu_ClearPPURegOverride(reg);
+                                                    mem_reg_funcs[reg].write(reg, value);
+                                                    emu_SetPPURegOverride(reg);
+                                                }
+
+                                                igPopID();
+                                            }
                                         }
+
+                                        igEndTable();
                                     }
                                     igEndTabItem();
                                 }
@@ -930,8 +1142,10 @@ int main(int argc, char *argv[])
                                     {
                                         struct breakpoint_t *breakpoint = list->breakpoints + index;
                                         igPushID_Int(index);
-                                        if(igBeginChild_Str("##breakpoint", (ImVec2){0, 64}, 1, 0))
+                                        if(igBeginChild_Str("##breakpoint", (ImVec2){0, 80}, 1, 0))
                                         {
+                                            bool disabled = breakpoint->disabled;
+                                            breakpoint->disabled = disabled;
                                             ImVec4 color;
                                             if(emu_emulation_data.breakpoint == breakpoint)
                                             {
@@ -962,6 +1176,35 @@ int main(int argc, char *argv[])
                                             bool trace = breakpoint->trace;
                                             igCheckbox("Trace", &trace);
                                             breakpoint->trace = trace;
+                                            igSameLine(0, -1);
+                                            bool disable = breakpoint->disabled;
+                                            igCheckbox("Disable", &disabled);
+                                            breakpoint->disabled = disabled;
+
+                                            switch(breakpoint->type)
+                                            {
+                                                case BREAKPOINT_TYPE_VRAM_READ:
+                                                    if(breakpoint->disabled)
+                                                    {
+                                                        clear_flag_in_range(NULL, breakpoint->start_address, breakpoint->end_address, EMU_BREAKPOINT_FLAG_READ);
+                                                    }
+                                                    else
+                                                    {
+                                                        set_flag_in_range(NULL, breakpoint->start_address, breakpoint->end_address, EMU_BREAKPOINT_FLAG_READ);
+                                                    }
+                                                break;
+
+                                                case BREAKPOINT_TYPE_VRAM_WRITE:
+                                                    if(breakpoint->disabled)
+                                                    {
+                                                        clear_flag_in_range(NULL, breakpoint->start_address, breakpoint->end_address, EMU_BREAKPOINT_FLAG_WRITE);
+                                                    }
+                                                    else
+                                                    {
+                                                        set_flag_in_range(NULL, breakpoint->start_address, breakpoint->end_address, EMU_BREAKPOINT_FLAG_WRITE);
+                                                    }
+                                                break;
+                                            }
                                         }
                                         igEndChild();
                                         igPopID();

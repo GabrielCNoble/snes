@@ -2,6 +2,7 @@
 #include "ppu.h"
 #include "cart.h"
 #include "mem.h"
+#include "emu.h"
 #include <xmmintrin.h>
 // #include "uop.h"
 #include <stdio.h>
@@ -12,6 +13,10 @@
 #include <ctype.h>
 
 unsigned long step_count = 0;
+
+/* from emu.c */
+extern uint32_t                        emu_cpu_stack_frame_top;
+extern struct emu_cpu_stack_frame_t *  emu_cpu_stack_frames;
 
 struct cpu_state_t cpu_state = {
 //    .in_irqb = 1,
@@ -55,7 +60,8 @@ uint16_t interrupt_vectors[][2] = {
 
 uint32_t            cpu_cycle_count = 0;
 extern uint64_t     master_cycles;
-extern uint8_t *    ram1_regs;
+// extern uint8_t *    ram1_regs;
+extern uint8_t *    mem_regs;
 extern uint8_t      last_bus_value;
 extern uint16_t     vcounter;
 extern uint16_t     hcounter;
@@ -279,6 +285,13 @@ uint32_t cop(uint32_t arg);
 uint32_t stp(uint32_t arg);
 /* STP */
 #define STP UOP(stp, 0)
+
+uint32_t cpu_push_stack_frame(uint32_t arg);
+#define PUSH_FRAME(reg_s_decs) UOP(cpu_push_stack_frame, reg_s_decs)
+
+uint32_t cpu_pop_stack_frame(uint32_t arg);
+#define POP_FRAME UOP(cpu_pop_stack_frame, 0)
+
 
 /* hangs the cpu when encountering an unknown instruction */
 uint32_t unimplemented(uint32_t arg);
@@ -2277,6 +2290,7 @@ struct inst_t instructions[] = {
             MOV_S       (MOV_LSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_PBR),
             DECS,
             IO,
+            /* CPU_REG_PC got incremented by the second MOV_LPC uop */
             MOV_L       (MOV_LSB, CPU_REG_PC, CPU_REG_PBR, CPU_REG_BANK),
             MOV_S       (MOV_MSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_PC),
             DECS,
@@ -2284,6 +2298,7 @@ struct inst_t instructions[] = {
             DECS,
             MOV_RRW     (CPU_REG_ADDR, CPU_REG_PC, MOV_RRW_WORD),
             MOV_RRW     (CPU_REG_BANK, CPU_REG_PBR, MOV_RRW_BYTE),
+            PUSH_FRAME  (3),
         }
     },
 
@@ -2294,6 +2309,7 @@ struct inst_t instructions[] = {
     [CPU_OPCODE_JSR_ABS] = {
         .uops = {
             MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            /* CPU_REG_PC got incremented by the MOV_LPC uop */
             MOV_L       (MOV_MSB, CPU_REG_PC, CPU_REG_PBR, CPU_REG_ADDR),
             IO,
             MOV_S       (MOV_MSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_PC),
@@ -2301,12 +2317,14 @@ struct inst_t instructions[] = {
             MOV_S       (MOV_LSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_PC),
             DECS,
             MOV_RRW     (CPU_REG_ADDR, CPU_REG_PC, MOV_RRW_WORD),
+            PUSH_FRAME  (2),
         }
     },
 
     [CPU_OPCODE_JSR_ABS_X_IND] = {
         .uops = {
             MOV_LPC     (MOV_LSB, CPU_REG_ADDR),
+            /* CPU_REG_PC got incremented by the MOV_LPC uop */
             MOV_S       (MOV_MSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_PC),
             DECS,
             MOV_S       (MOV_LSB, CPU_REG_S, CPU_REG_ZERO, CPU_REG_PC),
@@ -2318,6 +2336,7 @@ struct inst_t instructions[] = {
             ADDR_OFFI   (1, ADDR_OFF_BANK_WRAP),
             MOV_L       (MOV_MSB, CPU_REG_ADDR, CPU_REG_PBR, CPU_REG_TEMP),
             MOV_RRW     (CPU_REG_TEMP, CPU_REG_PC, MOV_RRW_WORD),
+            PUSH_FRAME  (2),
         }
     },
 
@@ -3705,6 +3724,7 @@ struct inst_t instructions[] = {
             INC_RW      (CPU_REG_ADDR),
             MOV_RRW     (CPU_REG_ADDR, CPU_REG_PC, MOV_RRW_WORD),
             MOV_RRW     (CPU_REG_BANK, CPU_REG_PBR, MOV_RRW_BYTE),
+            POP_FRAME
         }
     },
 
@@ -3723,6 +3743,7 @@ struct inst_t instructions[] = {
             IO,
             INC_RW      (CPU_REG_ADDR),
             MOV_RRW     (CPU_REG_ADDR, CPU_REG_PC, MOV_RRW_WORD),
+            POP_FRAME
         }
     },
 
@@ -6591,9 +6612,9 @@ uint32_t cpu_mem_cycles(uint32_t effective_address)
         index += offset < 0x4000;
         index += offset < 0x2000;
 
-        return mem_speed_map[index][bank_region2 && (ram1_regs[CPU_MEM_REG_MEMSEL] & 1)];
+        return mem_speed_map[index][bank_region2 && (mem_regs[CPU_MEM_REG_MEMSEL] & 1)];
     }
-    else if(ram1_regs[CPU_MEM_REG_MEMSEL] & 1)
+    else if(mem_regs[CPU_MEM_REG_MEMSEL] & 1)
     {
         return MEM_SPEED_FAST_CYCLES;
     }
@@ -6709,14 +6730,14 @@ void reset_cpu()
     knew why this is needed... */
     cpu_state.uop_cycles = -22 * CPU_MASTER_CYCLES;
 
-    ram1_regs[CPU_MEM_REG_MEMSEL] = 0;
-    ram1_regs[CPU_MEM_REG_TIMEUP] = 0;
-    ram1_regs[CPU_MEM_REG_HTIMEL] = 0xff;
-    ram1_regs[CPU_MEM_REG_HTIMEH] = 0x01;
-    ram1_regs[CPU_MEM_REG_VTIMEL] = 0xff;
-    ram1_regs[CPU_MEM_REG_VTIMEH] = 0x01;
-    ram1_regs[CPU_MEM_REG_MDMAEN] = 0;
-    ram1_regs[CPU_MEM_REG_HDMAEN] = 0;
+    mem_regs[CPU_MEM_REG_MEMSEL] = 0;
+    mem_regs[CPU_MEM_REG_TIMEUP] = 0;
+    mem_regs[CPU_MEM_REG_HTIMEL] = 0xff;
+    mem_regs[CPU_MEM_REG_HTIMEH] = 0x01;
+    mem_regs[CPU_MEM_REG_VTIMEL] = 0xff;
+    mem_regs[CPU_MEM_REG_VTIMEH] = 0x01;
+    mem_regs[CPU_MEM_REG_MDMAEN] = 0;
+    mem_regs[CPU_MEM_REG_HDMAEN] = 0;
 }
 
 // void reset_core()
@@ -6810,9 +6831,9 @@ uint32_t cpu_Step(int32_t *master_cycle_count)
                 if(cpu_state.run_mul)
                 {
                     cpu_state.mul_cycles--;
-                    uint16_t current_product = (uint16_t)ram1_regs[CPU_MEM_REG_RDMPYL] | ((uint16_t)ram1_regs[CPU_MEM_REG_RDMPYH] << 8);
+                    uint16_t current_product = (uint16_t)mem_regs[CPU_MEM_REG_RDMPYL] | ((uint16_t)mem_regs[CPU_MEM_REG_RDMPYH] << 8);
                     uint32_t shift = CPU_MUL_MACHINE_CYCLES - cpu_state.mul_cycles;
-                    uint16_t quotient = (uint16_t)ram1_regs[CPU_MEM_REG_RDDIVL] | ((uint16_t)ram1_regs[CPU_MEM_REG_RDDIVH] << 8);
+                    uint16_t quotient = (uint16_t)mem_regs[CPU_MEM_REG_RDDIVL] | ((uint16_t)mem_regs[CPU_MEM_REG_RDDIVH] << 8);
 
                     if(quotient & 0x01)
                     {
@@ -6822,17 +6843,17 @@ uint32_t cpu_Step(int32_t *master_cycle_count)
                     quotient >>= 1;
                     cpu_state.shifter <<= 1;
 
-                    ram1_regs[CPU_MEM_REG_RDMPYL] = current_product & 0xff;
-                    ram1_regs[CPU_MEM_REG_RDMPYH] = (current_product >> 8) & 0xff;
-                    ram1_regs[CPU_MEM_REG_RDDIVL] = quotient & 0xff;
-                    ram1_regs[CPU_MEM_REG_RDDIVH] = (quotient >> 8) & 0xff;
+                    mem_regs[CPU_MEM_REG_RDMPYL] = current_product & 0xff;
+                    mem_regs[CPU_MEM_REG_RDMPYH] = (current_product >> 8) & 0xff;
+                    mem_regs[CPU_MEM_REG_RDDIVL] = quotient & 0xff;
+                    mem_regs[CPU_MEM_REG_RDDIVH] = (quotient >> 8) & 0xff;
                 }
 
                 if(cpu_state.run_div)
                 {
                     cpu_state.div_cycles--;
-                    uint16_t current_quotient = (uint16_t)ram1_regs[CPU_MEM_REG_RDDIVL] | ((uint16_t)ram1_regs[CPU_MEM_REG_RDDIVH] << 8);
-                    uint16_t product = (uint16_t)ram1_regs[CPU_MEM_REG_RDMPYL] | ((uint16_t)ram1_regs[CPU_MEM_REG_RDMPYH] << 8);
+                    uint16_t current_quotient = (uint16_t)mem_regs[CPU_MEM_REG_RDDIVL] | ((uint16_t)mem_regs[CPU_MEM_REG_RDDIVH] << 8);
+                    uint16_t product = (uint16_t)mem_regs[CPU_MEM_REG_RDMPYL] | ((uint16_t)mem_regs[CPU_MEM_REG_RDMPYH] << 8);
                     current_quotient <<= 1;
                     cpu_state.shifter >>= 1;
                     if(product >= cpu_state.shifter)
@@ -6841,10 +6862,10 @@ uint32_t cpu_Step(int32_t *master_cycle_count)
                         current_quotient |= 1;
                     }
 
-                    ram1_regs[CPU_MEM_REG_RDDIVL] = current_quotient & 0xff;
-                    ram1_regs[CPU_MEM_REG_RDDIVH] = (current_quotient >> 8) & 0xff;
-                    ram1_regs[CPU_MEM_REG_RDMPYL] = product & 0xff;
-                    ram1_regs[CPU_MEM_REG_RDMPYH] = (product >> 8) & 0xff;
+                    mem_regs[CPU_MEM_REG_RDDIVL] = current_quotient & 0xff;
+                    mem_regs[CPU_MEM_REG_RDDIVH] = (current_quotient >> 8) & 0xff;
+                    mem_regs[CPU_MEM_REG_RDMPYL] = product & 0xff;
+                    mem_regs[CPU_MEM_REG_RDMPYH] = (product >> 8) & 0xff;
                 }
             }
 
@@ -6966,7 +6987,7 @@ void io_write(uint32_t effective_address, uint8_t value)
 
 void nmitimen_write(uint32_t effective_address, uint8_t value)
 {
-    ram1_regs[CPU_MEM_REG_NMITIMEN] = value;
+    mem_regs[CPU_MEM_REG_NMITIMEN] = value;
 
     if(value & (CPU_NMITIMEN_FLAG_HTIMER_EN | CPU_NMITIMEN_FLAG_VTIMER_EN))
     {
@@ -6974,29 +6995,29 @@ void nmitimen_write(uint32_t effective_address, uint8_t value)
     }
     else
     {
-        ram1_regs[CPU_MEM_REG_TIMEUP] = 0;
+        mem_regs[CPU_MEM_REG_TIMEUP] = 0;
     }
 }
 
 uint8_t timeup_read(uint32_t effective_address)
 {
-    uint8_t value = ram1_regs[CPU_MEM_REG_TIMEUP];
-    ram1_regs[CPU_MEM_REG_TIMEUP] = 0;
+    uint8_t value = mem_regs[CPU_MEM_REG_TIMEUP];
+    mem_regs[CPU_MEM_REG_TIMEUP] = 0;
     /* bits 6-0 are open bus, so we put the last thing that was on the data bus in them */
     return value | (last_bus_value & 0x7f);
 }
 
 uint8_t rdnmi_read(uint32_t effective_address)
 {
-    uint8_t value = ram1_regs[CPU_MEM_REG_RDNMI];
-    ram1_regs[CPU_MEM_REG_RDNMI] &= ~CPU_RDNMI_BLANK_NMI;
+    uint8_t value = mem_regs[CPU_MEM_REG_RDNMI];
+    mem_regs[CPU_MEM_REG_RDNMI] &= ~CPU_RDNMI_BLANK_NMI;
     /* bits 6-4 are open bus, so we put the last thing that was on the data bus in them */
     return value | (last_bus_value & 0x70);
 }
 
 uint8_t hvbjoy_read(uint32_t effective_address)
 {
-    uint8_t value = ram1_regs[CPU_MEM_REG_HVBJOY];
+    uint8_t value = mem_regs[CPU_MEM_REG_HVBJOY];
     /* bits 5-1 are open bus, so we put the last thing that was on the data bus in them */
     return value | (last_bus_value & 0x3e);
 }
@@ -7005,37 +7026,37 @@ void wrmpyb_write(uint32_t effective_address, uint8_t value)
 {
     if(cpu_state.mul_cycles == 0)
     {
-        ram1_regs[CPU_MEM_REG_WRMPYB] = value;
-        cpu_state.shifter = ram1_regs[CPU_MEM_REG_WRMPYB];
-        ram1_regs[CPU_MEM_REG_RDDIVL] = ram1_regs[CPU_MEM_REG_WRMPYA];
-        ram1_regs[CPU_MEM_REG_RDDIVH] = ram1_regs[CPU_MEM_REG_WRMPYB];
+        mem_regs[CPU_MEM_REG_WRMPYB] = value;
+        cpu_state.shifter = mem_regs[CPU_MEM_REG_WRMPYB];
+        mem_regs[CPU_MEM_REG_RDDIVL] = mem_regs[CPU_MEM_REG_WRMPYA];
+        mem_regs[CPU_MEM_REG_RDDIVH] = mem_regs[CPU_MEM_REG_WRMPYB];
         cpu_state.mul_cycles = CPU_MUL_MACHINE_CYCLES;
         /* setting this to zero here guarantees there will be a delay of a single
         machine cycle before the multiplication begins, which is necessary for timing */
         cpu_state.run_mul = 0;
     }
 
-    ram1_regs[CPU_MEM_REG_RDMPYL] = 0;
-    ram1_regs[CPU_MEM_REG_RDMPYH] = 0;
+    mem_regs[CPU_MEM_REG_RDMPYL] = 0;
+    mem_regs[CPU_MEM_REG_RDMPYH] = 0;
 }
 
 void wrdivb_write(uint32_t effective_address, uint8_t value)
 {
     if(cpu_state.div_cycles == 0)
     {
-        ram1_regs[CPU_MEM_REG_WRDIVB] = value;
-        cpu_state.shifter = (uint32_t)ram1_regs[CPU_MEM_REG_WRDIVB] << 16;
+        mem_regs[CPU_MEM_REG_WRDIVB] = value;
+        cpu_state.shifter = (uint32_t)mem_regs[CPU_MEM_REG_WRDIVB] << 16;
         cpu_state.div_cycles = CPU_DIV_MACHINE_CYCLES;
         /* setting this to zero here guarantees there will be a delay of a single
         machine cycle before the division begins, which is necessary for timing */
         cpu_state.run_div = 0;
-//        cpu_state.latched_dividend = (uint16_t)ram1_regs[CPU_MEM_REG_WRDIVL] | ((uint16_t)ram1_regs[CPU_MEM_REG_WRDIVH] << 8);
+//        cpu_state.latched_dividend = (uint16_t)mem_regs[CPU_MEM_REG_WRDIVL] | ((uint16_t)mem_regs[CPU_MEM_REG_WRDIVH] << 8);
     }
 
-    ram1_regs[CPU_MEM_REG_RDMPYL] = ram1_regs[CPU_MEM_REG_WRDIVL];
-    ram1_regs[CPU_MEM_REG_RDMPYH] = ram1_regs[CPU_MEM_REG_WRDIVH];
-//    ram1_regs[CPU_MEM_REG_RDMPYL] = cpu_state.latched_dividend & 0xff;
-//    ram1_regs[CPU_MEM_REG_RDMPYH] = (cpu_state.latched_dividend >> 8) & 0xff;
+    mem_regs[CPU_MEM_REG_RDMPYL] = mem_regs[CPU_MEM_REG_WRDIVL];
+    mem_regs[CPU_MEM_REG_RDMPYH] = mem_regs[CPU_MEM_REG_WRDIVH];
+//    mem_regs[CPU_MEM_REG_RDMPYL] = cpu_state.latched_dividend & 0xff;
+//    mem_regs[CPU_MEM_REG_RDMPYH] = (cpu_state.latched_dividend >> 8) & 0xff;
 }
 
 
@@ -7498,7 +7519,7 @@ uint32_t alu_op(uint32_t arg)
         case ALU_OP_ADD:
             if(cpu_state.reg_p.d)
             {
-
+                emu_Log("BCD mode active!!!");
             }
             else
             {
@@ -7611,6 +7632,36 @@ uint32_t stp(uint32_t arg)
     cpu_state.rdy = 0;
     cpu_state.cur_interrupt = CPU_INT_RES;
     cpu_state.interrupts[CPU_INT_RES] = 1;
+    return 1;
+}
+
+uint32_t cpu_push_stack_frame(uint32_t arg)
+{
+    uint32_t reg_s_decs = arg;
+    uint16_t stack_pointer = cpu_state.regs[CPU_REG_S].word + 1;
+    uint16_t return_pc = (uint32_t)mem_regs[stack_pointer] | (((uint32_t)mem_regs[stack_pointer + 1]) << 8);
+    uint8_t return_pbr = cpu_state.regs[CPU_REG_PBR].byte[0];
+    if(reg_s_decs > 2)
+    {
+        return_pbr = mem_regs[stack_pointer + 2];
+    }
+
+    uint16_t target_pc = cpu_state.regs[CPU_REG_PC].word;
+    uint8_t target_pbr = cpu_state.regs[CPU_REG_PBR].byte[0];
+
+    uint16_t call_pc = cpu_state.instruction_address & 0xffff;
+    uint8_t call_pbr = (cpu_state.instruction_address >> 16) & 0xff;
+
+    emu_PushCPUStackFrame(call_pbr, call_pc, return_pbr, return_pc, target_pbr, target_pc, stack_pointer);
+    // if(reg_s_decs)
+    // uint32_t return_address = EFFECTIVE_ADDRESS(cpu_state.regs[CPU_REG_PBR].byte[0], cpu_state.regs[CPU_REG_PC].word + 1);
+    // emu_PushCPUStackFrame(cpu_state.instruction_address, cpu_state.regs[CPU_REG_PBR].byte[0], cpu_state.regs[CPU_REG_PC].word + 1, stack_pointer);
+    return 1;
+}
+
+uint32_t cpu_pop_stack_frame(uint32_t arg)
+{
+    emu_PopCPUStackFrame();
     return 1;
 }
 

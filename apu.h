@@ -142,13 +142,14 @@ struct apu_inst_info_t
 {
     uint8_t instruction;
     uint8_t addr_mode;
+    uint8_t operands[2];
     uint8_t width;
 };
 
 struct apu_disasm_inst_t
 {
     const char *    opcode_str;
-    char            addr_mode_str[32];
+    char            operand_str[2][16];
     uint8_t         bytes[4];
     uint8_t         width;
 };
@@ -271,7 +272,7 @@ enum APU_ADDR_MODES
     APU_ADDR_MODE_DP_X_IND,
     APU_ADDR_MODE_DP_IND_Y,
     APU_ADDR_MODE_X_Y,
-    APU_ADDR_MODE_D_S,
+    APU_ADDR_MODE_DP_DP,
     APU_ADDR_MODE_DP_IMM,
     APU_ADDR_MODE_IMP,
     APU_ADDR_MODE_PC_REL,
@@ -319,7 +320,7 @@ enum APU_OPCODES
     APU_OPCODE_ADC_A_ABS                = 0x85,
     APU_OPCODE_ADC_A_ABX_X              = 0x95,
     APU_OPCODE_ADC_A_ABS_Y              = 0x96,
-    APU_OPCODE_ADC_D_S                  = 0x89,
+    APU_OPCODE_ADC_DP_DP                = 0x89,
     APU_OPCODE_ADC_DP_IMM               = 0x98,
     APU_OPCODE_ADDW_DP                  = 0x7a,
 
@@ -333,7 +334,7 @@ enum APU_OPCODES
     APU_OPCODE_AND_A_ABS                = 0x25,
     APU_OPCODE_AND_A_ABS_X              = 0x35,
     APU_OPCODE_AND_A_ABS_Y              = 0x36,
-    APU_OPCODE_AND_D_S                  = 0x29,
+    APU_OPCODE_AND_DP_DP                = 0x29,
     APU_OPCODE_AND_DP_IMM               = 0x38,
     APU_OPCODE_AND1N_DP                 = 0x6a,
     APU_OPCODE_AND1_DP_BIT              = 0x4a,
@@ -406,7 +407,7 @@ enum APU_OPCODES
     APU_OPCODE_CMP_Y_IMM                = 0xad,
     APU_OPCODE_CMP_Y_DP                 = 0x7e,
     APU_OPCODE_CMP_Y_ABS                = 0x5e,
-    APU_OPCODE_CMP_D_S                  = 0x69,
+    APU_OPCODE_CMP_DP_DP                = 0x69,
     APU_OPCODE_CMP_DP_IMM               = 0x78,
     APU_OPCODE_CMPW_YA_DP               = 0x5a,
 
@@ -440,7 +441,7 @@ enum APU_OPCODES
     APU_OPCODE_EOR_A_ABS                = 0x45,
     APU_OPCODE_EOR_A_ABS_X              = 0x55,
     APU_OPCODE_EOR_A_ABS_Y              = 0x56,
-    APU_OPCODE_EOR_D_S                  = 0x49,
+    APU_OPCODE_EOR_DP_DP                = 0x49,
     APU_OPCODE_EOR_DP_IMM               = 0x58,
     APU_OPCODE_EOR1_DP_BIT              = 0x8a,
 
@@ -488,7 +489,7 @@ enum APU_OPCODES
     APU_OPCODE_MOV_Y_DP                 = 0xeb,
     APU_OPCODE_MOV_Y_DP_X               = 0xfb,
     APU_OPCODE_MOV_Y_ABS                = 0xec,
-    APU_OPCODE_MOV_D_S                  = 0xfa,
+    APU_OPCODE_MOV_DP_DP                = 0xfa,
     APU_OPCODE_MOV_DP_X_A               = 0xd4,
     APU_OPCODE_MOV_DP_X_Y               = 0xdb,
     APU_OPCODE_MOV_DP_Y_X               = 0xd9,
@@ -523,7 +524,7 @@ enum APU_OPCODES
     APU_OPCODE_OR_A_ABS                 = 0x05,
     APU_OPCODE_OR_A_ABS_X               = 0x15,
     APU_OPCODE_OR_A_ABS_Y               = 0x16,
-    APU_OPCODE_OR_D_S                   = 0x09,
+    APU_OPCODE_OR_DP_DP                 = 0x09,
     APU_OPCODE_OR_DP_IMM                = 0x18,
     APU_OPCODE_OR1N_ABS_BIT             = 0x2a,
     APU_OPCODE_OR1_ABS_BIT              = 0x0a,
@@ -564,7 +565,7 @@ enum APU_OPCODES
     APU_OPCODE_SBC_A_ABS                = 0xa5,
     APU_OPCODE_SBC_A_ABX_X              = 0xb5,
     APU_OPCODE_SBC_A_ABS_Y              = 0xb6,
-    APU_OPCODE_SBC_D_S                  = 0xa9,
+    APU_OPCODE_SBC_DP_DP                = 0xa9,
     APU_OPCODE_SBC_DP_IMM               = 0xb8,
     APU_OPCODE_SUBW_DP                  = 0x9a,
 

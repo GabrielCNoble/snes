@@ -102,7 +102,8 @@ struct breakpoint_t
     uint32_t address;
     uint32_t value;
 
-    uint32_t trace;
+    uint16_t trace;
+    uint16_t disabled;
 
     // union
     // {
@@ -155,6 +156,20 @@ struct emu_thread_data_t
     }breakpoint_data;
 };
 
+#define EMU_MAX_STACK_FRAMES 0x1000000
+struct emu_cpu_stack_frame_t
+{
+    // uint32_t    call_address;
+    // uint32_t return_address;
+    uint16_t    call_pc;
+    uint16_t    target_pc;
+    uint16_t    return_pc;
+    uint16_t    stack_pointer;
+    
+    uint8_t     call_pbr;
+    uint8_t     target_pbr;
+    uint8_t     return_pbr;
+};
 
 #define EMU_MAX_LOG_ENTRIES 0x20000
 struct emu_log_t
@@ -163,11 +178,25 @@ struct emu_log_t
     uint64_t    master_clock;
 };
 
+void set_flag_in_range(uint8_t *flag_bytes, uint32_t start_address, uint32_t end_address, uint32_t flag);
+
+void clear_flag_in_range(uint8_t *flag_bytes, uint32_t start_address, uint32_t end_address, uint32_t flag);
+
 void set_execution_breakpoint(uint32_t effective_address);
 
 void set_register_breakpoint(uint32_t reg, uint32_t value);
 
 void set_read_write_breakpoint(uint32_t type, uint32_t start_address, uint32_t end_address);
+
+void emu_SetPPURegOverride(uint32_t reg);
+
+void emu_ClearPPURegOverride(uint32_t reg);
+
+uint32_t emu_IsPPURegOverriden(uint32_t reg);
+
+void emu_PushCPUStackFrame(uint8_t call_pbr, uint16_t call_pc, uint8_t return_pbr, uint16_t return_pc, uint8_t target_pbr, uint16_t target_pc, uint16_t stack_pointer);
+
+void emu_PopCPUStackFrame();
 
 void set_dma_breakpoint(uint32_t channel);
 

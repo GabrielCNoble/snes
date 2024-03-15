@@ -25,6 +25,10 @@ struct breakpoint_range_t       emu_address_ranges[MAX_BREAKPOINTS];
 struct breakpoint_list_t        emu_breakpoints[BREAKPOINT_TYPE_LAST];
 uint32_t                        emu_dma_breakpoint_bitmask = 0;
 uint8_t *                       emu_vram_breakpoint_bitmask;
+uint8_t *                       emu_ppu_reg_override_bitmask;
+
+uint32_t                        emu_cpu_stack_frame_top;
+struct emu_cpu_stack_frame_t *  emu_cpu_stack_frames;
 
 SDL_Window *                    emu_window = NULL;
 SDL_GLContext                   emu_context;
@@ -68,8 +72,10 @@ char *breakpoint_register_names[] =
 
 extern struct cpu_state_t cpu_state;
 
-extern uint8_t *                ram1_regs;
-extern uint8_t *                ram2;
+// extern uint8_t *                ram1_regs;
+// extern uint8_t *                ram2;
+extern uint8_t *                mem_ram;
+extern uint8_t *                mem_regs;
 extern struct mem_write_t *     reg_writes;
 extern struct mem_read_t *      reg_reads;
 // extern struct dot_t *           framebuffer;
@@ -96,10 +102,11 @@ uint32_t emu_breakpoint_flag_lut[] = {
 void set_flag_in_range(uint8_t *flag_bytes, uint32_t start_address, uint32_t end_address, uint32_t flag)
 {
     // uint32_t mask = type == BREAKPOINT_TYPE_VRAM_READ ? EMU_BREAKPOINT_FLAG_READ : EMU_BREAKPOINT_FLAG_WRITE;
-    uint32_t last_byte = end_address >> 2;     
+    uint32_t last_byte_index = end_address >> 2;     
     uint32_t first_flag = start_address & 0x3;
-    uint32_t flag_count = ((1 + (end_address - start_address)) << 2) - first_flag;
-    for(uint32_t byte_index = start_address >> 2; byte_index < last_byte; byte_index++)
+    // uint32_t flag_count = ((1 + (end_address - start_address)) << 2) - first_flag;
+    uint32_t flag_count = (1 + (end_address - start_address)) - first_flag;
+    for(uint32_t byte_index = start_address >> 2; byte_index <= last_byte_index; byte_index++)
     {
         uint32_t count = (flag_count > 4) ? 4 : flag_count;
 
@@ -116,10 +123,11 @@ void set_flag_in_range(uint8_t *flag_bytes, uint32_t start_address, uint32_t end
 void clear_flag_in_range(uint8_t *flag_bytes, uint32_t start_address, uint32_t end_address, uint32_t flag)
 {
     // uint32_t mask = type == BREAKPOINT_TYPE_VRAM_READ ? EMU_BREAKPOINT_FLAG_READ : EMU_BREAKPOINT_FLAG_WRITE;
-    uint32_t last_byte = end_address >> 2;     
+    uint32_t last_byte_index = end_address >> 2;     
     uint32_t first_flag = start_address & 0x3;
-    uint32_t flag_count = ((1 + (end_address - start_address)) << 2) - first_flag;
-    for(uint32_t byte_index = start_address >> 2; byte_index < last_byte; byte_index++)
+    // uint32_t flag_count = ((1 + (end_address - start_address)) << 2) - first_flag;
+    uint32_t flag_count = (1 + (end_address - start_address)) - first_flag;
+    for(uint32_t byte_index = start_address >> 2; byte_index <= last_byte_index; byte_index++)
     {
         uint32_t count = (flag_count > 4) ? 4 : flag_count;
 
@@ -141,6 +149,7 @@ void set_execution_breakpoint(uint32_t effective_address)
 
     breakpoint->type = BREAKPOINT_TYPE_EXECUTION;
     breakpoint->start_address = effective_address;
+    breakpoint->disabled = 0;
 
     emu_Log("execution breakpoint set on address %02x:%04x\n", (effective_address >> 16), effective_address & 0xffff);
 }
@@ -154,6 +163,7 @@ void set_register_breakpoint(uint32_t reg, uint32_t value)
     breakpoint->type = BREAKPOINT_TYPE_REGISTER;
     breakpoint->reg = reg;
     breakpoint->value = value;
+    breakpoint->disabled = 0;
 
     printf("breakpoint set on register %s, for value %x\n", breakpoint_register_names[reg], value);
 }
@@ -173,6 +183,7 @@ void set_read_write_breakpoint(uint32_t type, uint32_t start_address, uint32_t e
     breakpoint->start_address = start_address;
     breakpoint->end_address = end_address;
     breakpoint->type = type;
+    breakpoint->disabled = 0;
 
     if(type == BREAKPOINT_TYPE_VRAM_READ || type == BREAKPOINT_TYPE_VRAM_WRITE)
     {
@@ -214,6 +225,54 @@ void set_read_write_breakpoint(uint32_t type, uint32_t start_address, uint32_t e
     list->count++;
 }
 
+void emu_SetPPURegOverride(uint32_t reg)
+{
+    uint32_t reg_index = reg - PPU_REG_FIRST;
+    uint32_t byte_index = reg_index >> 3;
+    uint32_t bit_index = reg_index & 7;
+    emu_ppu_reg_override_bitmask[byte_index] |= (1 << bit_index);
+}
+
+void emu_ClearPPURegOverride(uint32_t reg)
+{
+    uint32_t reg_index = reg - PPU_REG_FIRST;
+    uint32_t byte_index = reg_index >> 3;
+    uint32_t bit_index = reg_index & 7;
+    emu_ppu_reg_override_bitmask[byte_index] &= ~(1 << bit_index);
+}
+
+uint32_t emu_IsPPURegOverriden(uint32_t reg)
+{
+    uint32_t reg_index = reg - PPU_REG_FIRST;
+    uint32_t byte_index = reg_index >> 3;
+    uint32_t bit_index = reg_index & 7;
+    return emu_ppu_reg_override_bitmask[byte_index] & (1 << bit_index);
+}
+
+void emu_PushCPUStackFrame(uint8_t call_pbr, uint16_t call_pc, uint8_t return_pbr, uint16_t return_pc, uint8_t target_pbr, uint16_t target_pc, uint16_t stack_pointer)
+{
+    emu_cpu_stack_frame_top++;
+    emu_cpu_stack_frames[emu_cpu_stack_frame_top].call_pbr = call_pbr;
+    emu_cpu_stack_frames[emu_cpu_stack_frame_top].call_pc = call_pc;
+    emu_cpu_stack_frames[emu_cpu_stack_frame_top].return_pbr = return_pbr;
+    emu_cpu_stack_frames[emu_cpu_stack_frame_top].return_pc = return_pc;
+    emu_cpu_stack_frames[emu_cpu_stack_frame_top].target_pbr = target_pbr;
+    emu_cpu_stack_frames[emu_cpu_stack_frame_top].target_pc = target_pc;
+    emu_cpu_stack_frames[emu_cpu_stack_frame_top].stack_pointer = stack_pointer;
+    // emu_cpu_stack_frames[emu_cpu_stack_frame_top].call_address = call_address;
+    // emu_cpu_stack_frames[emu_cpu_stack_frame_top].return_pbr = return_pbr;
+    // emu_cpu_stack_frames[emu_cpu_stack_frame_top].return_pc = return_pc;
+    // emu_cpu_stack_frames[emu_cpu_stack_frame_top].stack_pointer = stack_pointer;
+}
+
+void emu_PopCPUStackFrame()
+{
+    if(emu_cpu_stack_frame_top < 0xffffffff)
+    {
+        emu_cpu_stack_frame_top--;
+    }
+}
+
 void set_dma_breakpoint(uint32_t channel)
 {
     if(channel < 8)
@@ -227,6 +286,7 @@ void set_dma_breakpoint(uint32_t channel)
 
             breakpoint->type = BREAKPOINT_TYPE_DMA;
             breakpoint->dma.channel = channel;
+            breakpoint->disabled = 0;
         }
 
         emu_Log("breakpoint set on dma channel %d", channel);   
@@ -356,6 +416,9 @@ void init_emu()
     emu_log_entries = calloc(EMU_MAX_LOG_ENTRIES, sizeof(struct emu_log_t));
 
     emu_vram_breakpoint_bitmask = calloc(1, PPU_VRAM_SIZE >> 2);
+    emu_ppu_reg_override_bitmask = calloc(1, (PPU_REG_LAST - PPU_REG_FIRST) >> 3);
+
+    emu_cpu_stack_frames = calloc(EMU_MAX_STACK_FRAMES, sizeof(struct emu_cpu_stack_frame_t));
 
     trace_file = fopen("./trace.log", "w");
     if(trace_file == NULL)
@@ -386,6 +449,7 @@ void shutdown_emu()
 void reset_emu()
 {
     master_cycles = 0;
+    emu_cpu_stack_frame_top = 0xffffffff;
     reset_cpu();
     reset_ppu();
     apu_Reset();
@@ -403,7 +467,7 @@ void reset_emu()
 // uint32_t emu_BreakpointHandler(int32_t step_cycles)
 // {
 
-// }
+// } 
 
 void emu_EmulationThread(struct thrd_t *thread)
 {
@@ -412,7 +476,7 @@ void emu_EmulationThread(struct thrd_t *thread)
         struct emu_thread_data_t *data = thread->data;
         data->status = 0;
 
-        if(!ram1_regs[CPU_MEM_REG_MDMAEN])
+        if(!mem_regs[CPU_MEM_REG_MDMAEN])
         {
             if(cpu_Step(&data->step_master_cycles))
             {
@@ -429,7 +493,7 @@ void emu_EmulationThread(struct thrd_t *thread)
         apu_Step(data->step_master_cycles);
         step_ctrl(data->step_master_cycles);
 
-        if(step_ppu(data->step_master_cycles))
+        if(ppu_Step(data->step_master_cycles))
         {
             data->status |= EMU_STATUS_END_OF_FRAME;
         }
@@ -444,7 +508,7 @@ void emu_EmulationThread(struct thrd_t *thread)
             assert_rdy(0);
         }
 
-        if(ram1_regs[CPU_MEM_REG_TIMEUP] & 0x80)
+        if(mem_regs[CPU_MEM_REG_TIMEUP] & 0x80)
         {
             assert_irq(1);
         }

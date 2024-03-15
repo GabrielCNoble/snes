@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 #include <math.h>
 
 // struct apu_io_reg_t io_regs[4];
@@ -387,24 +388,60 @@ char *apu_instruction_strs[] = {
     [APU_INST_XCN]   = "XCN"
 };
 
-char *apu_addr_mode_strs[] = {
+char *apu_reg_strs[] = {
+    [APU_REG_X]     = "X",
+    [APU_REG_Y]     = "Y",
+    [APU_REG_SP]    = "SP",
+    [APU_REG_PSW]   = "PSW",
+    [APU_REG_A]     = "A",
+    [APU_REG_PC]    = "PC",
+};
 
+char *apu_addr_mode_strs[] = {
+    [APU_ADDR_MODE_IMM]         = "#%02x",
+    [APU_ADDR_MODE_X]           = "(X) = %02x",
+    [APU_ADDR_MODE_X_INCR]      = "(X)+ = %02x",
+    [APU_ADDR_MODE_DP]          = "(dp(%02x) = %02x)",
+    [APU_ADDR_MODE_DP_BIT]      = "(dp(%02x) = %02x).%d",
+    [APU_ADDR_MODE_DP_X]        = "(dp(%02x) + X) = %02x",
+    [APU_ADDR_MODE_DP_Y]        = "(dp(%02x) + Y) = %02x",
+    [APU_ADDR_MODE_ABS]         = "(!abs(%04x))",
+    [APU_ADDR_MODE_ABS_BIT]     = "(!abs(%04x)).%d",
+    [APU_ADDR_MODE_ABS_X]       = "(!abs(%04x) + X(%02x))",
+    [APU_ADDR_MODE_ABS_Y]       = "(!abs(%04x) + Y(%02x))",
+    [APU_ADDR_MODE_DP_X_IND]    = "([dp(%02x) + X(%02x)])",
+    [APU_ADDR_MODE_DP_IND_Y]    = "([dp(%02x)] + Y(%02x))",
+    [APU_ADDR_MODE_X_Y]         = "",
+    [APU_ADDR_MODE_DP_DP]       = "",
+    [APU_ADDR_MODE_DP_IMM]      = "",
+    [APU_ADDR_MODE_IMP]         = "",
+    [APU_ADDR_MODE_PC_REL]      = "PC(%04x) + r(%02x)",
+    [APU_ADDR_MODE_S]           = "",
+};
+
+enum APU_OPERANDS
+{
+    APU_OPERAND_REG_A   = APU_REG_A,
+    APU_OPERAND_REG_X   = APU_REG_X,
+    APU_OPERAND_REG_Y   = APU_REG_Y,
+    APU_OPERAND_REG_SP  = APU_REG_SP,
+    APU_OPERAND_MEM     = APU_REG_LAST
 };
 
 struct apu_inst_info_t apu_instruction_info[] = {
-    [APU_OPCODE_ADC_X_Y]        = {.instruction = APU_INST_ADC,   .addr_mode = APU_ADDR_MODE_X_Y,       .width = 1},
-    [APU_OPCODE_ADC_A_IMM]      = {.instruction = APU_INST_ADC,   .addr_mode = APU_ADDR_MODE_IMM,       .width = 2},
-    [APU_OPCODE_ADC_A_X]        = {.instruction = APU_INST_ADC,   .addr_mode = APU_ADDR_MODE_X,         .width = 1},
-    [APU_OPCODE_ADC_A_DP_IND_Y] = {.instruction = APU_INST_ADC,   .addr_mode = APU_ADDR_MODE_DP_IND_Y,  .width = 2},
-    [APU_OPCODE_ADC_A_DP_X_IND] = {.instruction = APU_INST_ADC,   .addr_mode = APU_ADDR_MODE_DP_X_IND,  .width = 2},
-    [APU_OPCODE_ADC_A_DP]       = {.instruction = APU_INST_ADC,   .addr_mode = APU_ADDR_MODE_DP,        .width = 2},
-    [APU_OPCODE_ADC_A_DP_X]     = {.instruction = APU_INST_ADC,   .addr_mode = APU_ADDR_MODE_DP_X,      .width = 2},
-    [APU_OPCODE_ADC_A_ABS]      = {.instruction = APU_INST_ADC,   .addr_mode = APU_ADDR_MODE_ABS,       .width = 3},
-    [APU_OPCODE_ADC_A_ABX_X]    = {.instruction = APU_INST_ADC,   .addr_mode = APU_ADDR_MODE_ABS_X,     .width = 3},
-    [APU_OPCODE_ADC_A_ABS_Y]    = {.instruction = APU_INST_ADC,   .addr_mode = APU_ADDR_MODE_ABS_Y,     .width = 3},
-    [APU_OPCODE_ADC_D_S]        = {.instruction = APU_INST_ADC,   .addr_mode = APU_ADDR_MODE_D_S,       .width = 3},
-    [APU_OPCODE_ADC_DP_IMM]     = {.instruction = APU_INST_ADC,   .addr_mode = APU_ADDR_MODE_DP_IMM,    .width = 3},
-    [APU_OPCODE_ADDW_DP]        = {.instruction = APU_INST_ADDW,  .addr_mode = APU_ADDR_MODE_DP,        .width = 2},
+    [APU_OPCODE_ADC_X_Y]        = {.instruction = APU_INST_ADC,   .addr_mode = APU_ADDR_MODE_X_Y,      .operands = {APU_OPERAND_MEM,    APU_OPERAND_MEM},    .width = 1},
+    [APU_OPCODE_ADC_A_IMM]      = {.instruction = APU_INST_ADC,   .addr_mode = APU_ADDR_MODE_IMM,      .operands = {APU_OPERAND_REG_A,  APU_OPERAND_MEM},    .width = 2},
+    [APU_OPCODE_ADC_A_X]        = {.instruction = APU_INST_ADC,   .addr_mode = APU_ADDR_MODE_X,        .operands = {APU_OPERAND_REG_A,  APU_OPERAND_REG_X},  .width = 1},
+    [APU_OPCODE_ADC_A_DP_IND_Y] = {.instruction = APU_INST_ADC,   .addr_mode = APU_ADDR_MODE_DP_IND_Y, .operands = {APU_OPERAND_REG_A,  APU_OPERAND_MEM},    .width = 2},
+    [APU_OPCODE_ADC_A_DP_X_IND] = {.instruction = APU_INST_ADC,   .addr_mode = APU_ADDR_MODE_DP_X_IND, .operands = {APU_OPERAND_REG_A,  APU_OPERAND_MEM},    .width = 2},
+    [APU_OPCODE_ADC_A_DP]       = {.instruction = APU_INST_ADC,   .addr_mode = APU_ADDR_MODE_DP,       .operands = {APU_OPERAND_REG_A,  APU_OPERAND_MEM},    .width = 2},
+    [APU_OPCODE_ADC_A_DP_X]     = {.instruction = APU_INST_ADC,   .addr_mode = APU_ADDR_MODE_DP_X,     .operands = {APU_OPERAND_REG_A,  APU_OPERAND_MEM},    .width = 2},
+    [APU_OPCODE_ADC_A_ABS]      = {.instruction = APU_INST_ADC,   .addr_mode = APU_ADDR_MODE_ABS,      .operands = {APU_OPERAND_REG_A,  APU_OPERAND_MEM},    .width = 3},
+    [APU_OPCODE_ADC_A_ABX_X]    = {.instruction = APU_INST_ADC,   .addr_mode = APU_ADDR_MODE_ABS_X,    .operands = {APU_OPERAND_REG_A,  APU_OPERAND_MEM},    .width = 3},
+    [APU_OPCODE_ADC_A_ABS_Y]    = {.instruction = APU_INST_ADC,   .addr_mode = APU_ADDR_MODE_ABS_Y,    .operands = {APU_OPERAND_REG_A,  APU_OPERAND_MEM},    .width = 3},
+    [APU_OPCODE_ADC_DP_DP]      = {.instruction = APU_INST_ADC,   .addr_mode = APU_ADDR_MODE_DP_DP,    .operands = {APU_OPERAND_MEM,    APU_OPERAND_MEM},    .width = 3},
+    [APU_OPCODE_ADC_DP_IMM]     = {.instruction = APU_INST_ADC,   .addr_mode = APU_ADDR_MODE_DP_IMM,   .operands = {APU_OPERAND_MEM,    APU_OPERAND_MEM},    .width = 3},
+    [APU_OPCODE_ADDW_DP]        = {.instruction = APU_INST_ADDW,  .addr_mode = APU_ADDR_MODE_DP,       .operands = {APU_OPERAND_REG_A,  APU_OPERAND_MEM},    .width = 2},
 
     [APU_OPCODE_AND_X_Y]        = {.instruction = APU_INST_AND,   .addr_mode = APU_ADDR_MODE_X_Y,       .width = 1},
     [APU_OPCODE_AND_A_IMM]      = {.instruction = APU_INST_AND,   .addr_mode = APU_ADDR_MODE_IMM,       .width = 2},
@@ -416,7 +453,7 @@ struct apu_inst_info_t apu_instruction_info[] = {
     [APU_OPCODE_AND_A_ABS]      = {.instruction = APU_INST_AND,   .addr_mode = APU_ADDR_MODE_ABS,       .width = 3},
     [APU_OPCODE_AND_A_ABS_X]    = {.instruction = APU_INST_AND,   .addr_mode = APU_ADDR_MODE_ABS_X,     .width = 3},
     [APU_OPCODE_AND_A_ABS_Y]    = {.instruction = APU_INST_AND,   .addr_mode = APU_ADDR_MODE_ABS_Y,     .width = 3},
-    [APU_OPCODE_AND_D_S]        = {.instruction = APU_INST_AND,   .addr_mode = APU_ADDR_MODE_D_S,       .width = 3},
+    [APU_OPCODE_AND_DP_DP]      = {.instruction = APU_INST_AND,   .addr_mode = APU_ADDR_MODE_DP_DP,     .width = 3},
     [APU_OPCODE_AND_DP_IMM]     = {.instruction = APU_INST_AND,   .addr_mode = APU_ADDR_MODE_DP_IMM,    .width = 3},
     [APU_OPCODE_AND1N_DP]       = {.instruction = APU_INST_AND,   .addr_mode = APU_ADDR_MODE_DP,        .width = 3},
     [APU_OPCODE_AND1_DP_BIT]    = {.instruction = APU_INST_AND,   .addr_mode = APU_ADDR_MODE_DP_BIT,    .width = 3},
@@ -491,7 +528,7 @@ struct apu_inst_info_t apu_instruction_info[] = {
     [APU_OPCODE_CMP_Y_IMM]      = {.instruction = APU_INST_CMP,   .addr_mode = APU_ADDR_MODE_IMM,       .width = 2},
     [APU_OPCODE_CMP_Y_DP]       = {.instruction = APU_INST_CMP,   .addr_mode = APU_ADDR_MODE_DP,        .width = 2},
     [APU_OPCODE_CMP_Y_ABS]      = {.instruction = APU_INST_CMP,   .addr_mode = APU_ADDR_MODE_ABS,       .width = 3},
-    [APU_OPCODE_CMP_D_S]        = {.instruction = APU_INST_CMP,   .addr_mode = APU_ADDR_MODE_D_S,       .width = 3},
+    [APU_OPCODE_CMP_DP_DP]      = {.instruction = APU_INST_CMP,   .addr_mode = APU_ADDR_MODE_DP_DP,     .width = 3},
     [APU_OPCODE_CMP_DP_IMM]     = {.instruction = APU_INST_CMP,   .addr_mode = APU_ADDR_MODE_DP_IMM,    .width = 3},
     [APU_OPCODE_CMPW_YA_DP]     = {.instruction = APU_INST_CMP,   .addr_mode = APU_ADDR_MODE_DP,        .width = 2},
 
@@ -525,7 +562,7 @@ struct apu_inst_info_t apu_instruction_info[] = {
     [APU_OPCODE_EOR_A_ABS]      = {.instruction = APU_INST_EOR,   .addr_mode = APU_ADDR_MODE_ABS,       .width = 3},
     [APU_OPCODE_EOR_A_ABS_X]    = {.instruction = APU_INST_EOR,   .addr_mode = APU_ADDR_MODE_ABS_X,     .width = 3},
     [APU_OPCODE_EOR_A_ABS_Y]    = {.instruction = APU_INST_EOR,   .addr_mode = APU_ADDR_MODE_ABS_Y,     .width = 3},
-    [APU_OPCODE_EOR_D_S]        = {.instruction = APU_INST_EOR,   .addr_mode = APU_ADDR_MODE_D_S,       .width = 3},
+    [APU_OPCODE_EOR_DP_DP]      = {.instruction = APU_INST_EOR,   .addr_mode = APU_ADDR_MODE_DP_DP,     .width = 3},
     [APU_OPCODE_EOR_DP_IMM]     = {.instruction = APU_INST_EOR,   .addr_mode = APU_ADDR_MODE_DP_IMM,    .width = 3},
     [APU_OPCODE_EOR1_DP_BIT]    = {.instruction = APU_INST_EOR,   .addr_mode = APU_ADDR_MODE_DP_BIT,    .width = 3},
 
@@ -545,51 +582,51 @@ struct apu_inst_info_t apu_instruction_info[] = {
     [APU_OPCODE_LSR_DP_X]       = {.instruction = APU_INST_LSR,   .addr_mode = APU_ADDR_MODE_DP_X,      .width = 2},
     [APU_OPCODE_LSR_ABS]        = {.instruction = APU_INST_LSR,   .addr_mode = APU_ADDR_MODE_ABS,       .width = 3},
 
-    [APU_OPCODE_MOV_X_INCR_A]   = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_X_INCR,    .width = 1},
-    [APU_OPCODE_MOV_X_A]        = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_X,         .width = 1},
-    [APU_OPCODE_MOV_DP_IND_Y_A] = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_DP_IND_Y,  .width = 2},
-    [APU_OPCODE_MOV_DP_X_IND_A] = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_DP_X_IND,  .width = 2},
-    [APU_OPCODE_MOV_A_IMM]      = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_IMM,       .width = 2},
-    [APU_OPCODE_MOV_A_X]        = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_X,         .width = 1},
-    [APU_OPCODE_MOV_A_X_INCR]   = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_X_INCR,    .width = 1},
-    [APU_OPCODE_MOV_A_DP_IND_Y] = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_DP_IND_Y,  .width = 2},
-    [APU_OPCODE_MOV_A_DP_X_IND] = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_DP_X_IND,  .width = 2},
-    [APU_OPCODE_MOV_A_X_IMP]    = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_IMP,       .width = 1},
-    [APU_OPCODE_MOV_A_Y_IMP]    = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_IMP,       .width = 1},
-    [APU_OPCODE_MOV_A_DP]       = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_DP,        .width = 2},
-    [APU_OPCODE_MOV_A_DP_X]     = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_DP_X,      .width = 2},
-    [APU_OPCODE_MOV_A_ABS]      = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_ABS,       .width = 3},
-    [APU_OPCODE_MOV_A_ABS_X]    = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_ABS_X,     .width = 3},
-    [APU_OPCODE_MOV_A_ABS_Y]    = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_ABS_Y,     .width = 3},
-    [APU_OPCODE_MOV_SP_X_IMP]   = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_IMP,       .width = 1},
-    [APU_OPCODE_MOV_X_IMM]      = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_IMM,       .width = 2},
-    [APU_OPCODE_MOV_X_A_IMP]    = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_IMP,       .width = 1},
-    [APU_OPCODE_MOV_X_SP_IMP]   = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_IMP,       .width = 1},
-    [APU_OPCODE_MOV_X_DP]       = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_DP,        .width = 2},
-    [APU_OPCODE_MOV_X_DP_Y]     = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_DP_Y,      .width = 2},
-    [APU_OPCODE_MOV_X_ABS]      = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_ABS,       .width = 3},
-    [APU_OPCODE_MOV_Y_IMM]      = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_IMM,       .width = 2},
-    [APU_OPCODE_MOV_Y_A_IMP]    = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_IMP,       .width = 1},
-    [APU_OPCODE_MOV_Y_DP]       = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_DP,        .width = 2},
-    [APU_OPCODE_MOV_Y_DP_X]     = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_DP_X,      .width = 2},
-    [APU_OPCODE_MOV_Y_ABS]      = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_ABS,       .width = 3},
-    [APU_OPCODE_MOV_D_S]        = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_D_S,       .width = 3},
-    [APU_OPCODE_MOV_DP_X_A]     = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_DP_X,      .width = 2},
-    [APU_OPCODE_MOV_DP_X_Y]     = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_DP_X,      .width = 2},
-    [APU_OPCODE_MOV_DP_Y_X]     = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_DP_Y,      .width = 2},
-    [APU_OPCODE_MOV_DP_IMM]     = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_DP_IMM,    .width = 3},
-    [APU_OPCODE_MOV_DP_A]       = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_DP,        .width = 2},
-    [APU_OPCODE_MOV_DP_X]       = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_DP,        .width = 2},
-    [APU_OPCODE_MOV_DP_Y]       = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_DP,        .width = 2},
-    [APU_OPCODE_MOV_ABS_X_A]    = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_ABS_X,     .width = 3},
-    [APU_OPCODE_MOV_ABS_Y_A]    = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_ABS_Y,     .width = 3},
-    [APU_OPCODE_MOV_ABS_A]      = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_ABS,       .width = 3},
-    [APU_OPCODE_MOV_ABS_X]      = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_ABS,       .width = 3},
-    [APU_OPCODE_MOV_ABS_Y]      = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_ABS,       .width = 3},
-    [APU_OPCODE_MOV1_C_ABS_BIT] = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_ABS_BIT,   .width = 3},
-    [APU_OPCODE_MOV1_ABS_BIT_C] = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_ABS_BIT,   .width = 3},
-    [APU_OPCODE_MOVW_YA_DP]     = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_DP,        .width = 2},
-    [APU_OPCODE_MOVW_DP_YA]     = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_DP,        .width = 2},
+    [APU_OPCODE_MOV_X_INCR_A]   = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_X_INCR,   .operands = {APU_OPERAND_MEM, APU_OPERAND_REG_A}, .width = 1},
+    [APU_OPCODE_MOV_X_A]        = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_X,        .operands = {APU_OPERAND_MEM, APU_OPERAND_REG_A}, .width = 1},
+    [APU_OPCODE_MOV_DP_IND_Y_A] = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_DP_IND_Y, .operands = {APU_OPERAND_MEM, APU_OPERAND_REG_A}, .width = 2},
+    [APU_OPCODE_MOV_DP_X_IND_A] = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_DP_X_IND, .operands = {APU_OPERAND_MEM, APU_OPERAND_REG_A}, .width = 2},
+    [APU_OPCODE_MOV_A_IMM]      = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_IMM,      .operands = {APU_OPERAND_REG_A, APU_OPERAND_MEM}, .width = 2},
+    [APU_OPCODE_MOV_A_X]        = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_X,        .operands = {APU_OPERAND_REG_A, APU_OPERAND_MEM}, .width = 1},
+    [APU_OPCODE_MOV_A_X_INCR]   = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_X_INCR,   .operands = {APU_OPERAND_REG_A, APU_OPERAND_MEM}, .width = 1},
+    [APU_OPCODE_MOV_A_DP_IND_Y] = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_DP_IND_Y, .operands = {APU_OPERAND_REG_A, APU_OPERAND_MEM}, .width = 2},
+    [APU_OPCODE_MOV_A_DP_X_IND] = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_DP_X_IND, .operands = {APU_OPERAND_REG_A, APU_OPERAND_MEM}, .width = 2},
+    [APU_OPCODE_MOV_A_X_IMP]    = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_IMP,      .operands = {APU_OPERAND_REG_A, APU_OPERAND_REG_X}, .width = 1},
+    [APU_OPCODE_MOV_A_Y_IMP]    = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_IMP,      .operands = {APU_OPERAND_REG_A, APU_OPERAND_REG_Y}, .width = 1},
+    [APU_OPCODE_MOV_A_DP]       = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_DP,       .operands = {APU_OPERAND_REG_A, APU_OPERAND_MEM}, .width = 2},
+    [APU_OPCODE_MOV_A_DP_X]     = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_DP_X,     .operands = {APU_OPERAND_REG_A, APU_OPERAND_MEM}, .width = 2},
+    [APU_OPCODE_MOV_A_ABS]      = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_ABS,      .operands = {APU_OPERAND_REG_A, APU_OPERAND_MEM}, .width = 3},
+    [APU_OPCODE_MOV_A_ABS_X]    = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_ABS_X,    .operands = {APU_OPERAND_REG_A, APU_OPERAND_MEM}, .width = 3},
+    [APU_OPCODE_MOV_A_ABS_Y]    = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_ABS_Y,    .operands = {APU_OPERAND_REG_A, APU_OPERAND_MEM}, .width = 3},
+    [APU_OPCODE_MOV_SP_X_IMP]   = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_IMP,      .operands = {APU_OPERAND_REG_SP, APU_OPERAND_REG_X}, .width = 1},
+    [APU_OPCODE_MOV_X_IMM]      = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_IMM,      .operands = {APU_OPERAND_REG_X, APU_OPERAND_MEM}, .width = 2},
+    [APU_OPCODE_MOV_X_A_IMP]    = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_IMP,      .operands = {APU_OPERAND_REG_X, APU_OPERAND_REG_A}, .width = 1},
+    [APU_OPCODE_MOV_X_SP_IMP]   = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_IMP,      .operands = {APU_OPERAND_REG_X, APU_OPERAND_REG_SP}, .width = 1},
+    [APU_OPCODE_MOV_X_DP]       = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_DP,       .operands = {APU_OPERAND_REG_X, APU_OPERAND_MEM}, .width = 2},
+    [APU_OPCODE_MOV_X_DP_Y]     = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_DP_Y,     .operands = {APU_OPERAND_REG_X, APU_OPERAND_MEM}, .width = 2},
+    [APU_OPCODE_MOV_X_ABS]      = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_ABS,      .operands = {APU_OPERAND_REG_X, APU_OPERAND_MEM}, .width = 3},
+    [APU_OPCODE_MOV_Y_IMM]      = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_IMM,      .operands = {APU_OPERAND_REG_Y, APU_OPERAND_MEM}, .width = 2},
+    [APU_OPCODE_MOV_Y_A_IMP]    = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_IMP,      .operands = {APU_OPERAND_REG_Y, APU_OPERAND_MEM}, .width = 1},
+    [APU_OPCODE_MOV_Y_DP]       = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_DP,       .operands = {APU_OPERAND_REG_Y, APU_OPERAND_MEM}, .width = 2},
+    [APU_OPCODE_MOV_Y_DP_X]     = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_DP_X,     .operands = {APU_OPERAND_REG_Y, APU_OPERAND_MEM}, .width = 2},
+    [APU_OPCODE_MOV_Y_ABS]      = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_ABS,      .operands = {APU_OPERAND_REG_Y, APU_OPERAND_MEM}, .width = 3},
+    [APU_OPCODE_MOV_DP_DP]      = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_DP_DP,    .operands = {APU_OPERAND_MEM, APU_OPERAND_MEM}, .width = 3},
+    [APU_OPCODE_MOV_DP_X_A]     = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_DP_X,     .operands = {APU_OPERAND_MEM, APU_OPERAND_REG_A}, .width = 2},
+    [APU_OPCODE_MOV_DP_X_Y]     = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_DP_X,     .operands = {APU_OPERAND_MEM, APU_OPERAND_REG_Y}, .width = 2},
+    [APU_OPCODE_MOV_DP_Y_X]     = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_DP_Y,     .operands = {APU_OPERAND_MEM, APU_OPERAND_REG_X}, .width = 2},
+    [APU_OPCODE_MOV_DP_IMM]     = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_DP_IMM,   .operands = {APU_OPERAND_MEM, APU_OPERAND_MEM}, .width = 3},
+    [APU_OPCODE_MOV_DP_A]       = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_DP,       .operands = {APU_OPERAND_MEM, APU_OPERAND_REG_A}, .width = 2},
+    [APU_OPCODE_MOV_DP_X]       = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_DP,       .operands = {APU_OPERAND_MEM, APU_OPERAND_REG_X}, .width = 2},
+    [APU_OPCODE_MOV_DP_Y]       = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_DP,       .operands = {APU_OPERAND_MEM, APU_OPERAND_REG_Y}, .width = 2},
+    [APU_OPCODE_MOV_ABS_X_A]    = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_ABS_X,    .operands = {APU_OPERAND_MEM, APU_OPERAND_REG_A}, .width = 3},
+    [APU_OPCODE_MOV_ABS_Y_A]    = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_ABS_Y,    .operands = {APU_OPERAND_MEM, APU_OPERAND_REG_A}, .width = 3},
+    [APU_OPCODE_MOV_ABS_A]      = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_ABS,      .operands = {APU_OPERAND_MEM, APU_OPERAND_REG_A}, .width = 3},
+    [APU_OPCODE_MOV_ABS_X]      = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_ABS,      .operands = {APU_OPERAND_MEM, APU_OPERAND_REG_X}, .width = 3},
+    [APU_OPCODE_MOV_ABS_Y]      = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_ABS,      .operands = {APU_OPERAND_MEM, APU_OPERAND_REG_Y}, .width = 3},
+    [APU_OPCODE_MOV1_C_ABS_BIT] = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_ABS_BIT,  .operands = {}, .width = 3},
+    [APU_OPCODE_MOV1_ABS_BIT_C] = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_ABS_BIT,  .operands = {}, .width = 3},
+    [APU_OPCODE_MOVW_YA_DP]     = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_DP,       .operands = {}, .width = 2},
+    [APU_OPCODE_MOVW_DP_YA]     = {.instruction = APU_INST_MOV,   .addr_mode = APU_ADDR_MODE_DP,       .operands = {}, .width = 2},
 
     [APU_OPCODE_MUL_IMP]        = {.instruction = APU_INST_MUL,   .addr_mode = APU_ADDR_MODE_IMP,       .width = 1},
 
@@ -608,7 +645,7 @@ struct apu_inst_info_t apu_instruction_info[] = {
     [APU_OPCODE_OR_A_ABS]       = {.instruction = APU_INST_OR,    .addr_mode = APU_ADDR_MODE_ABS,       .width = 3},
     [APU_OPCODE_OR_A_ABS_X]     = {.instruction = APU_INST_OR,    .addr_mode = APU_ADDR_MODE_ABS_X,     .width = 3},
     [APU_OPCODE_OR_A_ABS_Y]     = {.instruction = APU_INST_OR,    .addr_mode = APU_ADDR_MODE_ABS_Y,     .width = 3},
-    [APU_OPCODE_OR_D_S]         = {.instruction = APU_INST_OR,    .addr_mode = APU_ADDR_MODE_D_S,       .width = 3},
+    [APU_OPCODE_OR_DP_DP]       = {.instruction = APU_INST_OR,    .addr_mode = APU_ADDR_MODE_DP_DP,     .width = 3},
     [APU_OPCODE_OR_DP_IMM]      = {.instruction = APU_INST_OR,    .addr_mode = APU_ADDR_MODE_DP_IMM,    .width = 3},
     [APU_OPCODE_OR1N_ABS_BIT]   = {.instruction = APU_INST_OR,    .addr_mode = APU_ADDR_MODE_DP,        .width = 3},
     [APU_OPCODE_OR1_ABS_BIT]    = {.instruction = APU_INST_OR,    .addr_mode = APU_ADDR_MODE_DP_BIT,    .width = 3},
@@ -648,7 +685,7 @@ struct apu_inst_info_t apu_instruction_info[] = {
     [APU_OPCODE_SBC_A_ABS]      = {.instruction = APU_INST_SBC,   .addr_mode = APU_ADDR_MODE_ABS,       .width = 3},
     [APU_OPCODE_SBC_A_ABX_X]    = {.instruction = APU_INST_SBC,   .addr_mode = APU_ADDR_MODE_ABS_X,     .width = 3},
     [APU_OPCODE_SBC_A_ABS_Y]    = {.instruction = APU_INST_SBC,   .addr_mode = APU_ADDR_MODE_ABS_Y,     .width = 3},
-    [APU_OPCODE_SBC_D_S]        = {.instruction = APU_INST_SBC,   .addr_mode = APU_ADDR_MODE_D_S,       .width = 3},
+    [APU_OPCODE_SBC_DP_DP]      = {.instruction = APU_INST_SBC,   .addr_mode = APU_ADDR_MODE_DP_DP,     .width = 3},
     [APU_OPCODE_SBC_DP_IMM]     = {.instruction = APU_INST_SBC,   .addr_mode = APU_ADDR_MODE_DP_IMM,    .width = 3},
     [APU_OPCODE_SUBW_DP]        = {.instruction = APU_INST_SUBW,  .addr_mode = APU_ADDR_MODE_DP,        .width = 2},
 
@@ -751,87 +788,87 @@ void apu_Reset()
 
 void apu_Step(int32_t master_cycle_count)
 {
-    apu_state.master_cycles += master_cycle_count;
-    float fract_master_cycles = (float)apu_state.master_cycles + apu_state.master_cycle_remainder;
-    apu_state.uop_cycles += (int32_t)floorf(fract_master_cycles * APU_APU_TO_MASTER_CYCLE_RATIO);
+    // apu_state.master_cycles += master_cycle_count;
+    // float fract_master_cycles = (float)apu_state.master_cycles + apu_state.master_cycle_remainder;
+    // apu_state.uop_cycles += (int32_t)floorf(fract_master_cycles * APU_APU_TO_MASTER_CYCLE_RATIO);
 
-    while(apu_state.uop_cycles > 0)
-    {
-        int32_t apu_master_cycles = (int32_t)floorf((float)apu_state.uop_cycles * APU_MASTER_TO_APU_CYCLE_RATIO);
-        apu_state.master_cycles -= apu_master_cycles;
-        apu_state.master_cycle_remainder = fract_master_cycles - (float)apu_master_cycles;
-
-        while(apu_state.uop->func != NULL)
-        {
-            if(!apu_state.uop->func(apu_state.uop->arg))
-            {
-                break;
-            }
-
-            apu_NextUop();
-        }
-
-        if(apu_state.uop->func == NULL)
-        {
-            apu_state.regs[APU_REG_INST].word = APU_OPCODE_FETCH;
-            apu_state.instruction_address = apu_state.regs[APU_REG_PC].word;
-            apu_LoadInstruction();
-        }
-    }    
-
-    // switch(apu_transfer_state)
+    // while(apu_state.uop_cycles > 0)
     // {
-    //     case APU_STATE_IDLE:
-    //         if(apu_state.ports[0].read == 0xcc && apu_state.ports[1].read != 0x00)
-    //         {
-    //             apu_transfer_state = APU_STATE_START_TRANSFER;
-    //             apu_state.ports[0].write = 0xcc;
-    //         }
-    //         else
-    //         {
-    //             apu_state.ports[0].write = 0xaa;
-    //             apu_state.ports[1].write = 0xbb;
-    //         }
-    //     break;
+    //     int32_t apu_master_cycles = (int32_t)floorf((float)apu_state.uop_cycles * APU_MASTER_TO_APU_CYCLE_RATIO);
+    //     apu_state.master_cycles -= apu_master_cycles;
+    //     apu_state.master_cycle_remainder = fract_master_cycles - (float)apu_master_cycles;
 
-    //     case APU_STATE_START_TRANSFER:
-    //         if(apu_state.ports[0].read == 0x00)
+    //     while(apu_state.uop->func != NULL)
+    //     {
+    //         if(!apu_state.uop->func(apu_state.uop->arg))
     //         {
-    //             apu_state.ports[0].write = 0x00;
-    //             apu_transfer_state = APU_STATE_TRANSFER;
+    //             break;
     //         }
-    //     break;
 
-    //     case APU_STATE_TRANSFER:
-    //         uint8_t status = apu_state.ports[0].read - apu_state.ports[0].write;
-    //         if(status == 1)
-    //         {
-    //             apu_state.ports[0].write = apu_state.ports[0].read;
-    //         }
-    //         else if(status > 1)
-    //         {
-    //             if(apu_state.ports[1].read == 0x00)
-    //             {
-    //                 apu_transfer_state = APU_STATE_END_TRANSFER;
-    //                 end_transfer_timer = 0;
-    //             }
-    //             else
-    //             {
-    //                 apu_transfer_state = APU_STATE_START_TRANSFER;
-    //             }
-    //             apu_state.ports[0].write = apu_state.ports[0].read;
-    //         }
-    //     break;
+    //         apu_NextUop();
+    //     }
 
-    //     case APU_STATE_END_TRANSFER:
-    //         end_transfer_timer++;
-    //         if(end_transfer_timer >= 0x3f)
-    //         {
-    //             apu_state.ports[0].read = 0x00;
-    //             apu_transfer_state = APU_STATE_IDLE;
-    //         }
-    //     break;
-    // }
+    //     if(apu_state.uop->func == NULL)
+    //     {
+    //         apu_state.regs[APU_REG_INST].word = APU_OPCODE_FETCH;
+    //         apu_state.instruction_address = apu_state.regs[APU_REG_PC].word;
+    //         apu_LoadInstruction();
+    //     }
+    // }    
+
+    switch(apu_transfer_state)
+    {
+        case APU_STATE_IDLE:
+            if(apu_state.ports[0].read == 0xcc && apu_state.ports[1].read != 0x00)
+            {
+                apu_transfer_state = APU_STATE_START_TRANSFER;
+                apu_state.ports[0].write = 0xcc;
+            }
+            else
+            {
+                apu_state.ports[0].write = 0xaa;
+                apu_state.ports[1].write = 0xbb;
+            }
+        break;
+
+        case APU_STATE_START_TRANSFER:
+            if(apu_state.ports[0].read == 0x00)
+            {
+                apu_state.ports[0].write = 0x00;
+                apu_transfer_state = APU_STATE_TRANSFER;
+            }
+        break;
+
+        case APU_STATE_TRANSFER:
+            uint8_t status = apu_state.ports[0].read - apu_state.ports[0].write;
+            if(status == 1)
+            {
+                apu_state.ports[0].write = apu_state.ports[0].read;
+            }
+            else if(status > 1)
+            {
+                if(apu_state.ports[1].read == 0x00)
+                {
+                    apu_transfer_state = APU_STATE_END_TRANSFER;
+                    end_transfer_timer = 0;
+                }
+                else
+                {
+                    apu_transfer_state = APU_STATE_START_TRANSFER;
+                }
+                apu_state.ports[0].write = apu_state.ports[0].read;
+            }
+        break;
+
+        case APU_STATE_END_TRANSFER:
+            end_transfer_timer++;
+            if(end_transfer_timer >= 0x3f)
+            {
+                apu_state.ports[0].read = 0x00;
+                apu_transfer_state = APU_STATE_IDLE;
+            }
+        break;
+    }
 }
 
 void apu_LoadInstruction()
@@ -867,9 +904,60 @@ void apu_Disasm(struct apu_disasm_state_t *disasm_state, struct apu_disasm_inst_
     instruction->width = info->width;
     instruction->opcode_str = apu_instruction_strs[info->instruction];
     instruction->bytes[0] = opcode;
+    instruction->operand_str[0][0] = '\0';
+    instruction->operand_str[1][0] = '\0';
+
     for(uint32_t index = 1; index < info->width; index++)
     {
         instruction->bytes[index] = apu_ram[disasm_state->reg_pc + index];
+    }
+
+    switch(info->addr_mode)
+    {
+        case APU_ADDR_MODE_X_Y:
+        {
+            sprintf(instruction->operand_str[0], "(X) = %02x", apu_ram[apu_state.regs[APU_REG_X].byte[0]]);
+            sprintf(instruction->operand_str[1], "(Y) = %02x", apu_ram[apu_state.regs[APU_REG_Y].byte[0]]);
+        }
+        break;
+
+        case APU_ADDR_MODE_DP_DP:
+        {
+            sprintf(instruction->operand_str[0], "(d(%02x)) = %02x", instruction->bytes[1], apu_ram[instruction->bytes[1]]);
+            sprintf(instruction->operand_str[1], "(s(%02x)) = %02x", instruction->bytes[2], apu_ram[instruction->bytes[2]]);
+        }
+        break;
+
+        case APU_ADDR_MODE_DP_IMM:
+        {
+            sprintf(instruction->operand_str[0], apu_addr_mode_strs[APU_ADDR_MODE_DP], instruction->bytes[1], apu_ram[instruction->bytes[1]]);
+            sprintf(instruction->operand_str[1], apu_addr_mode_strs[APU_ADDR_MODE_IMM], instruction->bytes[2]);
+        }
+        break;
+
+        default:
+        {
+            uint32_t byte_offset = 1;
+            for(uint32_t operand_index = 0; operand_index < 2; operand_index++)
+            {
+                if(info->operands[operand_index] == APU_OPERAND_MEM)
+                {
+                    switch(info->addr_mode)
+                    {
+                        // case APU_ADDR_MODE_IMM:
+                        // {
+                        //     sprintf(instruction->operand_str[operand_index], apu_addr_mode_strs[info->addr_mode], instruction->bytes[])
+                        // }
+                        // break;
+                    }
+                }
+                else
+                {
+                    sprintf(instruction->operand_str[operand_index], apu_reg_strs[info->operands[operand_index]], apu_state.regs[info->operands[operand_index]].word);
+                }
+            }
+        }
+        break;
     }
 
     disasm_state->reg_pc += info->width;

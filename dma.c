@@ -4,7 +4,7 @@
 #include "emu.h"
 #include <stdio.h>
 
-extern uint8_t *ram1_regs;
+extern uint8_t *mem_regs;
 int32_t         dma_cycle_count = 0;
 // uint8_t active_dma_channels = 0;
 struct dma_t    dma_channels[8];
@@ -93,16 +93,16 @@ void step_dma(int32_t cycle_count)
 {
     /* DMA won't run while HDMA is active. HDMA is active during horizontal blanking, outside of
     the vertical blanking period. */
-    uint32_t hdma_active = ram1_regs[CPU_MEM_REG_HDMAEN] &&
-                            (ram1_regs[CPU_MEM_REG_HVBJOY] & (CPU_HVBJOY_FLAG_HBLANK | CPU_HVBJOY_FLAG_VBLANK)) == CPU_HVBJOY_FLAG_HBLANK;
+    uint32_t hdma_active = mem_regs[CPU_MEM_REG_HDMAEN] &&
+                            (mem_regs[CPU_MEM_REG_HVBJOY] & (CPU_HVBJOY_FLAG_HBLANK | CPU_HVBJOY_FLAG_VBLANK)) == CPU_HVBJOY_FLAG_HBLANK;
 
     struct breakpoint_list_t *list = &emu_breakpoints[BREAKPOINT_TYPE_DMA];
 
-    if(ram1_regs[CPU_MEM_REG_MDMAEN] && !hdma_active)
+    if(mem_regs[CPU_MEM_REG_MDMAEN] && !hdma_active)
     {
         dma_cycle_count += cycle_count;
         int32_t byte_count = dma_cycle_count / DMA_CYCLES_PER_BYTE;
-        uint8_t active_channels = ram1_regs[CPU_MEM_REG_MDMAEN];
+        uint8_t active_channels = mem_regs[CPU_MEM_REG_MDMAEN];
         uint64_t elapsed_cycles = master_cycles;
         if(byte_count)
         {
@@ -165,9 +165,9 @@ void step_dma(int32_t cycle_count)
                             //     thrd_Switch(emu_emulation_thread, &emu_main_thread);
                             // }
 
-                            dma->addr += dma->increment;
                             elapsed_cycles += 4;
                             write_byte(dma->regs[dma->cur_reg], data);
+                            dma->addr += dma->increment;
                             dma->cur_reg++;
                             dma->count--;
                             byte_count--;
@@ -216,7 +216,7 @@ void step_dma(int32_t cycle_count)
 
                     if(!dma->count)
                     {
-                        ram1_regs[CPU_MEM_REG_MDMAEN] &= ~(1 << channel_index);
+                        mem_regs[CPU_MEM_REG_MDMAEN] &= ~(1 << channel_index);
                     }
 
                     break;
@@ -224,7 +224,7 @@ void step_dma(int32_t cycle_count)
             }
         }
 
-        if(!ram1_regs[CPU_MEM_REG_MDMAEN])
+        if(!mem_regs[CPU_MEM_REG_MDMAEN])
         {
             dma_cycle_count = 0;
         }
@@ -235,22 +235,22 @@ void dump_dma()
 {
     printf("===================== DMA/HDMA ===================\n");
     printf("HDMA: ch1: %d, ch2: %d, ch3: %d, ch4: %d, ch5: %d, ch6: %d, ch7: %d, ch8: %d\n",
-    ram1_regs[CPU_MEM_REG_HDMAEN] & 1, (ram1_regs[CPU_MEM_REG_HDMAEN] >> 1) & 1, (ram1_regs[CPU_MEM_REG_HDMAEN] >> 2) & 1,
-    (ram1_regs[CPU_MEM_REG_HDMAEN] >> 3) & 1, (ram1_regs[CPU_MEM_REG_HDMAEN] >> 4) & 1, (ram1_regs[CPU_MEM_REG_HDMAEN] >> 5) & 1,
-    (ram1_regs[CPU_MEM_REG_HDMAEN] >> 6) & 1, (ram1_regs[CPU_MEM_REG_HDMAEN] >> 7) & 1);
+    mem_regs[CPU_MEM_REG_HDMAEN] & 1, (mem_regs[CPU_MEM_REG_HDMAEN] >> 1) & 1, (mem_regs[CPU_MEM_REG_HDMAEN] >> 2) & 1,
+    (mem_regs[CPU_MEM_REG_HDMAEN] >> 3) & 1, (mem_regs[CPU_MEM_REG_HDMAEN] >> 4) & 1, (mem_regs[CPU_MEM_REG_HDMAEN] >> 5) & 1,
+    (mem_regs[CPU_MEM_REG_HDMAEN] >> 6) & 1, (mem_regs[CPU_MEM_REG_HDMAEN] >> 7) & 1);
 
     printf("-------------------------------------\n");
     printf("DMA: ch1: %d, ch2: %d, ch3: %d, ch4: %d, ch5: %d, ch6: %d, ch7: %d, ch8: %d\n",
-    ram1_regs[CPU_MEM_REG_MDMAEN] & 1, (ram1_regs[CPU_MEM_REG_MDMAEN] >> 1) & 1, (ram1_regs[CPU_MEM_REG_MDMAEN] >> 2) & 1,
-    (ram1_regs[CPU_MEM_REG_MDMAEN] >> 3) & 1, (ram1_regs[CPU_MEM_REG_MDMAEN] >> 4) & 1, (ram1_regs[CPU_MEM_REG_MDMAEN] >> 5) & 1,
-    (ram1_regs[CPU_MEM_REG_MDMAEN] >> 6) & 1, (ram1_regs[CPU_MEM_REG_MDMAEN] >> 7) & 1);
-    if(ram1_regs[CPU_MEM_REG_MDMAEN])
+    mem_regs[CPU_MEM_REG_MDMAEN] & 1, (mem_regs[CPU_MEM_REG_MDMAEN] >> 1) & 1, (mem_regs[CPU_MEM_REG_MDMAEN] >> 2) & 1,
+    (mem_regs[CPU_MEM_REG_MDMAEN] >> 3) & 1, (mem_regs[CPU_MEM_REG_MDMAEN] >> 4) & 1, (mem_regs[CPU_MEM_REG_MDMAEN] >> 5) & 1,
+    (mem_regs[CPU_MEM_REG_MDMAEN] >> 6) & 1, (mem_regs[CPU_MEM_REG_MDMAEN] >> 7) & 1);
+    if(mem_regs[CPU_MEM_REG_MDMAEN])
     {
         struct dma_t *channel = NULL;
         uint32_t channel_index;
         for(channel_index = 0; channel_index < 8; channel_index++)
         {
-            if(ram1_regs[CPU_MEM_REG_MDMAEN] & (1 << channel_index))
+            if(mem_regs[CPU_MEM_REG_MDMAEN] & (1 << channel_index))
             {
                 channel = dma_channels + channel_index;
                 break;
@@ -266,9 +266,9 @@ void dump_dma()
 
 uint32_t hdma_idle_state(int32_t cycle_count)
 {
-    uint8_t enabled_channels = ram1_regs[CPU_MEM_REG_HDMAEN];
+    uint8_t enabled_channels = mem_regs[CPU_MEM_REG_HDMAEN];
 
-    if(ram1_regs[CPU_MEM_REG_HDMAEN])
+    if(mem_regs[CPU_MEM_REG_HDMAEN])
     {
         hdma_cycle_count = 0;
 
@@ -276,7 +276,7 @@ uint32_t hdma_idle_state(int32_t cycle_count)
         {
             hdma_state = hdma_states[HDMA_STATE_INIT];
         }
-        else if((ram1_regs[CPU_MEM_REG_HVBJOY] & (CPU_HVBJOY_FLAG_HBLANK | CPU_HVBJOY_FLAG_VBLANK)) == CPU_HVBJOY_FLAG_HBLANK)
+        else if((mem_regs[CPU_MEM_REG_HVBJOY] & (CPU_HVBJOY_FLAG_HBLANK | CPU_HVBJOY_FLAG_VBLANK)) == CPU_HVBJOY_FLAG_HBLANK)
         {
             hdma_state = hdma_states[HDMA_STATE_START];
         }
@@ -311,11 +311,11 @@ uint32_t hdma_init_channels_state(int32_t cycle_count)
     hdma_cycle_count += cycle_count;
     for(; init_hdma_channel_index < 8; init_hdma_channel_index++)
     {
-        if(ram1_regs[CPU_MEM_REG_HDMAEN] & (1 << init_hdma_channel_index))
+        if(mem_regs[CPU_MEM_REG_HDMAEN] & (1 << init_hdma_channel_index))
         {
             uint32_t channel_reg_index = init_hdma_channel_index << 4;
             uint32_t reg = CPU_MEM_REG_DMA0_PARAM | channel_reg_index;
-            uint32_t indirect = (ram1_regs[CPU_MEM_REG_DMA0_PARAM | reg] & DMA_INDIRECT_ADDR_MASK) && 1;
+            uint32_t indirect = (mem_regs[CPU_MEM_REG_DMA0_PARAM | reg] & DMA_INDIRECT_ADDR_MASK) && 1;
 
             init_channel_cycle_overhead = hdma_addr_mode_init_cycle_overheads[indirect];
             hdma_state = hdma_states[HDMA_STATE_INIT_CHANNEL];
@@ -335,7 +335,7 @@ uint32_t hdma_init_channels_state(int32_t cycle_count)
 // {
 //     uint32_t channel_reg_index = channel_index << 4;
 //     uint32_t reg = CPU_MEM_REG_DMA0_PARAM | channel_reg_index;
-//     uint32_t indirect = (ram1_regs[CPU_MEM_REG_DMA0_PARAM | reg] & DMA_INDIRECT_ADDR_MASK) && 1;
+//     uint32_t indirect = (mem_regs[CPU_MEM_REG_DMA0_PARAM | reg] & DMA_INDIRECT_ADDR_MASK) && 1;
 //     uint32_t table_reg = CPU_MEM_REG_HDMA0_DIR_ADDRL | channel_reg_index;
 //     uint32_t line_count_reg = CPU_MEM_REG_HDMA0_CUR_LINE_COUNT | channel_reg_index;
 //     /* first byte of a table entry is the line count, so advance one byte forward
@@ -347,8 +347,8 @@ uint32_t hdma_init_channels_state(int32_t cycle_count)
 //         uint32_t cur_addr_reg = CPU_MEM_REG_HDMA0_IND_ADDR_DMA0_COUNTL | channel_reg_index;
 //         /* in indirect mode, the table data is a pointer to the data, so fetch that and
 //         put it in the indirect address register */
-//         ram1_regs[cur_addr_reg] = read_byte((uint32_t)table_addr | table_bank);
-//         ram1_regs[cur_addr_reg + 1] = read_byte(((uint32_t)table_addr + 2) | table_bank);
+//         mem_regs[cur_addr_reg] = read_byte((uint32_t)table_addr | table_bank);
+//         mem_regs[cur_addr_reg + 1] = read_byte(((uint32_t)table_addr + 2) | table_bank);
 //     }
 
 //     /* this is a pointer to the data of the current table entry. When a direct
@@ -356,8 +356,8 @@ uint32_t hdma_init_channels_state(int32_t cycle_count)
 //     this points to the pointer that points to the data. Either way, this gets
 //     incremented during the transfer. */
 //     table_reg = CPU_MEM_REG_HDMA0_DIR_ADDRL | channel_reg_index;
-//     ram1_regs[table_reg] = (uint8_t)table_addr;
-//     ram1_regs[table_reg + 1] = (uint8_t)(table_addr >> 8);
+//     mem_regs[table_reg] = (uint8_t)table_addr;
+//     mem_regs[table_reg + 1] = (uint8_t)(table_addr >> 8);
 // }
 
 uint32_t hdma_init_channel_state(int32_t cycle_count)
@@ -369,22 +369,22 @@ uint32_t hdma_init_channel_state(int32_t cycle_count)
         hdma_cycle_count -= init_channel_cycle_overhead;
         uint32_t channel_reg_index = init_hdma_channel_index << 4;
         uint32_t param_reg = CPU_MEM_REG_DMA0_PARAM | channel_reg_index;
-        uint32_t indirect = (ram1_regs[param_reg] & DMA_INDIRECT_ADDR_MASK) && 1;
+        uint32_t indirect = (mem_regs[param_reg] & DMA_INDIRECT_ADDR_MASK) && 1;
 
         uint32_t table_reg = CPU_MEM_REG_HDMA0_ATAB_DMA0_ADDRL | channel_reg_index;
         uint32_t line_count_reg = CPU_MEM_REG_HDMA0_CUR_LINE_COUNT | channel_reg_index;
-        uint16_t table_addr = (uint16_t)ram1_regs[table_reg] | ((uint16_t)ram1_regs[table_reg + 1] << 8);
-        uint32_t table_bank = (uint32_t)ram1_regs[table_reg + 2] << 16;
+        uint16_t table_addr = (uint16_t)mem_regs[table_reg] | ((uint16_t)mem_regs[table_reg + 1] << 8);
+        uint32_t table_bank = (uint32_t)mem_regs[table_reg + 2] << 16;
 
         /* this is a pointer to the data of the current table entry. When a direct
         table is used, this points to the actual data. When a indirect table is used,
         this points to the pointer that points to the data. Either way, this gets
         incremented during the transfer. */
         table_reg = CPU_MEM_REG_HDMA0_DIR_ADDRL | channel_reg_index;
-        ram1_regs[table_reg] = (uint8_t)table_addr;
-        ram1_regs[table_reg + 1] = (uint8_t)(table_addr >> 8);
+        mem_regs[table_reg] = (uint8_t)table_addr;
+        mem_regs[table_reg + 1] = (uint8_t)(table_addr >> 8);
 
-        // ram1_regs[line_count_reg] = read_byte((uint32_t)table_addr | table_bank);
+        // mem_regs[line_count_reg] = read_byte((uint32_t)table_addr | table_bank);
         // /* first byte of a table entry is the line count, so advance one byte forward
         // in the current entry to point at the actual table data */
         // table_addr++;
@@ -394,8 +394,8 @@ uint32_t hdma_init_channel_state(int32_t cycle_count)
         // this points to the pointer that points to the data. Either way, this gets
         // incremented during the transfer. */
         // table_reg = CPU_MEM_REG_HDMA0_DIR_ADDRL | channel_reg_index;
-        // ram1_regs[table_reg] = (uint8_t)table_addr;
-        // ram1_regs[table_reg + 1] = (uint8_t)(table_addr >> 8);
+        // mem_regs[table_reg] = (uint8_t)table_addr;
+        // mem_regs[table_reg + 1] = (uint8_t)(table_addr >> 8);
 
         hdma_state = hdma_states[HDMA_STATE_INIT_CHANNELS];
 
@@ -438,17 +438,17 @@ uint32_t hdma_start_channels_state(int32_t cycle_count)
     {
         struct hdma_t *channel = hdma_channels + active_hdma_channel_index;
 
-        if(ram1_regs[CPU_MEM_REG_HDMAEN] & (1 << active_hdma_channel_index) && channel->cur_reg == 0)
+        if(mem_regs[CPU_MEM_REG_HDMAEN] & (1 << active_hdma_channel_index) && channel->cur_reg == 0)
         {
             uint32_t channel_reg_index = active_hdma_channel_index << 4;
             uint32_t reg = CPU_MEM_REG_DMA0_PARAM | channel_reg_index;
-            uint32_t write_mode = ram1_regs[reg] & DMA_PARAM_WRITE_MODE_MASK;
+            uint32_t write_mode = mem_regs[reg] & DMA_PARAM_WRITE_MODE_MASK;
 
-            channel->indirect = (ram1_regs[reg] & HDMA_PARAM_INDIRECT) && 1;
+            channel->indirect = (mem_regs[reg] & HDMA_PARAM_INDIRECT) && 1;
             channel->last_reg = hdma_write_mode_write_counts[write_mode];
 
             reg = CPU_MEM_REG_DMA0_BBUS_ADDR | channel_reg_index;
-            uint16_t ppu_reg = DMA_BASE_REG | (uint16_t)ram1_regs[reg];
+            uint16_t ppu_reg = DMA_BASE_REG | (uint16_t)mem_regs[reg];
 
             channel->regs[0] = ppu_reg + write_mode_orders[write_mode][0];
             channel->regs[1] = ppu_reg + write_mode_orders[write_mode][1];
@@ -479,7 +479,7 @@ uint32_t hdma_start_channel_transfer_state(int32_t cycle_count)
         hdma_cycle_count -= active_channel_cycle_overhead;
         uint32_t channel_reg_index = active_hdma_channel_index << 4;
         uint32_t reg = CPU_MEM_REG_DMA0_PARAM | channel_reg_index;
-        uint32_t indirect = (ram1_regs[CPU_MEM_REG_DMA0_PARAM | reg] & DMA_INDIRECT_ADDR_MASK) && 1;
+        uint32_t indirect = (mem_regs[CPU_MEM_REG_DMA0_PARAM | reg] & DMA_INDIRECT_ADDR_MASK) && 1;
         uint32_t table_reg = CPU_MEM_REG_HDMA0_DIR_ADDRL | channel_reg_index;
         uint32_t line_count_reg = CPU_MEM_REG_HDMA0_CUR_LINE_COUNT | channel_reg_index;
 
@@ -490,14 +490,14 @@ uint32_t hdma_start_channel_transfer_state(int32_t cycle_count)
         hdma_state = hdma_states[HDMA_STATE_TRANSFER];
         uint32_t done_for_line = hdma_state(0);
 
-        if(!(ram1_regs[line_count_reg] & 0x7f))
+        if(!(mem_regs[line_count_reg] & 0x7f))
         {
-            uint16_t table_addr = (uint16_t)ram1_regs[table_reg] | ((uint16_t)ram1_regs[table_reg + 1] << 8);
-            uint32_t table_bank = (uint32_t)ram1_regs[table_reg + 2] << 16;
+            uint16_t table_addr = (uint16_t)mem_regs[table_reg] | ((uint16_t)mem_regs[table_reg + 1] << 8);
+            uint32_t table_bank = (uint32_t)mem_regs[table_reg + 2] << 16;
 
-            ram1_regs[line_count_reg] = read_byte((uint32_t)table_addr | table_bank);
+            mem_regs[line_count_reg] = read_byte((uint32_t)table_addr | table_bank);
 
-            if(ram1_regs[line_count_reg] & 0x7f)
+            if(mem_regs[line_count_reg] & 0x7f)
             {
                 /* first byte of a table entry is the line count, so advance one byte forward
                 in the current entry to point at the actual table data */
@@ -508,8 +508,8 @@ uint32_t hdma_start_channel_transfer_state(int32_t cycle_count)
                     uint32_t cur_addr_reg = CPU_MEM_REG_HDMA0_IND_ADDR_DMA0_COUNTL | channel_reg_index;
                     /* in indirect mode, the table data is a pointer to the data, so fetch that and
                     put it in the indirect address register */
-                    ram1_regs[cur_addr_reg] = read_byte((uint32_t)table_addr | table_bank);
-                    ram1_regs[cur_addr_reg + 1] = read_byte(((uint32_t)table_addr + 2) | table_bank);
+                    mem_regs[cur_addr_reg] = read_byte((uint32_t)table_addr | table_bank);
+                    mem_regs[cur_addr_reg + 1] = read_byte(((uint32_t)table_addr + 2) | table_bank);
                 }
 
                 /* this is a pointer to the data of the current table entry. When a direct
@@ -517,8 +517,8 @@ uint32_t hdma_start_channel_transfer_state(int32_t cycle_count)
                 this points to the pointer that points to the data. Either way, this gets
                 incremented during the transfer. */
                 table_reg = CPU_MEM_REG_HDMA0_DIR_ADDRL | channel_reg_index;
-                ram1_regs[table_reg] = (uint8_t)table_addr;
-                ram1_regs[table_reg + 1] = (uint8_t)(table_addr >> 8);
+                mem_regs[table_reg] = (uint8_t)table_addr;
+                mem_regs[table_reg + 1] = (uint8_t)(table_addr >> 8);
             }
         }
 
@@ -533,7 +533,7 @@ uint32_t hdma_transfer_state(int32_t cycle_count)
     struct hdma_t *channel = hdma_channels + active_hdma_channel_index;
     uint32_t channel_reg_index = active_hdma_channel_index << 4;
     uint32_t line_count_reg = CPU_MEM_REG_HDMA0_CUR_LINE_COUNT | channel_reg_index;
-    uint32_t line_count = ram1_regs[line_count_reg];
+    uint32_t line_count = mem_regs[line_count_reg];
     uint32_t continuous_mode = line_count & 0x80;
     line_count &= 0x7f;
 
@@ -549,8 +549,8 @@ uint32_t hdma_transfer_state(int32_t cycle_count)
             uint32_t data_addr_reg = hdma_addr_mode_data_addr_regs[channel->indirect][0] | channel_reg_index;
             uint32_t data_bank_reg = hdma_addr_mode_data_addr_regs[channel->indirect][1] | channel_reg_index;
 
-            uint16_t data_addr = (uint16_t)ram1_regs[data_addr_reg] | ((uint16_t)ram1_regs[data_addr_reg] << 8);
-            uint32_t data_bank = (uint32_t)ram1_regs[data_bank_reg] << 16;
+            uint16_t data_addr = (uint16_t)mem_regs[data_addr_reg] | ((uint16_t)mem_regs[data_addr_reg] << 8);
+            uint32_t data_bank = (uint32_t)mem_regs[data_bank_reg] << 16;
             uint32_t write_count = channel->last_reg - channel->cur_reg;
 
             if(byte_count > write_count)
@@ -567,9 +567,9 @@ uint32_t hdma_transfer_state(int32_t cycle_count)
                 write_count--;
             }
 
-            ram1_regs[data_addr_reg] = (uint8_t)data_addr;
-            ram1_regs[data_addr_reg + 1] = (uint8_t)(data_addr >> 8);
-            // ram1_regs[line_count_reg] = line_count;
+            mem_regs[data_addr_reg] = (uint8_t)data_addr;
+            mem_regs[data_addr_reg + 1] = (uint8_t)(data_addr >> 8);
+            // mem_regs[line_count_reg] = line_count;
 
             if(channel->cur_reg == channel->last_reg)
             {
@@ -577,12 +577,12 @@ uint32_t hdma_transfer_state(int32_t cycle_count)
                 // {
                 //     /* adjust the table pointer to point to the next entry on the indirect table */
                 //     uint16_t cur_table_addr_reg = CPU_MEM_REG_HDMA0_DIR_ADDRL | channel_reg_index;
-                //     uint16_t cur_table_addr = (uint16_t)ram1_regs[cur_table_addr_reg] | ((uint16_t)ram1_regs[cur_table_addr_reg] << 8);
+                //     uint16_t cur_table_addr = (uint16_t)mem_regs[cur_table_addr_reg] | ((uint16_t)mem_regs[cur_table_addr_reg] << 8);
                 //     /* now it points at the line count byte */
                 //     cur_table_addr += 2;
 
-                //     ram1_regs[cur_table_addr_reg] = (uint8_t)cur_table_addr;
-                //     ram1_regs[cur_table_addr_reg + 1] = (uint8_t)(cur_table_addr >> 8);
+                //     mem_regs[cur_table_addr_reg] = (uint8_t)cur_table_addr;
+                //     mem_regs[cur_table_addr_reg + 1] = (uint8_t)(cur_table_addr >> 8);
                 // }
                 // else
                 // {
@@ -603,7 +603,7 @@ uint32_t hdma_transfer_state(int32_t cycle_count)
         line_count--;
     }
 
-    ram1_regs[line_count_reg] = continuous_mode | line_count;
+    mem_regs[line_count_reg] = continuous_mode | line_count;
 
     return 0;
 }
@@ -623,7 +623,7 @@ void dma_reg_list(uint16_t write_mode, uint16_t reg, uint16_t *reg_list)
 
 void mdmaen_write(uint32_t effective_address, uint8_t value)
 {
-    ram1_regs[CPU_MEM_REG_MDMAEN] = value;
+    mem_regs[CPU_MEM_REG_MDMAEN] = value;
 
     for(uint32_t channel_index = 0; channel_index < 8; channel_index++)
     {
@@ -633,13 +633,13 @@ void mdmaen_write(uint32_t effective_address, uint8_t value)
             uint32_t reg_channel_index = channel_index << 4;
             uint32_t reg = CPU_MEM_REG_DMA0_PARAM | reg_channel_index;
 
-            uint32_t write_mode = ram1_regs[reg] & 0x7;
-            channel->increment = addr_increments[(ram1_regs[reg] >> 3) & 0x3];
-            channel->direction = (ram1_regs[reg] >> 7) & 0x1;
+            uint32_t write_mode = mem_regs[reg] & 0x7;
+            channel->increment = addr_increments[(mem_regs[reg] >> 3) & 0x3];
+            channel->direction = (mem_regs[reg] >> 7) & 0x1;
             channel->cur_reg = 0;
 
             reg = CPU_MEM_REG_DMA0_BBUS_ADDR | reg_channel_index;
-            uint16_t ppu_reg = DMA_BASE_REG | (uint16_t)ram1_regs[reg];
+            uint16_t ppu_reg = DMA_BASE_REG | (uint16_t)mem_regs[reg];
 
             channel->regs[0] = ppu_reg + write_mode_orders[write_mode][0];
             channel->regs[1] = ppu_reg + write_mode_orders[write_mode][1];
@@ -647,13 +647,13 @@ void mdmaen_write(uint32_t effective_address, uint8_t value)
             channel->regs[3] = ppu_reg + write_mode_orders[write_mode][3];
 
             reg = CPU_MEM_REG_HDMA0_ATAB_DMA0_ADDRL | reg_channel_index;
-            channel->addr = (uint32_t)ram1_regs[reg];
-            channel->addr |= ((uint32_t)ram1_regs[reg + 1]) << 8;
-            channel->addr |= ((uint32_t)ram1_regs[reg + 2]) << 16;
+            channel->addr = (uint32_t)mem_regs[reg];
+            channel->addr |= ((uint32_t)mem_regs[reg + 1]) << 8;
+            channel->addr |= ((uint32_t)mem_regs[reg + 2]) << 16;
 
             reg = CPU_MEM_REG_HDMA0_IND_ADDR_DMA0_COUNTL | reg_channel_index;
-            channel->count = (uint32_t)ram1_regs[reg];
-            channel->count |= ((uint32_t)ram1_regs[reg + 1]) << 8;
+            channel->count = (uint32_t)mem_regs[reg];
+            channel->count |= ((uint32_t)mem_regs[reg + 1]) << 8;
 
             if(!channel->count)
             {
@@ -667,7 +667,7 @@ void mdmaen_write(uint32_t effective_address, uint8_t value)
 
 void hdmaen_write(uint32_t effective_address, uint8_t value)
 {
-    ram1_regs[CPU_MEM_REG_HDMAEN] = value;
+    mem_regs[CPU_MEM_REG_HDMAEN] = value;
     last_hdma_line = 0xffff;
 }
 

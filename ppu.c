@@ -128,8 +128,10 @@ uint8_t color_lut[] = {
 //     uint16_t word;
 // }oamdata_buffer;
 
-extern uint8_t *                    ram1_regs;
-extern uint8_t *                    ram2;
+// extern uint8_t *                    ram1_regs;
+// extern uint8_t *                    ram2;
+extern uint8_t *                    mem_regs;
+// extern uint8_t *                    ram2;
 extern uint64_t                     master_cycles;
 // uint32_t                            cur_field = 0;
 int32_t                             ppu_cycle_count = 0;
@@ -174,7 +176,8 @@ uint8_t *                           vram = NULL;
 
 struct background_t                 backgrounds[4];
 float                               cur_brightness = 0.0;
-struct dot_t                        cur_backdrop = {};
+uint16_t                            backdrop_color;
+// struct dot_t                        cur_backdrop = {};
 
 uint32_t                            main_screen_bg_count = 0;
 struct background_t *               main_screen[5];
@@ -351,21 +354,21 @@ const char *ppu_reg_strs[PPU_REG_WMADDH - PPU_REG_INIDISP] = {
     // [PPU_REG_M7Y]             = 0x2120,
     // [PPU_REG_CGADD]           = 0x2121,
     // [PPU_REG_CGDATAW]         = 0x2122,
-    // [PPU_REG_W12SEL]          = 0x2123,
-    // [PPU_REG_W34SEL]          = 0x2124,
-    // [PPU_REG_WCOLOBJSEL]      = 0x2125,
-    // [PPU_REG_W1L]             = 0x2126,
-    // [PPU_REG_W1R]             = 0x2127,
-    // [PPU_REG_W2L]             = 0x2128,
-    // [PPU_REG_W2R]             = 0x2129,
-    // [PPU_REG_WBGLOG]          = 0x212a,
-    // [PPU_REG_WCOLOBJLOG]      = 0x212b,
+    [PPU_REG_W12SEL - PPU_REG_INIDISP]          = "W12SEL",
+    [PPU_REG_W34SEL - PPU_REG_INIDISP]          = "W34SEL",
+    [PPU_REG_WCOLOBJSEL - PPU_REG_INIDISP]      = "WCOLOBJSEL",
+    [PPU_REG_W1L - PPU_REG_INIDISP]             = "W1L",
+    [PPU_REG_W1R - PPU_REG_INIDISP]             = "W1R",
+    [PPU_REG_W2L - PPU_REG_INIDISP]             = "W2L",
+    [PPU_REG_W2R - PPU_REG_INIDISP]             = "W2R",
+    [PPU_REG_WBGLOG - PPU_REG_INIDISP]          = "WWBGLOG",
+    [PPU_REG_WCOLOBJLOG - PPU_REG_INIDISP]      = "WCOLOBJLOG",
     [PPU_REG_TMAIN - PPU_REG_INIDISP]           = "TMAIN",
     [PPU_REG_TSUB - PPU_REG_INIDISP]            = "TSUB",
-    // [PPU_REG_TMAINWM]         = 0x212e,
-    // [PPU_REG_TSUBWM]          = 0x212f,
-    // [PPU_REG_CGSWSEL]         = 0x2130,
-    // [PPU_REG_CGADSUB]         = 0x2131,
+    [PPU_REG_TMAINWM - PPU_REG_INIDISP]         = "TMAINWM",
+    [PPU_REG_TSUBWM - PPU_REG_INIDISP]          = "TSUBWM",
+    [PPU_REG_CGSWSEL - PPU_REG_INIDISP]         = "CGSWEL",
+    [PPU_REG_CGADSUB - PPU_REG_INIDISP]         = "CGADSUB",
     // [PPU_REG_COLDATA]         = 0x2132,
     [PPU_REG_SETINI - PPU_REG_INIDISP]          = "SETINI",
     // [PPU_REG_MPYL]            = 0x2134,
@@ -486,16 +489,16 @@ void reset_ppu()
 
     
 
-    ram1_regs[PPU_REG_STAT77] = 1;
-    ram1_regs[PPU_REG_STAT78] = 1;
+    mem_regs[PPU_REG_STAT77] = 1;
+    mem_regs[PPU_REG_STAT78] = 1;
 
-    ram1_regs[PPU_REG_INIDISP] |= 0x80;
-    ram1_regs[PPU_REG_BGMODE] |= 0x0f;
-    ram1_regs[PPU_REG_VMAINC] |= 0x0f;
+    mem_regs[PPU_REG_INIDISP] |= 0x80;
+    mem_regs[PPU_REG_BGMODE] |= 0x0f;
+    mem_regs[PPU_REG_VMAINC] |= 0x0f;
 
-    ram1_regs[PPU_REG_MPYL] = 1;
-    ram1_regs[PPU_REG_MPYM] = 0;
-    ram1_regs[PPU_REG_MPYH] = 0;
+    mem_regs[PPU_REG_MPYL] = 1;
+    mem_regs[PPU_REG_MPYM] = 0;
+    mem_regs[PPU_REG_MPYH] = 0;
 }
 
 uint8_t bg_chr0_dot_col(void *chr_base, uint32_t index, uint32_t size16, uint32_t dot_h, uint32_t dot_v)
@@ -695,11 +698,12 @@ struct bg_tile_t bg_tile_entry(uint32_t dot_h, uint32_t dot_v, struct background
     struct bg_tile_t tile = {
         .chr_index      = bg_data->data & BG_SC_DATA_NAME_MASK,
         .pal_index      = (bg_data->data >> BG_SC_DATA_PAL_SHIFT) & BG_SC_DATA_PAL_MASK,
+        .priority       = (bg_data->data >> BG_SC_DATA_PRIORITY_SHIFT) & BG_SC_DATA_PRIORITY_MASK,
         .tile_dot_x     = tile_dot_x,
         .tile_dot_y     = tile_dot_y,
     };
     return tile;
-}
+} 
 
 // struct bg7_tile_t bg7_tile_entry(uint32_t dot_h, uint32_t dot_v, struct background_t *background)
 // {
@@ -797,11 +801,11 @@ uint16_t bg7_pal256_col(uint32_t dot_h, uint32_t dot_v, struct background_t *bac
 
 //     struct dot_tiles_t *dot_tiles = NULL;
 
-//     if(ram1_regs[PPU_REG_TMAIN] & PPU_TMAIN_FLAG_OBJ)
+//     if(mem_regs[PPU_REG_TMAIN] & PPU_TMAIN_FLAG_OBJ)
 //     {
 //         dot_tiles = main_scanline_tiles;
 //     }
-//     else if(ram1_regs[PPU_REG_TSUB] & PPU_TSUB_FLAG_OBJ)
+//     else if(mem_regs[PPU_REG_TSUB] & PPU_TSUB_FLAG_OBJ)
 //     {
 //         dot_tiles = sub_scanline_tiles;
 //     }
@@ -977,7 +981,7 @@ void ppu_EvalObjsSpriteStep()
         {
             if(ppu_sprite_state.scanline_sprite_count >= 32)
             {
-                ram1_regs[PPU_REG_STAT77] |= PPU_STAT77_FLAG_33_RANGE_OVER;
+                mem_regs[PPU_REG_STAT77] |= PPU_STAT77_FLAG_33_RANGE_OVER;
                 break;
             }
 
@@ -1051,7 +1055,7 @@ void ppu_LoadTilesSpriteStep()
             uint32_t tile_count = ppu_sprite_state.sprite_size / PPU_TILE_SIZE;
             ppu_sprite_state.sprite_span_index %= PPU_TILE_SIZE;
             // uint16_t first_tile = 0;
-            uint32_t first_tile = 0;
+            uint32_t first_tile = 0; 
             uint16_t sprite_x = ppu_sprite_state.sprite_tile_x;
 
             // ppu_sprite_x_pos = ppu_sprite_tile_x;
@@ -1103,7 +1107,7 @@ void ppu_LoadTilesSpriteStep()
         {
             if(ppu_sprite_state.scanline_tile_count >= 34)
             {
-                ram1_regs[PPU_REG_STAT77] |= PPU_STAT77_FLAG_35_TIME_OVER;
+                mem_regs[PPU_REG_STAT77] |= PPU_STAT77_FLAG_35_TIME_OVER;
                 break;
             }
 
@@ -1221,7 +1225,7 @@ void ppu_LoadTilesBackgroundStep()
 }
 
 /* TODO: finish background fetch sequence */
-uint32_t step_ppu(int32_t cycle_count)
+uint32_t ppu_Step(int32_t cycle_count)
 {
     ppu_cycle_count += cycle_count;
     ppu_scanline_master_cycles += cycle_count;
@@ -1233,9 +1237,9 @@ uint32_t step_ppu(int32_t cycle_count)
     while(step_count)
     {
         step_count--;
-        uint32_t dot_length = ppu_dot_length[(hcounter == 323 || hcounter == 327) && (vcounter != 240 || !(ram1_regs[PPU_REG_STAT78] & PPU_STAT78_FLAG_FIELD))];
+        uint32_t dot_length = ppu_dot_length[(hcounter == 323 || hcounter == 327) && (vcounter != 240 || !(mem_regs[PPU_REG_STAT78] & PPU_STAT78_FLAG_FIELD))];
         
-        if(!(ram1_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK) && !(ram1_regs[CPU_MEM_REG_HVBJOY] & CPU_HVBJOY_FLAG_VBLANK))
+        if(!(mem_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK) && !(mem_regs[CPU_MEM_REG_HVBJOY] & CPU_HVBJOY_FLAG_VBLANK))
         {
             uint32_t next_sprite_step = PPU_SPRITE_STEP_NONE;
             if(hcounter <= 255)
@@ -1332,7 +1336,7 @@ uint32_t step_ppu(int32_t cycle_count)
                 hcounter = 0;
                 ppu_scanline_master_cycles = 0;
 
-                if(vcounter < last_draw_scanline && !(ram1_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK))
+                if(vcounter < last_draw_scanline && !(mem_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK))
                 {
                     ppu_reg_oam_addr = 0;
                     ppu_sprite_state.sprite_eval_index = 0;
@@ -1343,12 +1347,12 @@ uint32_t step_ppu(int32_t cycle_count)
 
                 // if(line_obj_count > 32)
                 // {
-                //    ram1_regs[PPU_REG_STAT77] |= PPU_STAT77_FLAG_33_RANGE_OVER;
+                //    mem_regs[PPU_REG_STAT77] |= PPU_STAT77_FLAG_33_RANGE_OVER;
                 // }
 
                 // if(line_chr_count > 34)
                 // {
-                //     ram1_regs[PPU_REG_STAT77] |= PPU_STAT77_FLAG_35_TIME_OVER;
+                //     mem_regs[PPU_REG_STAT77] |= PPU_STAT77_FLAG_35_TIME_OVER;
                 // }
             }
 
@@ -1365,9 +1369,9 @@ uint32_t step_ppu(int32_t cycle_count)
             {
                 if(hcounter == 0)
                 {
-                    ram1_regs[CPU_MEM_REG_HVBJOY] &= ~CPU_HVBJOY_FLAG_VBLANK;
-                    ram1_regs[CPU_MEM_REG_RDNMI] &= ~CPU_RDNMI_BLANK_NMI;
-                    ram1_regs[PPU_REG_STAT77] &= ~(PPU_STAT77_FLAG_33_RANGE_OVER | PPU_STAT77_FLAG_35_TIME_OVER);
+                    mem_regs[CPU_MEM_REG_HVBJOY] &= ~CPU_HVBJOY_FLAG_VBLANK;
+                    mem_regs[CPU_MEM_REG_RDNMI] &= ~CPU_RDNMI_BLANK_NMI;
+                    mem_regs[PPU_REG_STAT77] &= ~(PPU_STAT77_FLAG_33_RANGE_OVER | PPU_STAT77_FLAG_35_TIME_OVER);
                 }
             }
             else
@@ -1376,21 +1380,21 @@ uint32_t step_ppu(int32_t cycle_count)
                 {
                     if(hcounter == 0)
                     {
-                        if(!(ram1_regs[CPU_MEM_REG_HVBJOY] & CPU_HVBJOY_FLAG_VBLANK))
+                        if(!(mem_regs[CPU_MEM_REG_HVBJOY] & CPU_HVBJOY_FLAG_VBLANK))
                         {
                             entered_vblank = 1;
-                            ram1_regs[CPU_MEM_REG_RDNMI] |= CPU_RDNMI_BLANK_NMI;
+                            mem_regs[CPU_MEM_REG_RDNMI] |= CPU_RDNMI_BLANK_NMI;
                         }
 
-                        ram1_regs[CPU_MEM_REG_HVBJOY] |= CPU_HVBJOY_FLAG_VBLANK;
+                        mem_regs[CPU_MEM_REG_HVBJOY] |= CPU_HVBJOY_FLAG_VBLANK;
                         
-                        if(ram1_regs[CPU_MEM_REG_NMITIMEN] & CPU_NMITIMEN_FLAG_NMI_ENABLE)
+                        if(mem_regs[CPU_MEM_REG_NMITIMEN] & CPU_NMITIMEN_FLAG_NMI_ENABLE)
                         {
                             assert_nmi(2);
                             deassert_nmi(2);
                         }
                     }
-                    else if(hcounter == PPU_OAM_ADDR_RESET_DOT && !(ram1_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK))
+                    else if(hcounter == PPU_OAM_ADDR_RESET_DOT && !(mem_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK))
                     {
                         ppu_ReloadOamAddrReg();
                     }
@@ -1399,23 +1403,23 @@ uint32_t step_ppu(int32_t cycle_count)
 
             if(hcounter == PPU_HBLANK_END_DOT)
             {
-                ram1_regs[CPU_MEM_REG_HVBJOY] &= ~CPU_HVBJOY_FLAG_HBLANK;
+                mem_regs[CPU_MEM_REG_HVBJOY] &= ~CPU_HVBJOY_FLAG_HBLANK;
 
                 if(vcounter == 0)
                 {
-                    ram1_regs[PPU_REG_STAT78] ^= PPU_STAT78_FLAG_FIELD;
+                    mem_regs[PPU_REG_STAT78] ^= PPU_STAT78_FLAG_FIELD;
                 }
             }
             else if(hcounter == PPU_HBLANK_START_DOT)
             {
-                ram1_regs[CPU_MEM_REG_HVBJOY] |= CPU_HVBJOY_FLAG_HBLANK;
+                mem_regs[CPU_MEM_REG_HVBJOY] |= CPU_HVBJOY_FLAG_HBLANK;
             }
 
             if(!cur_irq_counter)
             {
-                if(ram1_regs[CPU_MEM_REG_NMITIMEN] & (CPU_NMITIMEN_FLAG_HTIMER_EN | CPU_NMITIMEN_FLAG_VTIMER_EN))
+                if(mem_regs[CPU_MEM_REG_NMITIMEN] & (CPU_NMITIMEN_FLAG_HTIMER_EN | CPU_NMITIMEN_FLAG_VTIMER_EN))
                 {
-                    ram1_regs[CPU_MEM_REG_TIMEUP] |= 1 << 7;
+                    mem_regs[CPU_MEM_REG_TIMEUP] |= 1 << 7;
                     irq_triggered = 1;
                     irq_hold_timer = 8;
                 }
@@ -1426,73 +1430,39 @@ uint32_t step_ppu(int32_t cycle_count)
             if(irq_hold_timer > 0)
             {
                 irq_hold_timer -= cycle_count;
-                ram1_regs[CPU_MEM_REG_TIMEUP] |= 1 << 7;
+                mem_regs[CPU_MEM_REG_TIMEUP] |= 1 << 7;
             }
 
-            uint8_t hvbjoy = ram1_regs[CPU_MEM_REG_HVBJOY];
+            uint8_t hvbjoy = mem_regs[CPU_MEM_REG_HVBJOY];
 
             if(vcounter >= PPU_DRAW_START_LINE && vcounter < last_draw_scanline && hcounter >= PPU_DRAW_START_DOT && hcounter <= PPU_DRAW_END_DOT)
             {
-                uint8_t inidisp = ram1_regs[PPU_REG_INIDISP];
+                uint8_t inidisp = mem_regs[PPU_REG_INIDISP];
                 float brightness = cur_brightness;
                 uint16_t dot_x = hcounter - PPU_DRAW_START_DOT;
                 uint16_t dot_y = vcounter - PPU_DRAW_START_LINE;
 
-                if(ram1_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK)
+                if(mem_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK)
                 {
                     brightness = 0.0;
                 }
 
                 union mode0_cgram_t *mode0_cgram = (union mode0_cgram_t *)ppu_cgram;
                 struct dot_t *main_dot = emu_framebuffer + dot_y * FRAMEBUFFER_WIDTH + dot_x;
-                struct dot_t sub_dot = {};
+                // struct dot_t sub_dot = {};
 
-                *main_dot = cur_backdrop;
+                // *main_dot = cur_backdrop;
 
-                for(uint32_t index = 0; index < main_screen_bg_count; index++)
+                struct dot_color_t dot_color = {.color = backdrop_color};
+
+                if((mem_regs[PPU_REG_TMAIN] & PPU_TMAIN_FLAG_OBJ) || (mem_regs[PPU_REG_TSUB] & PPU_TSUB_FLAG_OBJ))
                 {
-//                    struct bg_draw_t *bg_draw = main_screen + index;
-                    struct background_t *background = main_screen[index];
-                    if(background == NULL)
-                    {
-                        continue;
-                    }
-                    uint16_t chr_size = background->chr_size;
-                    uint16_t bg_dot_x = dot_x + background->offset.offsets[0];
-                    uint16_t bg_dot_y = dot_y + background->offset.offsets[1];
-                    // int16_t bg_dot_x = ((int16_t)hcounter);
-                    // int16_t bg_dot_y = ((int16_t)vcounter);
-
-                    if(bg_dot_x < 0x8000 && bg_dot_y < 0x8000)
-                    {
-                        uint16_t color = background->color_func(bg_dot_x, bg_dot_y, background);
-
-                        if(color != 0xffff)
-                        {
-                            main_dot->r = color_lut[(color >> COL_DATA_R_SHIFT) & COL_DATA_MASK];
-                            main_dot->g = color_lut[(color >> COL_DATA_G_SHIFT) & COL_DATA_MASK];
-                            main_dot->b = color_lut[(color >> COL_DATA_B_SHIFT) & COL_DATA_MASK];
-                            main_dot->a = 255;
-                            break;
-                        }
-                    }
-                }
-
-                struct dot_tiles_t *dot_tiles = NULL;
-                struct dot_t *obj_dot = NULL;
-
-                if((ram1_regs[PPU_REG_TMAIN] & PPU_TMAIN_FLAG_OBJ) || (ram1_regs[PPU_REG_TSUB] & PPU_TSUB_FLAG_OBJ))
-                {
-                    obj_dot = main_dot;
                     struct line_pixel_t *pixel = ppu_line_buffer + dot_x;
 
                     if(pixel->color != 0)
                     {
-                        uint16_t color = mode0_cgram->obj_colors[pixel->pallete].colors[pixel->color];
-                        obj_dot->r = color_lut[(color >> COL_DATA_R_SHIFT) & COL_DATA_MASK];
-                        obj_dot->g = color_lut[(color >> COL_DATA_G_SHIFT) & COL_DATA_MASK];
-                        obj_dot->b = color_lut[(color >> COL_DATA_B_SHIFT) & COL_DATA_MASK];
-                        obj_dot->a = 255;
+                        dot_color.color = mode0_cgram->obj_colors[pixel->pallete].colors[pixel->color];
+                        dot_color.priority = pixel->priority;
                     }
 
                     pixel->color = 0;
@@ -1500,12 +1470,116 @@ uint32_t step_ppu(int32_t cycle_count)
                     pixel->priority = 0;
                 }
 
-                // if(ram1_regs[PPU_REG_TMAIN] & PPU_TMAIN_FLAG_OBJ)
+                uint32_t bg_mode = mem_regs[PPU_REG_BGMODE] & PPU_BGMODE_MODE_MASK;
+                uint32_t bg3_prio = (bg_mode == PPU_BGMODE_MODE0 || bg_mode == PPU_BGMODE_MODE1) && (mem_regs[PPU_REG_BGMODE] & PPU_BGMODE_FLAG_BG3_PRIO);
+
+                for(uint32_t index = 0; index < main_screen_bg_count; index++)
+                {
+                    struct background_t *background = main_screen[index];
+                    if(background == NULL || background->disabled)
+                    {
+                        continue;
+                    }
+
+                    uint32_t background_index = background - backgrounds;
+
+                    uint16_t chr_size = background->chr_size;
+                    uint16_t bg_dot_x = dot_x + background->offset.offsets[0];
+                    uint16_t bg_dot_y = dot_y + background->offset.offsets[1];
+
+
+                    if(bg_dot_x < 0x8000 && bg_dot_y < 0x8000)
+                    {
+                        struct bg_tile_t tile = bg_tile_entry(bg_dot_x, bg_dot_y, background);
+                        uint8_t priority = (2 - (background_index & 0x2)) + tile.priority;
+
+                        if(bg3_prio && background_index == 2 && tile.priority)
+                        {
+                            priority = 4;
+                        }
+
+                        if(priority > dot_color.priority)
+                        {
+                            uint16_t color = background->color_func(bg_dot_x, bg_dot_y, background);
+
+                            if(color != 0xffff)
+                            {
+                                dot_color.color = color;
+                                dot_color.priority = priority;
+
+                                if(!bg3_prio)
+                                {
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+
+
+//                 for(uint32_t index = 0; index < main_screen_bg_count; index++)
+//                 {
+// //                    struct bg_draw_t *bg_draw = main_screen + index;
+//                     struct background_t *background = main_screen[index];
+//                     if(background == NULL)
+//                     {
+//                         continue;
+//                     }
+//                     uint16_t chr_size = background->chr_size;
+//                     uint16_t bg_dot_x = dot_x + background->offset.offsets[0];
+//                     uint16_t bg_dot_y = dot_y + background->offset.offsets[1];
+//                     // int16_t bg_dot_x = ((int16_t)hcounter);
+//                     // int16_t bg_dot_y = ((int16_t)vcounter);
+
+//                     if(bg_dot_x < 0x8000 && bg_dot_y < 0x8000)
+//                     {
+//                         uint16_t color = background->color_func(bg_dot_x, bg_dot_y, background);
+
+//                         if(color != 0xffff)
+//                         {
+//                             // main_dot->r = color_lut[(color >> COL_DATA_R_SHIFT) & COL_DATA_MASK];
+//                             // main_dot->g = color_lut[(color >> COL_DATA_G_SHIFT) & COL_DATA_MASK];
+//                             // main_dot->b = color_lut[(color >> COL_DATA_B_SHIFT) & COL_DATA_MASK];
+//                             // main_dot->a = 255;
+//                             dot_color.color = color;
+//                             break;
+//                         }
+//                     }
+//                 }
+
+                main_dot->r = color_lut[(dot_color.color >> COL_DATA_R_SHIFT) & COL_DATA_MASK];
+                main_dot->g = color_lut[(dot_color.color >> COL_DATA_G_SHIFT) & COL_DATA_MASK];
+                main_dot->b = color_lut[(dot_color.color >> COL_DATA_B_SHIFT) & COL_DATA_MASK];
+                main_dot->a = 255;
+
+                // // struct dot_tiles_t *dot_tiles = NULL;
+                // struct dot_t *obj_dot = NULL;
+
+                // if((mem_regs[PPU_REG_TMAIN] & PPU_TMAIN_FLAG_OBJ) || (mem_regs[PPU_REG_TSUB] & PPU_TSUB_FLAG_OBJ))
+                // {
+                //     obj_dot = main_dot;
+                //     struct line_pixel_t *pixel = ppu_line_buffer + dot_x;
+
+                //     if(pixel->color != 0)
+                //     {
+                //         uint16_t color = mode0_cgram->obj_colors[pixel->pallete].colors[pixel->color];
+                //         obj_dot->r = color_lut[(color >> COL_DATA_R_SHIFT) & COL_DATA_MASK];
+                //         obj_dot->g = color_lut[(color >> COL_DATA_G_SHIFT) & COL_DATA_MASK];
+                //         obj_dot->b = color_lut[(color >> COL_DATA_B_SHIFT) & COL_DATA_MASK];
+                //         obj_dot->a = 255;
+                //     }
+
+                //     pixel->color = 0;
+                //     pixel->pallete = 0;
+                //     pixel->priority = 0;
+                // }
+
+                // if(mem_regs[PPU_REG_TMAIN] & PPU_TMAIN_FLAG_OBJ)
                 // {
                 //     dot_tiles = main_scanline_tiles + dot_x;
                 //     obj_dot = main_dot;
                 // }
-                // else if(ram1_regs[PPU_REG_TSUB] & PPU_TSUB_FLAG_OBJ)
+                // else if(mem_regs[PPU_REG_TSUB] & PPU_TSUB_FLAG_OBJ)
                 // {
                 //     dot_tiles = sub_scanline_tiles + dot_x;
                 //     obj_dot = &sub_dot;
@@ -1566,9 +1640,9 @@ uint32_t step_ppu(int32_t cycle_count)
 // {
 //    printf("===================== PPU ========================\n");
 //    printf("current dot: (H: %d, V: %d)\n", hcounter, vcounter);
-//    printf("v-blank: %d -- h-blank: %d\n", (ram1_regs[CPU_MEM_REG_HVBJOY] & CPU_HVBJOY_FLAG_VBLANK) && 1, (ram1_regs[CPU_MEM_REG_HVBJOY] & CPU_HVBJOY_FLAG_HBLANK) && 1);
+//    printf("v-blank: %d -- h-blank: %d\n", (mem_regs[CPU_MEM_REG_HVBJOY] & CPU_HVBJOY_FLAG_VBLANK) && 1, (mem_regs[CPU_MEM_REG_HVBJOY] & CPU_HVBJOY_FLAG_HBLANK) && 1);
 //    printf("--------------------------------------------------\n");
-//    printf("BG Mode: Mode %d\n", ram1_regs[PPU_REG_BGMODE] & PPU_BGMODE_MODE_MASK);
+//    printf("BG Mode: Mode %d\n", mem_regs[PPU_REG_BGMODE] & PPU_BGMODE_MODE_MASK);
 //    printf("\n");
 // }
 
@@ -1627,11 +1701,11 @@ uint32_t step_ppu(int32_t cycle_count)
 
 void inidisp_write(uint32_t effective_address, uint8_t value)
 {
-    if((ram1_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK) && !(value & PPU_INIDISP_FLAG_FBLANK))
+    if((mem_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK) && !(value & PPU_INIDISP_FLAG_FBLANK))
     {
         ppu_ReloadOamAddrReg();
     }
-    ram1_regs[PPU_REG_INIDISP] = value;
+    mem_regs[PPU_REG_INIDISP] = value;
     cur_brightness = (float)(value & 0xf) / 15.0;
 }
 
@@ -1648,7 +1722,7 @@ uint8_t inidisp_read(uint32_t effective_address)
 
 void objsel_write(uint32_t effective_address, uint8_t value)
 {
-    ram1_regs[PPU_REG_OBJSEL] = value;
+    mem_regs[PPU_REG_OBJSEL] = value;
     uint32_t obj_size_select = (value >> PPU_OBJSEL_SIZE_SHIFT) & PPU_OBJSEL_SIZE_MASK;
     cur_obj_sizes[0] = objsel_size_sel_sizes[obj_size_select][0];
     cur_obj_sizes[1] = objsel_size_sel_sizes[obj_size_select][1];
@@ -1671,7 +1745,7 @@ uint8_t objsel_read(uint32_t effective_address)
 
 void ppu_ReloadOamAddrReg()
 {
-    ppu_reg_oam_addr = (((uint16_t)ram1_regs[PPU_REG_OAMADDL]) | (((uint16_t)ram1_regs[PPU_REG_OAMADDH] & 0x1) << 8));
+    ppu_reg_oam_addr = (((uint16_t)mem_regs[PPU_REG_OAMADDL]) | (((uint16_t)mem_regs[PPU_REG_OAMADDH] & 0x1) << 8));
     ppu_reg_oam_addr <<= 1;
     ppu_oam_lsb_toggle = 0;
 }
@@ -1679,9 +1753,9 @@ void ppu_ReloadOamAddrReg()
 void oamadd_write(uint32_t effective_address, uint8_t value)
 {
     uint32_t reg = effective_address & 0xffff;
-    ram1_regs[reg] = value;
+    mem_regs[reg] = value;
 
-    if((ram1_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK) || (ram1_regs[CPU_MEM_REG_HVBJOY] & CPU_HVBJOY_FLAG_VBLANK))
+    if((mem_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK) || (mem_regs[CPU_MEM_REG_HVBJOY] & CPU_HVBJOY_FLAG_VBLANK))
     {
         ppu_ReloadOamAddrReg();
     }
@@ -1725,7 +1799,7 @@ uint8_t opct_read(uint32_t effective_address)
 
 void oamdataw_write(uint32_t effective_address, uint8_t value)
 {
-    // if(!(ram1_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK) && !(ram1_regs[CPU_MEM_REG_HVBJOY] & CPU_HVBJOY_FLAG_VBLANK))
+    // if(!(mem_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK) && !(mem_regs[CPU_MEM_REG_HVBJOY] & CPU_HVBJOY_FLAG_VBLANK))
     // {
     //     printf("write to oam ignored\n");
     //     return;
@@ -1750,8 +1824,8 @@ void oamdataw_write(uint32_t effective_address, uint8_t value)
 
     // printf("write %x to %d\n", value, ppu_reg_oam_addr >> 1);
 
-    if(((ram1_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK) || 
-        (ram1_regs[CPU_MEM_REG_HVBJOY] & CPU_HVBJOY_FLAG_VBLANK)) &&
+    if(((mem_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK) || 
+        (mem_regs[CPU_MEM_REG_HVBJOY] & CPU_HVBJOY_FLAG_VBLANK)) &&
          ppu_oam_lsb_toggle)
     {
         ppu_reg_oam_addr = (ppu_reg_oam_addr + 2) % PPU_OAM_SIZE;
@@ -1775,8 +1849,8 @@ uint8_t oamdatar_read(uint32_t effective_address)
 {
     ppu1_last_bus_value = oam.bytes[ppu_reg_oam_addr + ppu_oam_lsb_toggle];
 
-    if(((ram1_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK) || 
-        (ram1_regs[CPU_MEM_REG_HVBJOY] & (CPU_HVBJOY_FLAG_VBLANK | CPU_HVBJOY_FLAG_HBLANK))) &&
+    if(((mem_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK) || 
+        (mem_regs[CPU_MEM_REG_HVBJOY] & (CPU_HVBJOY_FLAG_VBLANK | CPU_HVBJOY_FLAG_HBLANK))) &&
         ppu_oam_lsb_toggle)
     {
         ppu_reg_oam_addr = (ppu_reg_oam_addr + 2) % PPU_OAM_SIZE;
@@ -1788,10 +1862,10 @@ uint8_t oamdatar_read(uint32_t effective_address)
 
 void update_bg_state()
 {
-    uint8_t bg_mode = ram1_regs[PPU_REG_BGMODE];
-    uint8_t through_main = ram1_regs[PPU_REG_TMAIN];
+    uint8_t bg_mode = mem_regs[PPU_REG_BGMODE];
+    uint8_t through_main = mem_regs[PPU_REG_TMAIN];
     uint32_t last_main_background = 0;
-    uint8_t through_sub = ram1_regs[PPU_REG_TSUB];
+    uint8_t through_sub = mem_regs[PPU_REG_TSUB];
 
 //    struct bg_draw_t main_screen_backgrounds[5];
     struct background_t *main_screen_backgrounds[5];
@@ -1895,7 +1969,8 @@ void update_bg_state()
 
     for(uint32_t index = 0; index <= last_main_background; index++)
     {
-        uint32_t background_index = last_main_background - index;
+        // uint32_t background_index = last_main_background - index;
+        uint32_t background_index = index;
         if(through_main & (PPU_TMAIN_FLAG_BG1 << background_index))
         {
             main_screen[main_screen_bg_count] = main_screen_backgrounds[background_index];
@@ -1912,7 +1987,7 @@ void update_bg_state()
 
 void bgmode_write(uint32_t effective_address, uint8_t value)
 {
-    ram1_regs[PPU_REG_BGMODE] = value;
+    mem_regs[PPU_REG_BGMODE] = value;
     update_bg_state();
 }
 
@@ -1947,9 +2022,17 @@ uint8_t mosaic_read(uint32_t effective_address)
 void bgsc_write(uint32_t effective_address, uint8_t value)
 {
     uint32_t reg = effective_address & 0xffff;
-    ram1_regs[reg] = value;
+    
+    if(emu_IsPPURegOverriden(reg))
+    {
+        return;
+    }
+
+    mem_regs[reg] = value;
     value = (value >> 2) & 0x3f;
-    uint32_t offset = ((((uint32_t)value) << 10) & 0x7fff) << 1;
+    // uint32_t offset = ((((uint32_t)value) << 10) & 0x7fff) << 1;
+
+    uint32_t offset = (((uint32_t)value) << 11) & 0xffff;
     // uint32_t offset = value << 9;
 //    uint32_t offset = ((uint32_t)value * 0x800 * 2);
 //    uint32_t offset = (((uint32_t)(value & 0xfc) << 8) & 0x7fff) << 1;
@@ -2006,18 +2089,25 @@ uint8_t bgsc_read(uint32_t effective_address)
 void bgnba_write(uint32_t effective_address, uint8_t value)
 {
     uint32_t reg = effective_address & 0xffff;
-    uint32_t background_index = (reg - PPU_REG_BG12NBA) << 1;
-    ram1_regs[reg] = value;
 
-    uint32_t offset = ((((uint32_t)(value & 0x0f)) << 12) & 0x7fff) << 1;
-//    uint32_t offset = ((uint32_t)(value & 0x0f)) * 0x2000;
+    if(emu_IsPPURegOverriden(reg))
+    {
+        return;
+    }
+
+    uint32_t background_index = (reg - PPU_REG_BG12NBA) << 1;
+    mem_regs[reg] = value;
+
+    // uint32_t offset = ((((uint32_t)(value & 0x0f)) << 12) & 0x7fff) << 1;
+
+    uint32_t offset = ((uint32_t)(value & 0x0f)) << 13;
     struct background_t *background = backgrounds + background_index;
-    background_index++;
+    // background_index++;
     background->chr_base = vram + offset;
 //    value >>= 4;
-    offset = ((((uint32_t)(value & 0xf0)) << 8) & 0x7fff) << 1;
+    offset = ((uint32_t)(value & 0xf0)) << 9;
 //    offset = ((uint32_t)value) * 0x2000;
-    background = backgrounds + background_index;
+    background = backgrounds + 1;
     background->chr_base = vram + offset;
 }
 
@@ -2035,6 +2125,7 @@ uint8_t bgnba_read(uint32_t effective_address)
 void bgoffs_write(uint32_t effective_address, uint8_t value)
 {
     uint32_t reg = (effective_address & 0xffff) - PPU_REG_BG1HOFS;
+    
     uint32_t background_index = (reg >> 1);
     /* two registers per background (h and v offsets), so bit 1 gives us the
     offset of the background we want to */
@@ -2045,7 +2136,7 @@ void bgoffs_write(uint32_t effective_address, uint8_t value)
     uint32_t offset_index = reg & 1;
     // uint32_t sign_mask = 0;
     uint32_t value_mask;
-    uint32_t bg_mode = ram1_regs[PPU_REG_BGMODE];
+    uint32_t bg_mode = mem_regs[PPU_REG_BGMODE];
 
     if((bg_mode & PPU_BGMODE_MODE_MASK) == PPU_BGMODE_MODE7)
     {
@@ -2099,7 +2190,7 @@ uint8_t bgoffs_read(uint32_t effective_address)
 
 void vmainc_write(uint32_t effective_address, uint8_t value)
 {
-    ram1_regs[PPU_REG_VMAINC] = value;
+    mem_regs[PPU_REG_VMAINC] = value;
 //    uint32_t bitdepth = (value >> PPU_VMAINC_BITDEPTH_SHIFT) & PPU_VMAINC_BITDEPTH_MASK;
 //    bg_chr_dot_col = bg_chr_dot_col_funcs[bitdepth];
 }
@@ -2118,8 +2209,8 @@ uint8_t vmainc_read(uint32_t effective_address)
 void vmadd_write(uint32_t effective_address, uint8_t value)
 {
     uint32_t reg = effective_address & 0xffff;
-    ram1_regs[reg] = value;
-    vram_addr = ((uint16_t)ram1_regs[PPU_REG_VMADDL]) | (((uint16_t)ram1_regs[PPU_REG_VMADDH]) << 8);
+    mem_regs[reg] = value;
+    vram_addr = ((uint16_t)mem_regs[PPU_REG_VMADDL]) | (((uint16_t)mem_regs[PPU_REG_VMADDH]) << 8);
     vram_addr &= 0x7fff;
     vram_read_prefetch();
 }
@@ -2142,12 +2233,12 @@ uint8_t vmadd_read(uint32_t effective_address)
 
 void vmdataw_write(uint32_t effective_address, uint8_t value)
 {
-    uint32_t write_order = ram1_regs[PPU_REG_VMAINC] & 0x80;
+    uint32_t write_order = mem_regs[PPU_REG_VMAINC] & 0x80;
     uint32_t reg = effective_address & 0xffff;
     uint32_t write_addr = (vram_addr << 1) | reg == PPU_REG_VMDATAWH;
-    uint32_t increment_shift = vmadd_increment_shifts[ram1_regs[PPU_REG_VMAINC] & 0x3];
+    uint32_t increment_shift = vmadd_increment_shifts[mem_regs[PPU_REG_VMAINC] & 0x3];
 
-    if((ram1_regs[CPU_MEM_REG_HVBJOY] & CPU_HVBJOY_FLAG_VBLANK) || (ram1_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK))
+    if((mem_regs[CPU_MEM_REG_HVBJOY] & CPU_HVBJOY_FLAG_VBLANK) || (mem_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK))
     {
         if(emu_vram_breakpoint_bitmask[write_addr >> 2] & (EMU_BREAKPOINT_FLAG_WRITE << ((write_addr & 0x3) << 1)))
         {
@@ -2164,8 +2255,8 @@ void vmdataw_write(uint32_t effective_address, uint8_t value)
         vram_addr += ((write_order == PPU_VMDATA_ADDR_INC_LH && reg == PPU_REG_VMDATAWH) ||
                       (write_order == PPU_VMDATA_ADDR_INC_HL && reg == PPU_REG_VMDATAWL)) << increment_shift;
         vram_addr &= 0x7fff;
-        ram1_regs[PPU_REG_VMADDL] = vram_addr & 0xff;
-        ram1_regs[PPU_REG_VMADDH] = (vram_addr >> 8) & 0xff;
+        // mem_regs[PPU_REG_VMADDL] = vram_addr & 0xff;
+        // mem_regs[PPU_REG_VMADDH] = (vram_addr >> 8) & 0xff;
     }
 }
 
@@ -2233,7 +2324,7 @@ uint8_t mpos_read(uint32_t effective_address)
 void cgadd_write(uint32_t effective_address, uint8_t value)
 {
     uint32_t reg = effective_address & 0xffff;
-    ram1_regs[reg] = value;
+    mem_regs[reg] = value;
     ppu_reg_cgram_addr = value << 1;
     ppu_cgram_lsb_toggle = 0;
 }
@@ -2251,8 +2342,8 @@ uint8_t cgadd_read(uint32_t effective_address)
 
 void cgdataw_write(uint32_t effective_address, uint8_t value)
 {
-    if((ram1_regs[CPU_MEM_REG_HVBJOY] & (CPU_HVBJOY_FLAG_HBLANK | CPU_HVBJOY_FLAG_VBLANK)) || 
-       (ram1_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK))
+    if((mem_regs[CPU_MEM_REG_HVBJOY] & (CPU_HVBJOY_FLAG_HBLANK | CPU_HVBJOY_FLAG_VBLANK)) || 
+       (mem_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK))
     {
 
         if(!ppu_cgram_lsb_toggle)
@@ -2274,12 +2365,13 @@ void cgdataw_write(uint32_t effective_address, uint8_t value)
             /* address 0 of cgram is background, so recompute the backdrop color whenever
             the first two bytes of the cgram are modified */
             union mode0_cgram_t *mode0_cgram = (union mode0_cgram_t *)ppu_cgram;
-            uint16_t backdrop = mode0_cgram->bg1_colors[0].colors[0];
+            backdrop_color = mode0_cgram->bg1_colors[0].colors[0];
+            // uint16_t backdrop = mode0_cgram->bg1_colors[0].colors[0];
 
-            cur_backdrop.r = color_lut[(backdrop >> COL_DATA_R_SHIFT) & COL_DATA_MASK];
-            cur_backdrop.g = color_lut[(backdrop >> COL_DATA_G_SHIFT) & COL_DATA_MASK];
-            cur_backdrop.b = color_lut[(backdrop >> COL_DATA_B_SHIFT) & COL_DATA_MASK];
-            cur_backdrop.a = 255;
+            // cur_backdrop.r = color_lut[(backdrop >> COL_DATA_R_SHIFT) & COL_DATA_MASK];
+            // cur_backdrop.g = color_lut[(backdrop >> COL_DATA_G_SHIFT) & COL_DATA_MASK];
+            // cur_backdrop.b = color_lut[(backdrop >> COL_DATA_B_SHIFT) & COL_DATA_MASK];
+            // cur_backdrop.a = 255;
         }
     }
 }
@@ -2388,7 +2480,7 @@ uint8_t wcolobjlog_read(uint32_t effective_address)
 void tmainsub_write(uint32_t effective_address, uint8_t value)
 {
     uint32_t reg = effective_address & 0xffff;
-    ram1_regs[reg] = value;
+    mem_regs[reg] = value;
     update_bg_state();
 }
 
@@ -2406,7 +2498,7 @@ uint8_t tmainsub_read(uint32_t effective_address)
 void tmainsubwm_write(uint32_t effective_address, uint8_t value)
 {
     uint32_t reg = effective_address & 0xffff;
-    ram1_regs[reg] = value;
+    mem_regs[reg] = value;
 }
 
 uint8_t tmainsubwm_read(uint32_t effective_address)
@@ -2454,7 +2546,7 @@ uint8_t cgadsub_read(uint32_t effective_address)
 
 void coldata_write(uint32_t effective_address, uint8_t value)
 {
-    ram1_regs[PPU_REG_COLDATA] = value;
+    mem_regs[PPU_REG_COLDATA] = value;
 }
 
 uint8_t coldata_read(uint32_t effective_address)
@@ -2470,7 +2562,7 @@ uint8_t coldata_read(uint32_t effective_address)
 
 void setinit_write(uint32_t effective_address, uint8_t value)
 {
-    ram1_regs[PPU_REG_SETINI] = value;
+    mem_regs[PPU_REG_SETINI] = value;
     if(value & PPU_SETINI_FLAG_BGV_SEL)
     {
         last_draw_scanline = 239;
@@ -2513,8 +2605,8 @@ uint8_t cgdatar_read(uint32_t effective_address)
 
     value = ppu_cgram[ppu_reg_cgram_addr + ppu_cgram_lsb_toggle];
 
-    if(((ram1_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK) || 
-        (ram1_regs[CPU_MEM_REG_HVBJOY] & (CPU_HVBJOY_FLAG_VBLANK | CPU_HVBJOY_FLAG_HBLANK))) &&
+    if(((mem_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK) || 
+        (mem_regs[CPU_MEM_REG_HVBJOY] & (CPU_HVBJOY_FLAG_VBLANK | CPU_HVBJOY_FLAG_HBLANK))) &&
         ppu_cgram_lsb_toggle)
     {
         ppu_reg_cgram_addr = (ppu_reg_cgram_addr + 2) % PPU_CGRAM_SIZE;
@@ -2530,8 +2622,8 @@ uint8_t cgdatar_read(uint32_t effective_address)
 
     ppu_cgram_lsb_toggle = !ppu_cgram_lsb_toggle;
 
-    // if((ram1_regs[CPU_MEM_REG_HVBJOY] & (CPU_HVBJOY_FLAG_HBLANK | CPU_HVBJOY_FLAG_VBLANK)) || 
-    //    (ram1_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK))
+    // if((mem_regs[CPU_MEM_REG_HVBJOY] & (CPU_HVBJOY_FLAG_HBLANK | CPU_HVBJOY_FLAG_VBLANK)) || 
+    //    (mem_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK))
     // {
     //     // value = ppu_cgram[ppu_reg_cgram_addr];
 
@@ -2556,7 +2648,7 @@ uint8_t cgdatar_read(uint32_t effective_address)
 
 uint8_t stat77_read(uint32_t effective_address)
 {
-    ppu1_last_bus_value = (ram1_regs[PPU_REG_STAT77] & ~0x10) | (ppu1_last_bus_value & 0x10);
+    ppu1_last_bus_value = (mem_regs[PPU_REG_STAT77] & ~0x10) | (ppu1_last_bus_value & 0x10);
     return ppu1_last_bus_value;
 }
 
@@ -2568,7 +2660,7 @@ uint8_t stat77_read(uint32_t effective_address)
 
 uint8_t stat78_read(uint32_t effective_address)
 {
-    ppu2_last_bus_value = (ram1_regs[PPU_REG_STAT78] & ~0x20) | (ppu2_last_bus_value & 0x20);
+    ppu2_last_bus_value = (mem_regs[PPU_REG_STAT78] & ~0x20) | (ppu2_last_bus_value & 0x20);
     return ppu2_last_bus_value;
 }
 
@@ -2591,13 +2683,13 @@ void vram_read_prefetch()
 
 uint8_t vmdatar_read(uint32_t effective_address)
 {
-    uint32_t read_order = ram1_regs[PPU_REG_VMAINC] & 0x80;
+    uint32_t read_order = mem_regs[PPU_REG_VMAINC] & 0x80;
     uint32_t reg = effective_address & 0xffff;
     uint32_t read_addr = (vram_addr << 1) | reg == PPU_REG_VMDATARH;
-    uint32_t increment_shift = vmadd_increment_shifts[ram1_regs[PPU_REG_VMAINC] & 0x3];
+    uint32_t increment_shift = vmadd_increment_shifts[mem_regs[PPU_REG_VMAINC] & 0x3];
 
-    if((ram1_regs[CPU_MEM_REG_HVBJOY] & (CPU_HVBJOY_FLAG_VBLANK | CPU_HVBJOY_FLAG_HBLANK)) || 
-       (ram1_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK))
+    if((mem_regs[CPU_MEM_REG_HVBJOY] & (CPU_HVBJOY_FLAG_VBLANK | CPU_HVBJOY_FLAG_HBLANK)) || 
+       (mem_regs[PPU_REG_INIDISP] & PPU_INIDISP_FLAG_FBLANK))
     {
         ppu1_last_bus_value = vram_prefetch[reg == PPU_REG_VMDATARH];
 
@@ -2607,8 +2699,8 @@ uint8_t vmdatar_read(uint32_t effective_address)
             vram_read_prefetch();
             vram_addr += 1 << increment_shift;
             vram_addr &= 0x7fff;
-            ram1_regs[PPU_REG_VMADDL] = vram_addr & 0xff;
-            ram1_regs[PPU_REG_VMADDH] = (vram_addr >> 8) & 0xff;
+            mem_regs[PPU_REG_VMADDL] = vram_addr & 0xff;
+            mem_regs[PPU_REG_VMADDH] = (vram_addr >> 8) & 0xff;
         }
 
         if(emu_vram_breakpoint_bitmask[read_addr >> 2] & (EMU_BREAKPOINT_FLAG_READ << ((read_addr & 0x3) << 1)))
@@ -2628,10 +2720,10 @@ uint8_t vmdatar_read(uint32_t effective_address)
 
 void update_irq_counter()
 {
-    uint16_t vtimer = (uint16_t)ram1_regs[CPU_MEM_REG_VTIMEL] | ((uint16_t)ram1_regs[CPU_MEM_REG_VTIMEH] << 8);
-    uint16_t htimer = (uint16_t)ram1_regs[CPU_MEM_REG_HTIMEL] | ((uint16_t)ram1_regs[CPU_MEM_REG_HTIMEH] << 8);
+    uint16_t vtimer = (uint16_t)mem_regs[CPU_MEM_REG_VTIMEL] | ((uint16_t)mem_regs[CPU_MEM_REG_VTIMEH] << 8);
+    uint16_t htimer = (uint16_t)mem_regs[CPU_MEM_REG_HTIMEL] | ((uint16_t)mem_regs[CPU_MEM_REG_HTIMEH] << 8);
 
-    switch(ram1_regs[CPU_MEM_REG_NMITIMEN] & (CPU_NMITIMEN_FLAG_HTIMER_EN | CPU_NMITIMEN_FLAG_VTIMER_EN))
+    switch(mem_regs[CPU_MEM_REG_NMITIMEN] & (CPU_NMITIMEN_FLAG_HTIMER_EN | CPU_NMITIMEN_FLAG_VTIMER_EN))
     {
         case CPU_NMITIMEN_FLAG_HTIMER_EN:
             irq_counter_reload = SCANLINE_DOT_LENGTH;
@@ -2727,7 +2819,7 @@ void update_irq_counter()
 void vhtime_write(uint32_t effective_address, uint8_t value)
 {
     uint32_t reg = effective_address & 0xffff;
-    ram1_regs[reg] = value;
+    mem_regs[reg] = value;
     update_irq_counter();
 }
 
@@ -2740,7 +2832,7 @@ void mpy_write(uint32_t effective_address, uint8_t value)
 uint8_t mpy_read(uint32_t effective_address)
 {
     uint32_t reg = effective_address & 0xffff;
-    ppu1_last_bus_value = ram1_regs[reg];
+    ppu1_last_bus_value = mem_regs[reg];
     return ppu1_last_bus_value;
 }
 
@@ -2760,8 +2852,8 @@ uint8_t wmdata_read(uint32_t effective_address)
 void wmadd_write(uint32_t effective_address, uint8_t value)
 {
     uint32_t reg = effective_address & 0xffff;
-    ram1_regs[reg] = value;
-    wmdata_address = (uint32_t)ram1_regs[PPU_REG_WMADDL] | ((uint32_t)ram1_regs[PPU_REG_WMADDM] << 8) | ((uint32_t)ram1_regs[PPU_REG_WMADDH] << 16);
+    mem_regs[reg] = value;
+    wmdata_address = (uint32_t)mem_regs[PPU_REG_WMADDL] | ((uint32_t)mem_regs[PPU_REG_WMADDM] << 8) | ((uint32_t)mem_regs[PPU_REG_WMADDH] << 16);
     wmdata_address = PPU_WMDATA_BASE | (wmdata_address & PPU_WMADDR_MASK);
 }
 
