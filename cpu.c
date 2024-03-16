@@ -61,7 +61,10 @@ uint16_t interrupt_vectors[][2] = {
 uint32_t            cpu_cycle_count = 0;
 extern uint64_t     master_cycles;
 // extern uint8_t *    ram1_regs;
+/* from mem.c */
 extern uint8_t *    mem_regs;
+extern uint8_t *    mem_ram;
+
 extern uint8_t      last_bus_value;
 extern uint16_t     vcounter;
 extern uint16_t     hcounter;
@@ -7639,11 +7642,12 @@ uint32_t cpu_push_stack_frame(uint32_t arg)
 {
     uint32_t reg_s_decs = arg;
     uint16_t stack_pointer = cpu_state.regs[CPU_REG_S].word + 1;
-    uint16_t return_pc = (uint32_t)mem_regs[stack_pointer] | (((uint32_t)mem_regs[stack_pointer + 1]) << 8);
+    /* pc pushed onto stack points at the last byte of the instruction */
+    uint16_t return_pc = ((uint32_t)mem_ram[stack_pointer] | (((uint32_t)mem_ram[stack_pointer + 1]) << 8)) + 1;
     uint8_t return_pbr = cpu_state.regs[CPU_REG_PBR].byte[0];
     if(reg_s_decs > 2)
     {
-        return_pbr = mem_regs[stack_pointer + 2];
+        return_pbr = mem_ram[stack_pointer + 2];
     }
 
     uint16_t target_pc = cpu_state.regs[CPU_REG_PC].word;

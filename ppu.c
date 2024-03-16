@@ -73,7 +73,7 @@ uint32_t ppu_dot_length[] = {
 };
 
 
-uint8_t color_lut[] = {
+uint8_t ppu_color_lut[] = {
     0,
     255 * (1.0f / 31.0f),
     255 * (2.0f / 31.0f),
@@ -390,15 +390,15 @@ const char *ppu_reg_strs[PPU_REG_WMADDH - PPU_REG_INIDISP] = {
 };
 
 
-uint8_t (*chr_dot_funcs[4])(void *chr_base, uint32_t index, uint32_t dot_h, uint32_t dot_v) = {
-    [COLOR_FUNC_CHR0] = chr0_dot,
+uint8_t (*chr_dot_funcs[])(void *chr_base, uint32_t index, uint32_t dot_h, uint32_t dot_v) = {
+    // [COLOR_FUNC_CHR0] = NULL,
     [COLOR_FUNC_CHR4] = chr4_dot,
     [COLOR_FUNC_CHR16] = chr16_dot,
     [COLOR_FUNC_CHR256] = chr256_dot,
 };
 
-struct col_t (*pal_col_funcs[4])(void *pal_base, uint8_t pallete, uint8_t index) = {
-    [COLOR_FUNC_CHR0] = NULL,
+uint16_t (*pal_col_funcs[])(void *pal_base, uint8_t pallete, uint8_t index) = {
+    // [COLOR_FUNC_CHR0] = NULL,
     [COLOR_FUNC_CHR4] = pal4_col,
     [COLOR_FUNC_CHR16] = pal16_col,
     [COLOR_FUNC_CHR256] = pal256_col,
@@ -511,6 +511,103 @@ uint8_t chr0_dot(void *chr_base, uint32_t name, uint32_t dot_x, uint32_t dot_y)
     return 0;
 }
 
+uint8_t chr4_dot(void *chr_base, uint32_t name, uint32_t dot_x, uint32_t dot_y)
+{
+    struct chr4_t *chr = (struct chr4_t *)chr_base + name;
+    dot_x &= 0x07;
+    dot_y &= 0x07;
+    uint8_t color_index;
+    color_index  =  (chr->p01[dot_y] & (0x80 >> dot_x)) && 1;
+    color_index |= ((chr->p01[dot_y] & (0x8000 >> dot_x)) && 1) << 1;
+    return color_index;
+}
+
+uint8_t chr16_dot(void *chr_base, uint32_t name, uint32_t dot_x, uint32_t dot_y)
+{
+    dot_x &= 0x07;
+    dot_y &= 0x07;
+
+    uint16_t mask1 = 0x80 >> dot_x;
+    uint16_t mask2 = 0x8000 >> dot_x;
+
+    struct chr16_t *chr = (struct chr16_t *)chr_base + name;
+    uint8_t color_index;
+    color_index  =  (chr->p01[dot_y] & mask1) && 1;
+    color_index |= ((chr->p01[dot_y] & mask2) && 1) << 1;
+    color_index |= ((chr->p23[dot_y] & mask1) && 1) << 2;
+    color_index |= ((chr->p23[dot_y] & mask2) && 1) << 3;
+    return color_index;
+}
+
+uint8_t chr256_dot(void *chr_base, uint32_t name, uint32_t dot_x, uint32_t dot_y)
+{
+    dot_x &= 0x07;
+    dot_y &= 0x07;
+
+    uint16_t mask1 = 0x80 >> dot_x;
+    uint16_t mask2 = 0x8000 >> dot_x;
+
+    struct chr256_t *chr = (struct chr256_t *)chr_base + name;
+    uint8_t color_index;
+    color_index  =  (chr->p01[dot_y] & mask1) && 1;
+    color_index |= ((chr->p01[dot_y] & mask2) && 1) << 1;
+    color_index |= ((chr->p23[dot_y] & mask1) && 1) << 2;
+    color_index |= ((chr->p23[dot_y] & mask2) && 1) << 3;
+    color_index |= ((chr->p45[dot_y] & mask1) && 1) << 4;
+    color_index |= ((chr->p45[dot_y] & mask2) && 1) << 5;
+    color_index |= ((chr->p67[dot_y] & mask1) && 1) << 6;
+    color_index |= ((chr->p67[dot_y] & mask2) && 1) << 7;
+    return color_index;
+}
+
+uint8_t bg7_chr256_dot(void *chr_base, uint32_t name, uint32_t dot_x, uint32_t dot_y)
+{
+    // struct bg7_sc_data_t *data_base = (struct bg7_sc_data_t *)chr_base;
+    // struct pal256_t *pallete = (struct pal256_t *)background->pal_base;
+    // uint32_t data_index = (dot_x >> 3) + (dot_y >> 3) * 128;
+    // struct bg7_sc_data_t *bg_data = data_base + data_index;
+
+    // uint32_t chr_dot_x = dot_x % 8;
+    // uint32_t chr_dot_y = dot_y % 8;
+    // uint32_t chr_index = ((uint32_t)bg_data->name << 6) + (chr_dot_v << 3) + chr_dot_h;
+
+    // struct bg7_sc_data_t *chr_data = data_base + chr_index;
+    // return pallete->colors[chr_data->chr];
+}
+
+uint16_t pal4_col(void *pal_base, uint8_t pallete, uint8_t index)
+{
+    struct pal4_t *pal = (struct pal4_t *)pal_base;
+    return pal[pallete].colors[index];
+    // struct col_t color;
+    // color.r = color_lut[(packed_color >> COL_DATA_R_SHIFT) & COL_DATA_MASK];
+    // color.g = color_lut[(packed_color >> COL_DATA_G_SHIFT) & COL_DATA_MASK];
+    // color.b = color_lut[(packed_color >> COL_DATA_B_SHIFT) & COL_DATA_MASK];
+    // return color;
+}
+
+uint16_t pal16_col(void *pal_base, uint8_t pallete, uint8_t index)
+{
+    struct pal16_t *pal = (struct pal16_t *)pal_base;
+    return pal[pallete].colors[index];
+    // struct col_t color;
+    // color.r = color_lut[(packed_color >> COL_DATA_R_SHIFT) & COL_DATA_MASK];
+    // color.g = color_lut[(packed_color >> COL_DATA_G_SHIFT) & COL_DATA_MASK];
+    // color.b = color_lut[(packed_color >> COL_DATA_B_SHIFT) & COL_DATA_MASK];
+    // return color;
+}
+
+uint16_t pal256_col(void *pal_base, uint8_t pallete, uint8_t index)
+{
+    struct pal256_t *pal = (struct pal256_t *)pal_base;
+    return pal[pallete].colors[index];
+    // struct col_t color;
+    // color.r = color_lut[(packed_color >> COL_DATA_R_SHIFT) & COL_DATA_MASK];
+    // color.g = color_lut[(packed_color >> COL_DATA_G_SHIFT) & COL_DATA_MASK];
+    // color.b = color_lut[(packed_color >> COL_DATA_B_SHIFT) & COL_DATA_MASK];
+    // return color;
+}
+
 uint8_t bg_chr4_dot_col(void *chr_base, uint32_t index, uint32_t size, uint32_t dot_h, uint32_t dot_v)
 {
 //    uint32_t chr_size = size;
@@ -527,26 +624,6 @@ uint8_t bg_chr4_dot_col(void *chr_base, uint32_t index, uint32_t size, uint32_t 
     color_index  =  (chr->p01[chr_dot_v] & (0x80 >> chr_dot_h)) && 1;
     color_index |= ((chr->p01[chr_dot_v] & (0x8000 >> chr_dot_h)) && 1) << 1;
     return color_index;
-}
-
-uint8_t chr4_dot(void *chr_base, uint32_t name, uint32_t dot_x, uint32_t dot_y)
-{
-    struct chr4_t *chr = (struct chr4_t *)chr_base + name;
-    uint8_t color_index;
-    color_index  =  (chr->p01[dot_y] & (0x80 >> dot_x)) && 1;
-    color_index |= ((chr->p01[dot_y] & (0x8000 >> dot_x)) && 1) << 1;
-    return color_index;
-}
-
-struct col_t pal4_col(void *pal_base, uint8_t pallete, uint8_t index)
-{
-    struct pal4_t *pal = (struct pal4_t *)pal_base;
-    uint16_t packed_color = pal[pallete].colors[index];
-    struct col_t color;
-    color.r = color_lut[(packed_color >> COL_DATA_R_SHIFT) & COL_DATA_MASK];
-    color.g = color_lut[(packed_color >> COL_DATA_G_SHIFT) & COL_DATA_MASK];
-    color.b = color_lut[(packed_color >> COL_DATA_B_SHIFT) & COL_DATA_MASK];
-    return color;
 }
 
 uint8_t bg_chr16_dot_col(void *chr_base, uint32_t index, uint32_t size, uint32_t dot_h, uint32_t dot_v)
@@ -572,31 +649,6 @@ uint8_t bg_chr16_dot_col(void *chr_base, uint32_t index, uint32_t size, uint32_t
     color_index |= ((chr->p23[chr_dot_v] & mask1) && 1) << 2;
     color_index |= ((chr->p23[chr_dot_v] & mask2) && 1) << 3;
     return color_index;
-}
-
-uint8_t chr16_dot(void *chr_base, uint32_t name, uint32_t dot_x, uint32_t dot_y)
-{
-    uint16_t mask1 = 0x80 >> dot_x;
-    uint16_t mask2 = 0x8000 >> dot_x;
-
-    struct chr16_t *chr = (struct chr16_t *)chr_base + name;
-    uint8_t color_index;
-    color_index  =  (chr->p01[dot_y] & mask1) && 1;
-    color_index |= ((chr->p01[dot_y] & mask2) && 1) << 1;
-    color_index |= ((chr->p23[dot_y] & mask1) && 1) << 2;
-    color_index |= ((chr->p23[dot_y] & mask2) && 1) << 3;
-    return color_index;
-}
-
-struct col_t pal16_col(void *pal_base, uint8_t pallete, uint8_t index)
-{
-    struct pal16_t *pal = (struct pal16_t *)pal_base;
-    uint16_t packed_color = pal[pallete].colors[index];
-    struct col_t color;
-    color.r = color_lut[(packed_color >> COL_DATA_R_SHIFT) & COL_DATA_MASK];
-    color.g = color_lut[(packed_color >> COL_DATA_G_SHIFT) & COL_DATA_MASK];
-    color.b = color_lut[(packed_color >> COL_DATA_B_SHIFT) & COL_DATA_MASK];
-    return color;
 }
 
 uint8_t bg_chr256_dot_col(void *chr_base, uint32_t index, uint32_t size, uint32_t dot_h, uint32_t dot_v)
@@ -628,35 +680,6 @@ uint8_t bg_chr256_dot_col(void *chr_base, uint32_t index, uint32_t size, uint32_
     color_index |= ((chr->p67[chr_dot_v] & mask1) && 1) << 6;
     color_index |= ((chr->p67[chr_dot_v] & mask2) && 1) << 7;
     return color_index;
-}
-
-uint8_t chr256_dot(void *chr_base, uint32_t name, uint32_t dot_x, uint32_t dot_y)
-{
-    uint16_t mask1 = 0x80 >> dot_x;
-    uint16_t mask2 = 0x8000 >> dot_x;
-
-    struct chr256_t *chr = (struct chr256_t *)chr_base + name;
-    uint8_t color_index;
-    color_index  =  (chr->p01[dot_y] & mask1) && 1;
-    color_index |= ((chr->p01[dot_y] & mask2) && 1) << 1;
-    color_index |= ((chr->p23[dot_y] & mask1) && 1) << 2;
-    color_index |= ((chr->p23[dot_y] & mask2) && 1) << 3;
-    color_index |= ((chr->p45[dot_y] & mask1) && 1) << 4;
-    color_index |= ((chr->p45[dot_y] & mask2) && 1) << 5;
-    color_index |= ((chr->p67[dot_y] & mask1) && 1) << 6;
-    color_index |= ((chr->p67[dot_y] & mask2) && 1) << 7;
-    return color_index;
-}
-
-struct col_t pal256_col(void *pal_base, uint8_t pallete, uint8_t index)
-{
-    struct pal256_t *pal = (struct pal256_t *)pal_base;
-    uint16_t packed_color = pal[pallete].colors[index];
-    struct col_t color;
-    color.r = color_lut[(packed_color >> COL_DATA_R_SHIFT) & COL_DATA_MASK];
-    color.g = color_lut[(packed_color >> COL_DATA_G_SHIFT) & COL_DATA_MASK];
-    color.b = color_lut[(packed_color >> COL_DATA_B_SHIFT) & COL_DATA_MASK];
-    return color;
 }
 
 // uint8_t bg7_chr8_dot_col(void *chr_base, uint32_t index, uint32_t dot_h, uint32_t dot_v)
@@ -695,15 +718,15 @@ struct bg_tile_t bg_tile_entry(uint32_t dot_h, uint32_t dot_v, struct background
 //    tile_dot_x = dot_h;
 //    tile_dot_y = dot_v;
 
-    struct bg_tile_t tile = {
-        .chr_index      = bg_data->data & BG_SC_DATA_NAME_MASK,
+    return (struct bg_tile_t) {
+        .chr_index      = (bg_data->data & BG_SC_DATA_NAME_MASK) /* + (tile_dot_x > 7) + ((tile_dot_y > 7) << 4) */,
         .pal_index      = (bg_data->data >> BG_SC_DATA_PAL_SHIFT) & BG_SC_DATA_PAL_MASK,
         .priority       = (bg_data->data >> BG_SC_DATA_PRIORITY_SHIFT) & BG_SC_DATA_PRIORITY_MASK,
         .tile_dot_x     = tile_dot_x,
         .tile_dot_y     = tile_dot_y,
     };
-    return tile;
 } 
+
 
 // struct bg7_tile_t bg7_tile_entry(uint32_t dot_h, uint32_t dot_v, struct background_t *background)
 // {
@@ -1476,7 +1499,7 @@ uint32_t ppu_Step(int32_t cycle_count)
                 for(uint32_t index = 0; index < main_screen_bg_count; index++)
                 {
                     struct background_t *background = main_screen[index];
-                    if(background == NULL || background->disabled)
+                    if(background->disabled)
                     {
                         continue;
                     }
@@ -1500,11 +1523,13 @@ uint32_t ppu_Step(int32_t cycle_count)
 
                         if(priority > dot_color.priority)
                         {
-                            uint16_t color = background->color_func(bg_dot_x, bg_dot_y, background);
+                            // uint16_t color = background->color_func(bg_dot_x, bg_dot_y, background);
+                            uint8_t color_index = chr_dot_funcs[background->color_func](background->chr_base, tile.chr_index, tile.tile_dot_x, tile.tile_dot_y);
 
-                            if(color != 0xffff)
+                            if(color_index > 0)
                             {
-                                dot_color.color = color;
+                                uint16_t packed_color = pal_col_funcs[background->color_func](background->pal_base, tile.pal_index, color_index);
+                                dot_color.color = packed_color;
                                 dot_color.priority = priority;
 
                                 if(!bg3_prio)
@@ -1512,6 +1537,17 @@ uint32_t ppu_Step(int32_t cycle_count)
                                     break;
                                 }
                             }
+
+                            // if(color != 0xffff)
+                            // {
+                            //     dot_color.color = color;
+                            //     dot_color.priority = priority;
+
+                            //     if(!bg3_prio)
+                            //     {
+                            //         break;
+                            //     }
+                            // }
                         }
                     }
                 }
@@ -1547,9 +1583,9 @@ uint32_t ppu_Step(int32_t cycle_count)
 //                     }
 //                 }
 
-                main_dot->r = color_lut[(dot_color.color >> COL_DATA_R_SHIFT) & COL_DATA_MASK];
-                main_dot->g = color_lut[(dot_color.color >> COL_DATA_G_SHIFT) & COL_DATA_MASK];
-                main_dot->b = color_lut[(dot_color.color >> COL_DATA_B_SHIFT) & COL_DATA_MASK];
+                main_dot->r = ppu_color_lut[(dot_color.color >> COL_DATA_R_SHIFT) & COL_DATA_MASK];
+                main_dot->g = ppu_color_lut[(dot_color.color >> COL_DATA_G_SHIFT) & COL_DATA_MASK];
+                main_dot->b = ppu_color_lut[(dot_color.color >> COL_DATA_B_SHIFT) & COL_DATA_MASK];
                 main_dot->a = 255;
 
                 // // struct dot_tiles_t *dot_tiles = NULL;
@@ -1886,16 +1922,20 @@ void update_bg_state()
         {
             union mode0_cgram_t *mode0_cgram = (union mode0_cgram_t *)ppu_cgram;
             backgrounds[0].pal_base = mode0_cgram->bg1_colors;
-            backgrounds[0].color_func = bg_pal4_col;
+            backgrounds[0].color_func = COLOR_FUNC_CHR4;
+            // backgrounds[0].color_func = bg_pal4_col;
 
             backgrounds[1].pal_base = mode0_cgram->bg2_colors;
-            backgrounds[1].color_func = bg_pal4_col;
+            backgrounds[1].color_func = COLOR_FUNC_CHR4;
+            // backgrounds[1].color_func = bg_pal4_col;
 
             backgrounds[2].pal_base = mode0_cgram->bg3_colors;
-            backgrounds[2].color_func = bg_pal4_col;
+            backgrounds[2].color_func = COLOR_FUNC_CHR4;
+            // backgrounds[2].color_func = bg_pal4_col;
 
             backgrounds[3].pal_base = mode0_cgram->bg4_colors;
-            backgrounds[3].color_func = bg_pal4_col;
+            backgrounds[3].color_func = COLOR_FUNC_CHR4;
+            // backgrounds[3].color_func = bg_pal4_col;
 
             main_screen_backgrounds[0] = &backgrounds[0];
             main_screen_backgrounds[1] = &backgrounds[1];
@@ -1910,13 +1950,16 @@ void update_bg_state()
         {
             union mode12_cgram_t *mode12_cgram = (union mode12_cgram_t *)ppu_cgram;
             backgrounds[0].pal_base = mode12_cgram->bg12_colors;
-            backgrounds[0].color_func = bg_pal16_col;
+            backgrounds[0].color_func = COLOR_FUNC_CHR16;
+            // backgrounds[0].color_func = bg_pal16_col;
 
             backgrounds[1].pal_base = mode12_cgram->bg12_colors;
-            backgrounds[1].color_func = bg_pal16_col;
+            backgrounds[1].color_func = COLOR_FUNC_CHR16;
+            // backgrounds[1].color_func = bg_pal16_col;
 
             backgrounds[2].pal_base = mode12_cgram->bg3_colors;
-            backgrounds[2].color_func = bg_pal4_col;
+            backgrounds[2].color_func = COLOR_FUNC_CHR4;
+            // backgrounds[2].color_func = bg_pal4_col;
 
            main_screen_backgrounds[0] = &backgrounds[0];
            main_screen_backgrounds[1] = &backgrounds[1];
@@ -1941,10 +1984,12 @@ void update_bg_state()
         {
             union mode56_cgram_t *mode56_cgram = (union mode56_cgram_t *)ppu_cgram;
             backgrounds[0].pal_base = mode56_cgram->bg1_colors;
-            backgrounds[0].color_func = bg_pal16_col;
+            // backgrounds[0].color_func = bg_pal16_col;
+            backgrounds[0].color_func = COLOR_FUNC_CHR16;
 
             backgrounds[1].pal_base = mode56_cgram->bg2_colors;
-            backgrounds[1].color_func = bg_pal4_col;
+            backgrounds[1].color_func = COLOR_FUNC_CHR4;
+            // backgrounds[1].color_func = bg_pal4_col;
 
             main_screen_backgrounds[0] = &backgrounds[0];
             main_screen_backgrounds[1] = &backgrounds[1];
@@ -1957,7 +2002,8 @@ void update_bg_state()
         {
             union mode347_cgram_t *mode7_cgram = (union mode347_cgram_t *)ppu_cgram;
             backgrounds[0].pal_base = &mode7_cgram->bg1_colors;
-            backgrounds[0].color_func = bg7_pal256_col;
+            backgrounds[0].color_func = COLOR_FUNC_CHR256;
+            // backgrounds[0].color_func = bg7_pal256_col;
 
             main_screen_backgrounds[0] = &backgrounds[0];
 

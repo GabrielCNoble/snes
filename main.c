@@ -34,6 +34,9 @@ extern struct apu_state_t           apu_state;
 /* from ppu.c */
 extern uint8_t *                    vram;
 extern uint8_t *                    ppu_cgram;
+extern uint8_t                      ppu_color_lut[];
+extern uint8_t                    (*chr_dot_funcs[])(void *chr_base, uint32_t index, uint32_t dot_h, uint32_t dot_v);
+extern uint16_t                   (*pal_col_funcs[])(void *pal_base, uint8_t pallete, uint8_t index);
 // extern uint8_t *                    ram1_regs;
 extern uint8_t *                    mem_ram;
 extern uint8_t *                    mem_regs;
@@ -88,6 +91,19 @@ enum M_RUN_MODE
 
 GLuint                  m_tile_viewer_texture;
 struct dot_t *          m_tile_viewer_dots;
+uint32_t                m_tile_viewer_color_func = COLOR_FUNC_CHR16;
+int32_t                 m_tile_viewer_pallete_index = 0;
+char *                  m_tile_viewer_color_func_names[] = {
+    [COLOR_FUNC_CHR4]   = "2bpp",
+    [COLOR_FUNC_CHR16]  = "4bpp",
+    [COLOR_FUNC_CHR256] = "8bpp"
+};
+
+uint32_t                m_tile_viewer_tile_bits_per_pixel[] = {
+    [COLOR_FUNC_CHR4]   = 2,
+    [COLOR_FUNC_CHR16]  = 4,
+    [COLOR_FUNC_CHR256] = 8
+};
 // struct viewer_tile_t *  m_tile_viewer_tiles;
 #define                 M_TILE_VIEWER_TILES_PER_ROW 8
 #define                 M_TILE_VIEWER_MAX_TILE_ROWS 256
@@ -691,13 +707,58 @@ int main(int argc, char *argv[])
 
                                         if(igBeginTabItem("Tiles", NULL, 0))
                                         {
-                                            tile_bits_per_pixel = 4;
+                                            igSetNextItemWidth(0.0);
+                                            igLabelText("Tile color depth", "");
+                                            igSameLine(0, -1);
+                                            igSetNextItemWidth(120.0);
+                                            if(igBeginCombo("##tile_display_color_depth", m_tile_viewer_color_func_names[m_tile_viewer_color_func], 0))
+                                            {
+                                                for(uint32_t color_func = 0; color_func < COLOR_FUNC_LAST; color_func++)
+                                                {
+                                                    if(igSelectable_Bool(m_tile_viewer_color_func_names[color_func], color_func == m_tile_viewer_color_func, 0, (ImVec2){}))
+                                                    {
+                                                        m_tile_viewer_color_func = color_func;
+                                                    }
+                                                }
+                                                igEndCombo();
+                                            }
+
+                                            igSetNextItemWidth(0.0);
+                                            igLabelText("Pallete index", "");
+                                            igSameLine(0, -1);
+                                            igSetNextItemWidth(120.0);
+                                            igInputInt("##tile_display_pallete_index", &m_tile_viewer_pallete_index, 1, 0, 0);
+                                            // igSameLine(0, -1);
+
+                                            // if(igButton("-", (ImVec2){}))
+                                            // {
+                                            //     m_tile_viewer_pallete_index--;
+                                            // }
+                                            // igSameLine(0, -1);
+
+                                            // if(igButton("+", (ImVec2){}))
+                                            // {
+                                            //     m_tile_viewer_pallete_index++;
+                                            // }
+
+                                            if(m_tile_viewer_pallete_index > 7)
+                                            {
+                                                m_tile_viewer_pallete_index = 7;
+                                            }
+                                            else if(m_tile_viewer_pallete_index < 0)
+                                            {
+                                                m_tile_viewer_pallete_index = 0;
+                                            }
+
+                                            igSeparator();
+
+                                            // tile_bits_per_pixel = 4;
                                             igPushStyleVar_Vec2(ImGuiStyleVar_WindowPadding, (ImVec2){0, 0});
                                             igPushStyleVar_Vec2(ImGuiStyleVar_ItemSpacing, (ImVec2){4, 0});
                                             igPushStyleVar_Vec2(ImGuiStyleVar_CellPadding , (ImVec2){0, 2});
                                             if(igBeginTable("##vram_tiles", 1, ImGuiTableFlags_ScrollY | ImGuiTableFlags_NoPadInnerX, (ImVec2){0, 0}, 0.0))
                                             {
-                                                uint32_t tile_count = 0x10000 / (8 * tile_bits_per_pixel);
+                                                uint32_t tile_count = 0x10000 / (8 * m_tile_viewer_tile_bits_per_pixel[m_tile_viewer_color_func]);
                                                 ImGuiListClipper clipper;
                                                 ImGuiListClipper_ImGuiListClipper(&clipper);
                                                 ImGuiListClipper_Begin(&clipper, tile_count / M_TILE_VIEWER_TILES_PER_ROW, -1.0f);
@@ -713,7 +774,7 @@ int main(int argc, char *argv[])
 
                                                     for(uint32_t row_index = clipper.DisplayStart; row_index < clipper.DisplayEnd; row_index++)
                                                     {
-                                                        uint32_t vram_offset = (row_index * tile_bits_per_pixel * 8) * M_TILE_VIEWER_TILES_PER_ROW;
+                                                        uint32_t vram_offset = (row_index * m_tile_viewer_tile_bits_per_pixel[m_tile_viewer_color_func] * 8) * M_TILE_VIEWER_TILES_PER_ROW;
                                                         igTableNextRow(0, 0);
                                                         igTableNextColumn();
                                                         igText("0x%04x: ", vram_offset);
@@ -737,7 +798,8 @@ int main(int argc, char *argv[])
                                                 uint32_t update_start = last_row - row_count;
                                                 uint32_t update_end = last_row;
 
-                                                union mode0_cgram_t *mode0_cgram = (union mode0_cgram_t *)ppu_cgram;
+                                                // union mode0_cgram_t *mode0_cgram = (union mode0_cgram_t *)ppu_cgram;
+                                                void *pal_base = ppu_cgram;
 
                                                 uint32_t changed_row_count = update_end - update_start;
                                                 // printf("update %d rows\n", changed_row_count);
@@ -753,13 +815,19 @@ int main(int argc, char *argv[])
                                                         uint32_t dot_x = dot_index % 8;
                                                         uint32_t dot_y = dot_index / (8 * M_TILE_VIEWER_TILES_PER_ROW);
 
-                                                        uint8_t color_index = chr16_dot(vram, tile_index, dot_x, dot_y);
+                                                        // uint8_t color_index = chr16_dot(vram, tile_index, dot_x, dot_y);
+                                                        uint8_t color_index = chr_dot_funcs[m_tile_viewer_color_func](vram, tile_index, dot_x, dot_y);
                                                         if(color_index > 0)
                                                         {
-                                                            struct col_t color = pal16_col(&mode0_cgram->bg2_colors, 2, color_index);
-                                                            dot->r = color.r;
-                                                            dot->g = color.g;
-                                                            dot->b = color.b;
+                                                            // uint16_t color = pal16_col(&mode0_cgram->bg2_colors, 2, color_index);
+                                                            uint16_t color = pal_col_funcs[m_tile_viewer_color_func](pal_base, m_tile_viewer_pallete_index, color_index);
+                                                            // struct col_t color = pal16_col(&mode0_cgram->bg2_colors, 2, color_index);
+                                                            dot->r = ppu_color_lut[(color >> COL_DATA_R_SHIFT) & COL_DATA_MASK];
+                                                            dot->g = ppu_color_lut[(color >> COL_DATA_G_SHIFT) & COL_DATA_MASK];
+                                                            dot->b = ppu_color_lut[(color >> COL_DATA_B_SHIFT) & COL_DATA_MASK];
+                                                            // dot->r = color.r;
+                                                            // dot->g = color.g;
+                                                            // dot->b = color.b;
                                                             dot->a = 255;
                                                         }
                                                         else

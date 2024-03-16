@@ -392,13 +392,14 @@ void *memory_pointer(uint32_t effective_address)
 
     if(access_location > ACCESS_RAM)
     {
-        uint32_t address_mask = 0x0000ffff | ((access_location == ACCESS_RAM2) << 16);
-        uint32_t offset = effective_address & address_mask;
+        // uint32_t address_mask = 0x0000ffff | ((access_location == ACCESS_RAM2) << 16);
+        // uint32_t offset = effective_address & address_mask;
+        uint32_t offset = effective_address & access_location;
         return mem_ram + offset;
     }
     else if(access_location == ACCESS_REGS)
     {
-        uint32_t offset = (effective_address & 0xffff) - RAM1_REGS_START;
+        uint32_t offset = effective_address & 0xffff;
         return mem_regs + offset;
     }
     else if(access_location == ACCESS_CART)
@@ -441,13 +442,14 @@ void write_byte(uint32_t effective_address, uint8_t data)
 
     if(access_location > ACCESS_RAM)
     {
-        uint32_t address_mask = 0x0000ffff | ((access_location == ACCESS_RAM2) << 16);
-        uint32_t offset = effective_address & address_mask;
+        // uint32_t address_mask = 0x0000ffff | ((access_location == ACCESS_RAM2) << 16);
+        // uint32_t offset = effective_address & address_mask;
+        uint32_t offset = effective_address & access_location;
         mem_ram[offset] = data;
     }
     else if(access_location == ACCESS_REGS)
     {
-        uint32_t offset = (effective_address & 0xffff) - RAM1_REGS_START;
+        uint32_t offset = effective_address & 0xffff;
 
         if(mem_reg_funcs[offset].write != NULL)
         {
@@ -531,13 +533,13 @@ uint8_t read_byte(uint32_t effective_address)
 
     if(access_location > ACCESS_RAM)
     {
-        uint32_t address_mask = 0x0000ffff | ((access_location == ACCESS_RAM2) << 16);
-        uint32_t offset = effective_address & address_mask;
+        // uint32_t address_mask = 0x0000ffff | ((access_location == ACCESS_RAM2) << 16);
+        uint32_t offset = effective_address & access_location;
         data = mem_ram[offset];
     }
     else if(access_location == ACCESS_REGS)
     {
-        uint32_t offset = (effective_address & 0xffff) - RAM1_REGS_START;
+        uint32_t offset = effective_address & 0xffff;
 
         if(mem_reg_funcs[offset].read != NULL)
         {
@@ -616,8 +618,9 @@ uint8_t peek_byte(uint32_t effective_address)
 
     if(access_location > ACCESS_RAM)
     {
-        uint32_t address_mask = 0x0000ffff | ((access_location == ACCESS_RAM2) << 16);
-        uint32_t offset = effective_address & address_mask;
+        // uint32_t address_mask = 0x0000ffff | ((access_location == ACCESS_RAM2) << 16);
+        // uint32_t offset = effective_address & address_mask;
+        uint32_t offset = effective_address & access_location;
         data = mem_ram[offset];
     }
     else if(access_location == ACCESS_REGS)

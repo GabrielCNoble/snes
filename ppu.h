@@ -122,10 +122,12 @@ enum PPU_BACKGROUND_STEPS
 
 enum COLOR_FUNCS
 {
-    COLOR_FUNC_CHR0,
+    // COLOR_FUNC_CHR0,
     COLOR_FUNC_CHR4,
     COLOR_FUNC_CHR16,
     COLOR_FUNC_CHR256,
+    COLOR_FUNC_LAST,
+    // COLOR_FUNC_BG7_CHR256
 };
 
 // struct draw_tile_t
@@ -249,19 +251,6 @@ struct bg7_sc_data_t
     uint8_t chr;
 };
 
-struct background_t
-{
-    struct bg_offset_t      offset;
-    struct bg_sc_data_t *   data_base[4];
-    void *                  chr_base;
-    void *                  pal_base;
-    uint16_t                chr_size;
-    uint16_t                disabled;
-
-    // uint8_t              (*color_index_func)(uint32_t dot_h, uint32_t )
-
-    uint16_t           (*   color_func)(uint32_t dot_h, uint32_t dot_v, struct background_t *background);
-};
 
 enum PPU_REGS
 {
@@ -622,6 +611,27 @@ union mode347_cgram_t
     uint16_t                    entries[PPU_CGRAM_WORD_COUNT];
 };
 
+struct background_t
+{
+    struct bg_offset_t      offset;
+    struct bg_sc_data_t *   data_base[4];
+    void *                  chr_base;
+    void *                  pal_base;
+    uint16_t                chr_size;
+    uint16_t                disabled;
+    uint32_t                color_func;
+
+    // uint8_t               (*ChrDotColor)(void *chr_base, uint32_t name, uint32_t dot_x, uint32_t dot_y);
+    // uint16_t              (*PalColor)()
+
+    // uint8_t               (*ColorIndexFunc)(struct background_t *background, struct bg_tile_t tile);
+    // uint16_t              (*ColorFunc)(struct background_t *background, struct bg_tile_t tile, uint8_t color_index);
+
+    // uint8_t              (*color_index_func)(uint32_t dot_h, uint32_t )
+
+    // uint16_t           (*   color_func)(uint32_t dot_h, uint32_t dot_v, struct background_t *background);
+};
+
 struct bg_draw_t
 {
     struct background_t *   background;
@@ -675,25 +685,23 @@ uint8_t bg_chr0_dot_col(void *chr_base, uint32_t index, uint32_t size, uint32_t 
 
 uint8_t chr0_dot(void *chr_base, uint32_t name, uint32_t dot_x, uint32_t dot_y);
 
-
+uint8_t chr4_dot(void *chr_base, uint32_t name, uint32_t dot_x, uint32_t dot_y);
 
 uint8_t bg_chr4_dot_col(void *chr_base, uint32_t index, uint32_t size, uint32_t dot_h, uint32_t dot_v);
 
-uint8_t chr4_dot(void *chr_base, uint32_t name, uint32_t dot_x, uint32_t dot_y);
-
-struct col_t pal4_col(void *pal_base, uint8_t pallete, uint8_t index);
-
-uint8_t bg_chr16_dot_col(void *chr_base, uint32_t index, uint32_t size, uint32_t dot_h, uint32_t dot_v);
-
 uint8_t chr16_dot(void *chr_base, uint32_t name, uint32_t dot_x, uint32_t dot_y);
-
-struct col_t pal16_col(void *pal_base, uint8_t pallete, uint8_t index);
-
-uint8_t bg_chr256_dot_col(void *chr_base, uint32_t index, uint32_t size, uint32_t dot_h, uint32_t dot_v);
 
 uint8_t chr256_dot(void *chr_base, uint32_t name, uint32_t dot_x, uint32_t dot_y);
 
-struct col_t pal256_col(void *pal_base, uint8_t pallete, uint8_t index);
+uint16_t pal4_col(void *pal_base, uint8_t pallete, uint8_t index);
+
+uint16_t pal16_col(void *pal_base, uint8_t pallete, uint8_t index);
+
+uint16_t pal256_col(void *pal_base, uint8_t pallete, uint8_t index);
+
+uint8_t bg_chr16_dot_col(void *chr_base, uint32_t index, uint32_t size, uint32_t dot_h, uint32_t dot_v);
+
+uint8_t bg_chr256_dot_col(void *chr_base, uint32_t index, uint32_t size, uint32_t dot_h, uint32_t dot_v);
 
 uint8_t bg7_chr256_dot_col(void *chr_base, uint32_t index, uint32_t dot_h, uint32_t dot_v);
 
