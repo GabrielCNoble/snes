@@ -225,54 +225,6 @@ void set_read_write_breakpoint(uint32_t type, uint32_t start_address, uint32_t e
     list->count++;
 }
 
-void emu_SetPPURegOverride(uint32_t reg)
-{
-    uint32_t reg_index = reg - PPU_REG_FIRST;
-    uint32_t byte_index = reg_index >> 3;
-    uint32_t bit_index = reg_index & 7;
-    emu_ppu_reg_override_bitmask[byte_index] |= (1 << bit_index);
-}
-
-void emu_ClearPPURegOverride(uint32_t reg)
-{
-    uint32_t reg_index = reg - PPU_REG_FIRST;
-    uint32_t byte_index = reg_index >> 3;
-    uint32_t bit_index = reg_index & 7;
-    emu_ppu_reg_override_bitmask[byte_index] &= ~(1 << bit_index);
-}
-
-uint32_t emu_IsPPURegOverriden(uint32_t reg)
-{
-    uint32_t reg_index = reg - PPU_REG_FIRST;
-    uint32_t byte_index = reg_index >> 3;
-    uint32_t bit_index = reg_index & 7;
-    return emu_ppu_reg_override_bitmask[byte_index] & (1 << bit_index);
-}
-
-void emu_PushCPUStackFrame(uint8_t call_pbr, uint16_t call_pc, uint8_t return_pbr, uint16_t return_pc, uint8_t target_pbr, uint16_t target_pc, uint16_t stack_pointer)
-{
-    emu_cpu_stack_frame_top++;
-    emu_cpu_stack_frames[emu_cpu_stack_frame_top].call_pbr = call_pbr;
-    emu_cpu_stack_frames[emu_cpu_stack_frame_top].call_pc = call_pc;
-    emu_cpu_stack_frames[emu_cpu_stack_frame_top].return_pbr = return_pbr;
-    emu_cpu_stack_frames[emu_cpu_stack_frame_top].return_pc = return_pc;
-    emu_cpu_stack_frames[emu_cpu_stack_frame_top].target_pbr = target_pbr;
-    emu_cpu_stack_frames[emu_cpu_stack_frame_top].target_pc = target_pc;
-    emu_cpu_stack_frames[emu_cpu_stack_frame_top].stack_pointer = stack_pointer;
-    // emu_cpu_stack_frames[emu_cpu_stack_frame_top].call_address = call_address;
-    // emu_cpu_stack_frames[emu_cpu_stack_frame_top].return_pbr = return_pbr;
-    // emu_cpu_stack_frames[emu_cpu_stack_frame_top].return_pc = return_pc;
-    // emu_cpu_stack_frames[emu_cpu_stack_frame_top].stack_pointer = stack_pointer;
-}
-
-void emu_PopCPUStackFrame()
-{
-    if(emu_cpu_stack_frame_top < 0xffffffff)
-    {
-        emu_cpu_stack_frame_top--;
-    }
-}
-
 void set_dma_breakpoint(uint32_t channel)
 {
     if(channel < 8)
@@ -293,7 +245,7 @@ void set_dma_breakpoint(uint32_t channel)
     }
 }
 
-void remove_breakpoint(struct breakpoint_t *breakpoint)
+void emu_RemoveBreakpoint(struct breakpoint_t *breakpoint)
 {
     struct breakpoint_list_t *list = &emu_breakpoints[breakpoint->type];
     uint32_t range_count = 0;
@@ -376,6 +328,54 @@ void clear_breakpoints()
         emu_breakpoints[type].count = 0;
     }
     printf("breakpoints cleared\n");
+}
+
+void emu_SetPPURegOverride(uint32_t reg)
+{
+    uint32_t reg_index = reg - PPU_REG_FIRST;
+    uint32_t byte_index = reg_index >> 3;
+    uint32_t bit_index = reg_index & 7;
+    emu_ppu_reg_override_bitmask[byte_index] |= (1 << bit_index);
+}
+
+void emu_ClearPPURegOverride(uint32_t reg)
+{
+    uint32_t reg_index = reg - PPU_REG_FIRST;
+    uint32_t byte_index = reg_index >> 3;
+    uint32_t bit_index = reg_index & 7;
+    emu_ppu_reg_override_bitmask[byte_index] &= ~(1 << bit_index);
+}
+
+uint32_t emu_IsPPURegOverriden(uint32_t reg)
+{
+    uint32_t reg_index = reg - PPU_REG_FIRST;
+    uint32_t byte_index = reg_index >> 3;
+    uint32_t bit_index = reg_index & 7;
+    return emu_ppu_reg_override_bitmask[byte_index] & (1 << bit_index);
+}
+
+void emu_PushCPUStackFrame(uint8_t call_pbr, uint16_t call_pc, uint8_t return_pbr, uint16_t return_pc, uint8_t target_pbr, uint16_t target_pc, uint16_t stack_pointer)
+{
+    emu_cpu_stack_frame_top++;
+    emu_cpu_stack_frames[emu_cpu_stack_frame_top].call_pbr = call_pbr;
+    emu_cpu_stack_frames[emu_cpu_stack_frame_top].call_pc = call_pc;
+    emu_cpu_stack_frames[emu_cpu_stack_frame_top].return_pbr = return_pbr;
+    emu_cpu_stack_frames[emu_cpu_stack_frame_top].return_pc = return_pc;
+    emu_cpu_stack_frames[emu_cpu_stack_frame_top].target_pbr = target_pbr;
+    emu_cpu_stack_frames[emu_cpu_stack_frame_top].target_pc = target_pc;
+    emu_cpu_stack_frames[emu_cpu_stack_frame_top].stack_pointer = stack_pointer;
+    // emu_cpu_stack_frames[emu_cpu_stack_frame_top].call_address = call_address;
+    // emu_cpu_stack_frames[emu_cpu_stack_frame_top].return_pbr = return_pbr;
+    // emu_cpu_stack_frames[emu_cpu_stack_frame_top].return_pc = return_pc;
+    // emu_cpu_stack_frames[emu_cpu_stack_frame_top].stack_pointer = stack_pointer;
+}
+
+void emu_PopCPUStackFrame()
+{
+    if(emu_cpu_stack_frame_top < 0xffffffff)
+    {
+        emu_cpu_stack_frame_top--;
+    }
 }
 
 void blit_backbuffer()

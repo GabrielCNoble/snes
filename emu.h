@@ -188,6 +188,12 @@ void set_register_breakpoint(uint32_t reg, uint32_t value);
 
 void set_read_write_breakpoint(uint32_t type, uint32_t start_address, uint32_t end_address);
 
+void set_dma_breakpoint(uint32_t channel);
+
+void emu_RemoveBreakpoint(struct breakpoint_t *breakpoint);
+
+void clear_breakpoints();
+
 void emu_SetPPURegOverride(uint32_t reg);
 
 void emu_ClearPPURegOverride(uint32_t reg);
@@ -197,12 +203,6 @@ uint32_t emu_IsPPURegOverriden(uint32_t reg);
 void emu_PushCPUStackFrame(uint8_t call_pbr, uint16_t call_pc, uint8_t return_pbr, uint16_t return_pc, uint8_t target_pbr, uint16_t target_pc, uint16_t stack_pointer);
 
 void emu_PopCPUStackFrame();
-
-void set_dma_breakpoint(uint32_t channel);
-
-void remove_breakpoint(struct breakpoint_t *breakpoint);
-
-void clear_breakpoints();
 
 void blit_backbuffer();
 

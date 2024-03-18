@@ -453,10 +453,10 @@ void init_ppu()
     // sub_scanline_tiles = calloc(SCANLINE_DOT_LENGTH, sizeof(struct dot_tiles_t));
     last_draw_scanline = 224;
 
-    backgrounds[0] = (struct background_t){.chr_base = vram, .data_base = (struct bg_sc_data_t *)vram, .pal_base = vram};
-    backgrounds[1] = (struct background_t){.chr_base = vram, .data_base = (struct bg_sc_data_t *)vram, .pal_base = vram};
-    backgrounds[2] = (struct background_t){.chr_base = vram, .data_base = (struct bg_sc_data_t *)vram, .pal_base = vram};
-    backgrounds[3] = (struct background_t){.chr_base = vram, .data_base = (struct bg_sc_data_t *)vram, .pal_base = vram};
+    backgrounds[0] = (struct background_t){.chr_base = vram, .data_base = (struct bg_sc_data_t *)vram, .pal_base = ppu_cgram};
+    backgrounds[1] = (struct background_t){.chr_base = vram, .data_base = (struct bg_sc_data_t *)vram, .pal_base = ppu_cgram};
+    backgrounds[2] = (struct background_t){.chr_base = vram, .data_base = (struct bg_sc_data_t *)vram, .pal_base = ppu_cgram};
+    backgrounds[3] = (struct background_t){.chr_base = vram, .data_base = (struct bg_sc_data_t *)vram, .pal_base = ppu_cgram};
 
     obj_chr_base[0] = (struct chr16_t *)vram;
     obj_chr_base[1] = (struct chr16_t *)vram;
@@ -2255,8 +2255,18 @@ uint8_t vmainc_read(uint32_t effective_address)
 void vmadd_write(uint32_t effective_address, uint8_t value)
 {
     uint32_t reg = effective_address & 0xffff;
-    mem_regs[reg] = value;
-    vram_addr = ((uint16_t)mem_regs[PPU_REG_VMADDL]) | (((uint16_t)mem_regs[PPU_REG_VMADDH]) << 8);
+    // mem_regs[reg] = value;
+    if(reg == PPU_REG_VMADDL)
+    {
+        vram_addr &= 0xff00;
+        vram_addr |= (uint16_t)value;
+    }
+    else
+    {
+        vram_addr &= 0x00ff;
+        vram_addr |= ((uint16_t)value) << 8;
+    }
+    // vram_addr = ((uint16_t)mem_regs[PPU_REG_VMADDL]) | (((uint16_t)mem_regs[PPU_REG_VMADDH]) << 8);
     vram_addr &= 0x7fff;
     vram_read_prefetch();
 }
@@ -2721,7 +2731,6 @@ void vram_read_prefetch()
     uint32_t read_address = vram_addr << 1;
     vram_prefetch[0] = vram[read_address];
     vram_prefetch[1] = vram[read_address + 1];
-
     // emu_Log("VRAM prefetch for vram address 0x%04x (0x%04x): %02x %02x", vram_addr, read_address, vram_prefetch[0], vram_prefetch[1]);
 
     // printf("vram prefetch: ")
@@ -2739,16 +2748,6 @@ uint8_t vmdatar_read(uint32_t effective_address)
     {
         ppu1_last_bus_value = vram_prefetch[reg == PPU_REG_VMDATARH];
 
-        if((read_order == PPU_VMDATA_ADDR_INC_LH && reg == PPU_REG_VMDATARH) ||
-           (read_order == PPU_VMDATA_ADDR_INC_HL && reg == PPU_REG_VMDATARL))
-        {
-            vram_read_prefetch();
-            vram_addr += 1 << increment_shift;
-            vram_addr &= 0x7fff;
-            mem_regs[PPU_REG_VMADDL] = vram_addr & 0xff;
-            mem_regs[PPU_REG_VMADDH] = (vram_addr >> 8) & 0xff;
-        }
-
         if(emu_vram_breakpoint_bitmask[read_addr >> 2] & (EMU_BREAKPOINT_FLAG_READ << ((read_addr & 0x3) << 1)))
         {
             struct emu_thread_data_t *thread_data = emu_emulation_thread->data;
@@ -2758,6 +2757,16 @@ uint8_t vmdatar_read(uint32_t effective_address)
             thread_data->breakpoint_data.vram.data = ppu1_last_bus_value;
             thrd_Switch(emu_emulation_thread, &emu_main_thread);
         }
+    }
+
+    if((read_order == PPU_VMDATA_ADDR_INC_LH && reg == PPU_REG_VMDATARH) ||
+        (read_order == PPU_VMDATA_ADDR_INC_HL && reg == PPU_REG_VMDATARL))
+    {
+        vram_read_prefetch();
+        vram_addr += 1 << increment_shift;
+        vram_addr &= 0x7fff;
+        // mem_regs[PPU_REG_VMADDL] = vram_addr & 0xff;
+        // mem_regs[PPU_REG_VMADDH] = (vram_addr >> 8) & 0xff;
     }
 
     return ppu1_last_bus_value;

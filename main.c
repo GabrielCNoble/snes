@@ -89,6 +89,8 @@ enum M_RUN_MODE
 };
 
 
+uint32_t                m_ppu_raw_vram_selected_address = 0xffffffff;
+uint32_t                m_ppu_raw_vram_prev_selected_address = 0xffffffff;
 GLuint                  m_tile_viewer_texture;
 struct dot_t *          m_tile_viewer_dots;
 uint32_t                m_tile_viewer_color_func = COLOR_FUNC_CHR16;
@@ -414,14 +416,16 @@ int main(int argc, char *argv[])
                                         igSeparatorEx(ImGuiSeparatorFlags_Vertical | ImGuiSeparatorFlags_SpanAllColumns, 1.0f);
 
                                         igTableNextColumn();
-                                        igText("Call addr:");
-                                        igText("Return addr:");
                                         igText("Target addr:");
+                                        igText("Return addr:");
+                                        igText("Called at:");
+                                        
 
                                         igTableNextColumn();
-                                        igText("%02x:%04x", frame->call_pbr, frame->call_pc);
-                                        igText("%02x:%04x", frame->return_pbr, frame->return_pc);
                                         igText("%02x:%04x", frame->target_pbr, frame->target_pc);
+                                        igText("%02x:%04x", frame->return_pbr, frame->return_pc);
+                                        igText("%02x:%04x", frame->call_pbr, frame->call_pc);
+                                        
                                         // igText("%d: %02x:%04x", emu_cpu_stack_frame_top - frame_index, frame->return_pbr, frame->return_pc);
                                     }
                                     // for(uint32_t index = 0; index < 20; index++)
@@ -458,6 +462,51 @@ int main(int argc, char *argv[])
                         igEndChild();
                         igPopStyleVar(1);
                         
+                        igEndTabItem();
+                    }
+
+                    if(igBeginTabItem("WRAM", NULL, 0))
+                    {
+                        if(igBeginTable("##wram", 17, ImGuiTableFlags_ScrollY | ImGuiTableFlags_BordersInnerV, (ImVec2){0, 0}, 0.0))
+                        {
+                            igTableSetupColumn("Address", ImGuiTableColumnFlags_WidthFixed, 64.0f, 0);
+                            igTableSetupScrollFreeze(1, 1);
+                            igTableNextRow(ImGuiTableRowFlags_Headers, 0);
+                            igTableNextColumn();
+
+                            for(uint32_t index = 0; index < 16; index++)
+                            {
+                                igTableNextColumn();
+                                igText("%02x", index);
+                            }
+
+                            ImGuiListClipper clipper;
+                            ImGuiListClipper_ImGuiListClipper(&clipper);
+                            ImGuiListClipper_Begin(&clipper, 17 * (MEM_RAM_SIZE / 16), 1.0f);
+                            while(ImGuiListClipper_Step(&clipper))
+                            {
+                                uint32_t first_row = clipper.DisplayStart / 17;
+                                uint32_t last_row = clipper.DisplayEnd / 17;
+
+                                uint32_t ram_offset = first_row * 16;
+                                
+                                for(uint32_t row_index = first_row; row_index < last_row; row_index++)
+                                {
+                                    igTableNextRow(0, 0);
+                                    igTableNextColumn();
+                                    igText("0x%06x: ", ram_offset);
+
+                                    for(uint32_t column_index = 0; column_index < 16; column_index++)
+                                    {
+                                        igTableNextColumn();
+                                        igText("%02x", mem_ram[column_index + ram_offset]);
+                                    }
+
+                                    ram_offset += 16;
+                                }
+                            }
+                            igEndTable();
+                        }
                         igEndTabItem();
                     }
 
@@ -668,24 +717,56 @@ int main(int argc, char *argv[])
                             {
                                 if(igBeginTabItem("VRAM", NULL, 0))
                                 {
+                                    if(igButton("Dump", (ImVec2){}))
+                                    {
+                                        FILE *vram_file = fopen("./vram_dump.bin", "wb");
+                                        fwrite(vram, PPU_VRAM_SIZE, 1, vram_file);
+                                        fclose(vram_file);
+                                    }
+
+                                    igSameLine(0, -1);
+
+                                    if(igButton("Load", (ImVec2){}))
+                                    {
+                                        FILE *vram_file = fopen("./vram_dump.bin", "rb");
+                                        fread(vram, PPU_VRAM_SIZE, 1, vram_file);
+                                        fclose(vram_file);
+                                    }
+
                                     if(igBeginTabBar("##vram_views", 0))
                                     {
                                         if(igBeginTabItem("Raw", NULL, 0))
                                         {
-                                            if(igBeginTable("##vram_raw", 17, ImGuiTableFlags_ScrollY, (ImVec2){0, 0}, 0.0))
+                                            if(igBeginTable("##vram_raw", 17, ImGuiTableFlags_ScrollY | ImGuiTableFlags_BordersInnerV, (ImVec2){0, 0}, 0.0))
                                             {
+                                                igTableSetupColumn("Address", ImGuiTableColumnFlags_WidthFixed, 48.0f, 0);
+                                                igTableSetupScrollFreeze(1, 1);
+                                                igTableNextRow(ImGuiTableRowFlags_Headers, 0);
+                                                igTableNextColumn();
+
+                                                for(uint32_t index = 0; index < 16; index++)
+                                                {
+                                                    igTableNextColumn();
+                                                    igText("%02x", index);
+                                                }
+
+                                                // igPushStyleVar_Vec2(ImGuiStyleVar_ItemInnerSpacing, (ImVec2){})
+
                                                 ImGuiListClipper clipper;
                                                 ImGuiListClipper_ImGuiListClipper(&clipper);
-                                                ImGuiListClipper_Begin(&clipper, 17 * (0xffff / 16), 1.0f);
+                                                ImGuiListClipper_Begin(&clipper, PPU_VRAM_SIZE / 16, -1.0f);
+                                                uint32_t double_click = igIsMouseDoubleClicked(ImGuiMouseButton_Left);
+
                                                 while(ImGuiListClipper_Step(&clipper))
                                                 {
-                                                    uint32_t first_row = clipper.DisplayStart / 17;
-                                                    uint32_t last_row = clipper.DisplayEnd / 17;
+                                                    uint32_t first_row = clipper.DisplayStart;
+                                                    uint32_t last_row = clipper.DisplayEnd;
 
-                                                    uint32_t vram_offset = first_row * 16;
-                                                    igTableSetupColumn("Address", ImGuiTableColumnFlags_WidthFixed, 48.0f, 0);
+                                                    // uint32_t vram_offset = first_row * 16;
+                                                    // igTableSetupColumn("Address", ImGuiTableColumnFlags_WidthFixed, 48.0f, 0);
                                                     for(uint32_t row_index = first_row; row_index < last_row; row_index++)
                                                     {
+                                                        uint32_t vram_offset = row_index << 4;
                                                         igTableNextRow(0, 0);
                                                         igTableNextColumn();
                                                         igText("0x%04x: ", vram_offset);
@@ -693,10 +774,133 @@ int main(int argc, char *argv[])
                                                         for(uint32_t column_index = 0; column_index < 16; column_index++)
                                                         {
                                                             igTableNextColumn();
-                                                            igText("%02x", vram[column_index + vram_offset]);
+                                                            uint32_t cell_vram_offset = column_index + vram_offset;
+
+                                                            if(cell_vram_offset == m_ppu_raw_vram_selected_address)
+                                                            {
+                                                                igPushStyleVar_Vec2(ImGuiStyleVar_FramePadding, (ImVec2){});
+                                                                igSetNextItemWidth(-1);
+                                                                igInputScalar("##vram_value", ImGuiDataType_U8, vram + cell_vram_offset, NULL, NULL, "%02x", ImGuiInputTextFlags_CharsHexadecimal);
+                                                                igSetKeyboardFocusHere(-1);
+
+                                                                if(igIsItemDeactivated())
+                                                                {
+                                                                    m_ppu_raw_vram_selected_address = 0xffffffff;
+                                                                }
+                                                                igPopStyleVar(1);
+                                                            }
+                                                            else
+                                                            {
+                                                                igText("%02x", vram[cell_vram_offset]);
+                                                            }
+
+                                                            if((igIsItemClicked(ImGuiMouseButton_Left) && double_click))
+                                                            {
+                                                                m_ppu_raw_vram_selected_address = cell_vram_offset;
+                                                            }
+                                                        }
+                                                    }
+                                                }
+
+                                                igEndTable();
+                                            }
+                                            igEndTabItem();
+                                        }
+
+                                        if(igBeginTabItem("Tile map", NULL, 0))
+                                        {
+                                            if(igBeginTable("##tile_map", 9, ImGuiTableFlags_ScrollY | ImGuiTableFlags_BordersInnerV, (ImVec2){0, 0}, 0.0))
+                                            {
+                                                igTableSetupColumn("Address", ImGuiTableColumnFlags_WidthFixed, 48.0f, 0);
+                                                igTableSetupScrollFreeze(1, 1);
+                                                igTableNextRow(ImGuiTableRowFlags_Headers, 0);
+                                                igTableNextColumn();
+
+                                                for(uint32_t index = 0; index < 8; index++)
+                                                {
+                                                    igTableNextColumn();
+                                                    igText("%02x", index << 1);
+                                                }
+
+                                                uint32_t word_count = PPU_VRAM_SIZE / 2;
+                                                uint32_t rows_count = word_count / 8;
+
+                                                ImGuiListClipper clipper;
+                                                ImGuiListClipper_ImGuiListClipper(&clipper);
+                                                ImGuiListClipper_Begin(&clipper, rows_count, -1.0f);
+                                                // uint32_t double_click = igIsMouseDoubleClicked(ImGuiMouseButton_Left);
+
+                                                while(ImGuiListClipper_Step(&clipper))
+                                                {
+                                                    uint32_t first_row = clipper.DisplayStart;
+                                                    uint32_t last_row = clipper.DisplayEnd;
+
+                                                    // uint32_t vram_offset = first_row * 16;
+                                                    // igTableSetupColumn("Address", ImGuiTableColumnFlags_WidthFixed, 48.0f, 0);
+                                                    for(uint32_t row_index = first_row; row_index < last_row; row_index++)
+                                                    {
+                                                        uint32_t vram_offset = row_index << 4;
+
+                                                        igTableNextRow(0, 0);
+                                                        igTableNextColumn();
+                                                        igText("0x%04x: ", vram_offset);
+
+                                                        for(uint32_t column_index = 0; column_index < 8; column_index++)
+                                                        {
+                                                            igTableNextColumn();
+                                                            uint32_t offset = vram_offset + (column_index << 1);
+                                                            uint16_t tile_map_entry = (((uint16_t)vram[offset + 1]) << 8) | ((uint16_t)vram[offset]);
+                                                            // igGetCursorScreenPos(&cursor_pos);
+                                                            igText("%04x", tile_map_entry);
+
+                                                            if(igIsItemHovered(0))
+                                                            {
+                                                                ImVec2 cursor_pos;
+                                                                igGetMousePos(&cursor_pos);
+                                                                igSetNextWindowPos(cursor_pos, 0, (ImVec2){0, 0});
+
+                                                                if(igBeginTooltip())
+                                                                {
+                                                                    if(igBeginTable("##tile_map_entry", 2, ImGuiTableFlags_RowBg, (ImVec2){}, 0))
+                                                                    {
+                                                                        igTableNextRow(0, 0);
+                                                                        igTableNextColumn();
+                                                                        igText("V flip");
+                                                                        igTableNextColumn();
+                                                                        igText("%d", (tile_map_entry >> BG_SC_DATA_V_FLIP_SHIFT) & BG_SC_DATA_FLIP_MASK);
+
+                                                                        igTableNextRow(0, 0);
+                                                                        igTableNextColumn();
+                                                                        igText("H flip");
+                                                                        igTableNextColumn();
+                                                                        igText("%d", (tile_map_entry >> BG_SC_DATA_H_FLIP_SHIFT) & BG_SC_DATA_FLIP_MASK);
+
+                                                                        igTableNextRow(0, 0);
+                                                                        igTableNextColumn();
+                                                                        igText("Priority");
+                                                                        igTableNextColumn();
+                                                                        igText("%d", (tile_map_entry >> BG_SC_DATA_PRIORITY_SHIFT) & BG_SC_DATA_PRIORITY_MASK);
+
+                                                                        igTableNextRow(0, 0);
+                                                                        igTableNextColumn();
+                                                                        igText("Pallete");
+                                                                        igTableNextColumn();
+                                                                        igText("%d", (tile_map_entry >> BG_SC_DATA_PAL_SHIFT) & BG_SC_DATA_PAL_MASK);
+
+                                                                        igTableNextRow(0, 0);
+                                                                        igTableNextColumn();
+                                                                        igText("Name");
+                                                                        igTableNextColumn();
+                                                                        igText("%d", tile_map_entry & BG_SC_DATA_NAME_MASK);
+
+                                                                        igEndTable();
+                                                                    }
+                                                                    igEndTooltip();
+                                                                }
+                                                            }
                                                         }
 
-                                                        vram_offset += 16;
+                                                        // vram_offset += 16;
                                                     }
                                                 }
                                                 igEndTable();
@@ -728,18 +932,6 @@ int main(int argc, char *argv[])
                                             igSameLine(0, -1);
                                             igSetNextItemWidth(120.0);
                                             igInputInt("##tile_display_pallete_index", &m_tile_viewer_pallete_index, 1, 0, 0);
-                                            // igSameLine(0, -1);
-
-                                            // if(igButton("-", (ImVec2){}))
-                                            // {
-                                            //     m_tile_viewer_pallete_index--;
-                                            // }
-                                            // igSameLine(0, -1);
-
-                                            // if(igButton("+", (ImVec2){}))
-                                            // {
-                                            //     m_tile_viewer_pallete_index++;
-                                            // }
 
                                             if(m_tile_viewer_pallete_index > 7)
                                             {
@@ -758,7 +950,7 @@ int main(int argc, char *argv[])
                                             igPushStyleVar_Vec2(ImGuiStyleVar_CellPadding , (ImVec2){0, 2});
                                             if(igBeginTable("##vram_tiles", 1, ImGuiTableFlags_ScrollY | ImGuiTableFlags_NoPadInnerX, (ImVec2){0, 0}, 0.0))
                                             {
-                                                uint32_t tile_count = 0x10000 / (8 * m_tile_viewer_tile_bits_per_pixel[m_tile_viewer_color_func]);
+                                                uint32_t tile_count = PPU_VRAM_SIZE / (8 * m_tile_viewer_tile_bits_per_pixel[m_tile_viewer_color_func]);
                                                 ImGuiListClipper clipper;
                                                 ImGuiListClipper_ImGuiListClipper(&clipper);
                                                 ImGuiListClipper_Begin(&clipper, tile_count / M_TILE_VIEWER_TILES_PER_ROW, -1.0f);
@@ -1209,11 +1401,11 @@ int main(int argc, char *argv[])
                                     for(uint32_t index = 0; index < list->count; index++)
                                     {
                                         struct breakpoint_t *breakpoint = list->breakpoints + index;
-                                        igPushID_Int(index);
+                                        igPushID_Ptr(breakpoint);
                                         if(igBeginChild_Str("##breakpoint", (ImVec2){0, 80}, 1, 0))
                                         {
-                                            bool disabled = breakpoint->disabled;
-                                            breakpoint->disabled = disabled;
+                                            // bool disabled = breakpoint->disabled;
+                                            // breakpoint->disabled = disabled;
                                             ImVec4 color;
                                             if(emu_emulation_data.breakpoint == breakpoint)
                                             {
@@ -1226,6 +1418,10 @@ int main(int argc, char *argv[])
 
                                             switch(breakpoint->type)
                                             {
+                                                case BREAKPOINT_TYPE_EXECUTION:
+                                                    igTextColored(color, "Execution: [%06x]", breakpoint->start_address);
+                                                break;
+
                                                 case BREAKPOINT_TYPE_VRAM_READ:
                                                 case BREAKPOINT_TYPE_VRAM_WRITE:
                                                     igTextColored(color, "VRAM range: [%06x - %06x]", breakpoint->start_address, breakpoint->end_address);
@@ -1241,11 +1437,18 @@ int main(int argc, char *argv[])
                                                 break;
                                             }
 
+                                            igSameLine(0, -1);
+                                            if(igButton("X", (ImVec2){}))
+                                            {
+                                                emu_RemoveBreakpoint(breakpoint);
+                                                index--;
+                                            }
+
                                             bool trace = breakpoint->trace;
                                             igCheckbox("Trace", &trace);
                                             breakpoint->trace = trace;
                                             igSameLine(0, -1);
-                                            bool disable = breakpoint->disabled;
+                                            bool disabled = breakpoint->disabled;
                                             igCheckbox("Disable", &disabled);
                                             breakpoint->disabled = disabled;
 

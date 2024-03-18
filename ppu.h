@@ -49,7 +49,7 @@ struct obj_attr2_t
 #define PPU_OAM_SIZE            0x220
 #define PPU_CGRAM_SIZE          0x200
 #define PPU_CGRAM_WORD_COUNT    0x100
-#define PPU_VRAM_SIZE           0xffff
+#define PPU_VRAM_SIZE           0x10000
 
 struct oam_tables_t
 {
