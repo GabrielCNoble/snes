@@ -5,6 +5,7 @@
 #include <stdio.h>
 
 extern uint8_t *mem_regs;
+extern uint32_t vram_addr;
 int32_t         dma_cycle_count = 0;
 // uint8_t active_dma_channels = 0;
 struct dma_t    dma_channels[8];
@@ -659,6 +660,11 @@ void mdmaen_write(uint32_t effective_address, uint8_t value)
             {
                 channel->count = 0x10000;
             }
+
+            // if(channel->direction == DMA_DIRECTION_CPU_PPU && vram_addr == 0x5000)
+            // {
+            //     emu_Log("Attempt DMA to bg1!");
+            // }
         }
 
         value >>= 1;

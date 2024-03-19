@@ -226,6 +226,12 @@ void ui_MouseClickEvent(uint32_t button, uint32_t down)
     ImGuiIO_AddMouseButtonEvent(io, ui_mouse_button[button], down);
 }
 
+void ui_MouseWheelEvent(int32_t direction)
+{
+    ImGuiIO *io = igGetIO();
+    ImGuiIO_AddMouseWheelEvent(io, 0, direction);
+}
+
 void ui_KeyboardEvent(uint32_t key, uint32_t key_down)
 {
     ImGuiIO *io = igGetIO();

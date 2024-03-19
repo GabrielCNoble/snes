@@ -12,6 +12,8 @@ void ui_MouseMoveEvent(float mouse_x, float mouse_y);
 
 void ui_MouseClickEvent(uint32_t button, uint32_t down);
 
+void ui_MouseWheelEvent(int32_t direction);
+
 void ui_KeyboardEvent(uint32_t key, uint32_t key_down);
 
 void ui_TextInputEvent(uint32_t c);

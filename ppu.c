@@ -185,6 +185,10 @@ struct background_t *               main_screen[5];
 uint32_t                            sub_screen_bg_count = 0;
 struct bg_draw_t                    sub_screen[5];
 
+uint16_t                            ppu_multiplicand;
+uint8_t                             ppu_multiplicand_byte;
+uint8_t                             ppu_multiplier;
+
 uint16_t                            rot_values_bytes = 0;
 int16_t                             rot_values[4];
 int16_t                             pos_values[2];
@@ -714,9 +718,6 @@ struct bg_tile_t bg_tile_entry(uint32_t dot_h, uint32_t dot_v, struct background
     {
         tile_dot_y = (background->chr_size - 1) - tile_dot_y;
     }
-
-//    tile_dot_x = dot_h;
-//    tile_dot_y = dot_v;
 
     return (struct bg_tile_t) {
         .chr_index      = (bg_data->data & BG_SC_DATA_NAME_MASK) /* + (tile_dot_x > 7) + ((tile_dot_y > 7) << 4) */,
@@ -2075,13 +2076,7 @@ void bgsc_write(uint32_t effective_address, uint8_t value)
     }
 
     mem_regs[reg] = value;
-    value = (value >> 2) & 0x3f;
-    // uint32_t offset = ((((uint32_t)value) << 10) & 0x7fff) << 1;
-
-    uint32_t offset = (((uint32_t)value) << 11) & 0xffff;
-    // uint32_t offset = value << 9;
-//    uint32_t offset = ((uint32_t)value * 0x800 * 2);
-//    uint32_t offset = (((uint32_t)(value & 0xfc) << 8) & 0x7fff) << 1;
+    uint32_t offset = (((uint32_t)value & 0xfc) << 9) & 0xffff;
 
     uint32_t background_index = reg - PPU_REG_BG1SC;
     struct background_t *background = backgrounds + background_index;
@@ -2097,21 +2092,21 @@ void bgsc_write(uint32_t effective_address, uint8_t value)
         break;
 
         case 1:
-            background->data_base[1] = (struct bg_sc_data_t *)((uintptr_t)(background->data_base[0]) + 0x800);
+            background->data_base[1] = background->data_base[0] + 0x400;
             background->data_base[2] = background->data_base[0];
             background->data_base[3] = background->data_base[1];
         break;
 
         case 2:
             background->data_base[1] = background->data_base[0];
-            background->data_base[2] = (struct bg_sc_data_t *)((uintptr_t)(background->data_base[0]) + 0x800);
+            background->data_base[2] = background->data_base[0] + 0x400;
             background->data_base[3] = background->data_base[2];
         break;
 
         case 3:
-            background->data_base[1] = (struct bg_sc_data_t *)((uintptr_t)(background->data_base[0]) + 0x800);
-            background->data_base[2] = (struct bg_sc_data_t *)((uintptr_t)(background->data_base[0]) + 0x1000);
-            background->data_base[3] = (struct bg_sc_data_t *)((uintptr_t)(background->data_base[0]) + 0x1800);
+            background->data_base[1] = background->data_base[0] + 0x400;
+            background->data_base[2] = background->data_base[0] + 0x800;
+            background->data_base[3] = background->data_base[0] + 0xc00;
         break;
     }
 }
@@ -2347,6 +2342,15 @@ void mrot_write(uint32_t effective_address, uint8_t value)
 {
     uint32_t reg = effective_address & 0xffff;
     rot_values[reg] = ((uint16_t)value << 8) | ((rot_values[reg] & 0xff00) >> 8);
+
+    if(reg == PPU_REG_M7B)
+    {
+        int16_t multiplier = (int16_t)(rot_values[PPU_REG_M7B] >> 8);
+        int32_t result = rot_values[PPU_REG_M7A] * multiplier;
+        mem_regs[PPU_REG_MPYL] = result & 0xff;
+        mem_regs[PPU_REG_MPYM] = (result >> 8) & 0xff;
+        mem_regs[PPU_REG_MPYH] = (result >> 16) & 0xff;
+    }
 }
 
 uint8_t mrot_read(uint32_t effective_address)

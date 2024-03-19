@@ -43,6 +43,12 @@ struct emu_log_t *              emu_log_entries;
 uint32_t                        emu_last_log_entry;
 uint32_t                        emu_log_entry_count;
 
+/* from dma.c */
+extern struct dma_t             dma_channels[];
+
+/* from ppu.c */
+extern uint32_t                 vram_addr;
+
 // SDL_Renderer *  renderer = NULL;
 // SDL_Texture *   backbuffer_textures[2] = {};
 // uint32_t        run_window_thread = 1;
@@ -311,6 +317,13 @@ void emu_RemoveBreakpoint(struct breakpoint_t *breakpoint)
                                                              emu_breakpoint_flag_lut[breakpoint->type]);
         }
     }
+    else if(breakpoint->type == BREAKPOINT_TYPE_DMA)
+    {
+        if(emu_dma_breakpoint_bitmask & (1 << breakpoint->dma.channel))
+        {
+            emu_dma_breakpoint_bitmask &= ~(1 << breakpoint->dma.channel);
+        }
+    }
 
     uint32_t breakpoint_index = breakpoint - list->breakpoints;
     if(breakpoint_index < list->count - 1)
@@ -538,6 +551,7 @@ uint32_t emu_Step(int32_t master_cycle_count)
     if(emu_emulation_data.status & EMU_STATUS_END_OF_FRAME)
     {
         blit_backbuffer();
+        // emu_Log("emu_Step: end of frame");
     }
 
     /* this might not work if a large value is passed to step_cpu, because it may finish
@@ -623,10 +637,24 @@ uint32_t emu_Step(int32_t master_cycle_count)
                             if(breakpoint->dma.channel == emu_emulation_data.breakpoint_data.dma.channel)
                             {
                                 emu_emulation_data.breakpoint = breakpoint;
-                                emu_Log("DMA transfer: channel %d, move %02x from %04x to %04x", emu_emulation_data.breakpoint_data.dma.channel, 
-                                                                                                 emu_emulation_data.breakpoint_data.dma.data, 
-                                                                                                 emu_emulation_data.breakpoint_data.dma.src_address, 
-                                                                                                 emu_emulation_data.breakpoint_data.dma.dst_address);
+                                struct dma_t *channel = dma_channels + breakpoint->dma.channel;
+
+                                if(channel->direction == DMA_DIRECTION_CPU_PPU && (emu_emulation_data.breakpoint_data.dma.dst_address == PPU_REG_VMDATAWL || 
+                                                                                   emu_emulation_data.breakpoint_data.dma.dst_address == PPU_REG_VMDATAWH))
+                                {
+                                    emu_Log("DMA transfer: channel %d, move %02x from %04x to %04x (vram: %04x)", emu_emulation_data.breakpoint_data.dma.channel, 
+                                                                                                                  emu_emulation_data.breakpoint_data.dma.data, 
+                                                                                                                  emu_emulation_data.breakpoint_data.dma.src_address, 
+                                                                                                                  emu_emulation_data.breakpoint_data.dma.dst_address,
+                                                                                                                  vram_addr);
+                                }
+                                else
+                                {
+                                    emu_Log("DMA transfer: channel %d, move %02x from %04x to %04x", emu_emulation_data.breakpoint_data.dma.channel, 
+                                                                                                     emu_emulation_data.breakpoint_data.dma.data, 
+                                                                                                     emu_emulation_data.breakpoint_data.dma.src_address, 
+                                                                                                     emu_emulation_data.breakpoint_data.dma.dst_address);
+                                }
                                 index = list->count;
                             }
                         break;

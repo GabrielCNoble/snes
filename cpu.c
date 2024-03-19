@@ -7420,7 +7420,7 @@ uint32_t addr_offi(uint32_t arg)
 {
     uint32_t signed_offset = (arg >> 24) & 0xff;
     uint32_t bank_wrap = (arg >> 16) & 0xff;
-    uint16_t offset = arg & 0xffff;
+    uint32_t offset = arg & 0xffff;
     uint32_t prev_addr = EFFECTIVE_ADDRESS(cpu_state.regs[CPU_REG_BANK].byte[0], cpu_state.regs[CPU_REG_ADDR].word);
 
     if(signed_offset && (offset & 0x8000))
@@ -7428,7 +7428,7 @@ uint32_t addr_offi(uint32_t arg)
         offset |= 0xffff0000;
     }
 
-    uint32_t addr = prev_addr + (uint32_t)offset;
+    uint32_t addr = prev_addr + offset;
     cpu_state.regs[CPU_REG_ADDR].word = addr & 0xffff;
 
     if(!bank_wrap)

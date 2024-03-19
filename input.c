@@ -72,6 +72,10 @@ uint32_t in_ReadInput()
                 ui_MouseClickEvent(event.button.button, event.type == SDL_MOUSEBUTTONDOWN);
             break;
 
+            case SDL_MOUSEWHEEL:
+                ui_MouseWheelEvent(event.wheel.y);
+            break;
+
             case SDL_TEXTINPUT:
                 for(uint32_t index = 0; event.text.text[index] && index < sizeof(event.text.text); index++)
                 {

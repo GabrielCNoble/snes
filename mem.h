@@ -9,7 +9,7 @@ enum ACCESS
     ACCESS_CART,
     ACCESS_OPEN,
     ACCESS_RAM,
-    ACCESS_RAM1 = 0xffff,
+    ACCESS_RAM1 = 0x1fff,
     ACCESS_RAM2 = 0x1ffff,
 };
 
